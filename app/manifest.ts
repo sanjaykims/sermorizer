@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Sermorizer — 설교 요약",
+    name: "Sermorizer — Sermon Summary",
     short_name: "Sermorizer",
-    description: "주일 설교 자료를 한 편의 아름다운 HTML 요약본으로.",
+    description: "Turn weekly church sermon materials into one beautiful HTML summary.",
     start_url: "/",
     display: "standalone",
     background_color: "#f4f1ea",

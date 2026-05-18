@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sermorizer — 설교 요약 도구",
+  title: "Sermorizer — Sermon Summary Tool",
   description:
-    "주일 설교 자료를 한 편의 아름다운 모바일 친화적 HTML 요약본으로 만들어 주는 도구.",
+    "Turn a week of church sermon materials into one beautiful, mobile-friendly HTML summary.",
   appleWebApp: { capable: true, title: "Sermorizer", statusBarStyle: "default" },
 };
 
@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

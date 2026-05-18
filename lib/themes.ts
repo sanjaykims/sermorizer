@@ -12,16 +12,16 @@ export type Theme = {
  * "auto" lets the model pick a theme from the occasion/season.
  */
 export const THEMES: Theme[] = [
-  { key: "auto", label: "자동 — Sermorizer가 절기에 맞게 선택", hint: "" },
-  { key: "purple", label: "사순절 / 종려주일 — 깊은 보라", hint: "deep liturgical purple" },
-  { key: "gold", label: "부활절 — 따뜻한 금빛 / 호박색", hint: "warm gold and amber" },
-  { key: "teal", label: "요한복음 4장 (우물) — 청록", hint: "teal" },
-  { key: "green", label: "어린이주일 — 초록", hint: "fresh green" },
-  { key: "forest", label: "말씀 / 성경 세미나 — 진녹색 & 금색", hint: "forest green and gold" },
-  { key: "rose", label: "어버이주일 — 장미 / 카네이션 / 금색", hint: "rose, carnation pink and gold" },
-  { key: "tealgold", label: "스승의 주일 — 청록 & 금색", hint: "teal and gold" },
-  { key: "rust", label: "에스라 — 적갈색 / 갈색", hint: "rust and warm brown" },
-  { key: "blue", label: "고린도후서 12:9 — 파랑", hint: "calm, contemplative blue" },
+  { key: "auto", label: "Auto — let Sermorizer choose by season", hint: "" },
+  { key: "purple", label: "Lent / Palm Sunday — deep purple", hint: "deep liturgical purple" },
+  { key: "gold", label: "Easter — warm gold & amber", hint: "warm gold and amber" },
+  { key: "teal", label: "John 4 (the well) — teal", hint: "teal" },
+  { key: "green", label: "Children's Sunday — green", hint: "fresh green" },
+  { key: "forest", label: "Word / Bible seminar — forest green & gold", hint: "forest green and gold" },
+  { key: "rose", label: "Parents' Day — rose, carnation & gold", hint: "rose, carnation pink and gold" },
+  { key: "tealgold", label: "Teachers' Sunday — teal & gold", hint: "teal and gold" },
+  { key: "rust", label: "Ezra — rust & brown", hint: "rust and warm brown" },
+  { key: "blue", label: "2 Corinthians 12:9 — calm blue", hint: "calm, contemplative blue" },
 ];
 
 export function themeHint(key: string | undefined): string {

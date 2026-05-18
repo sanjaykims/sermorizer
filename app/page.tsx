@@ -23,7 +23,7 @@ const EMPTY_META: Metadata = {
   scripture: "",
   date: "",
   occasion: "",
-  serviceType: "주일예배",
+  serviceType: "Sunday Worship Service",
 };
 
 /** Load an image File, downscale it, and return base64 JPEG for the API. */
@@ -153,22 +153,22 @@ export default function Page() {
   async function onGenerate() {
     if (!meta.title.trim()) {
       setStatus("error");
-      setStatusMsg("설교 제목을 입력해 주세요.");
+      setStatusMsg("Please enter a sermon title.");
       return;
     }
     if (!meta.scripture.trim()) {
       setStatus("error");
-      setStatusMsg("본문 성경 구절을 입력해 주세요.");
+      setStatusMsg("Please enter the scripture passage.");
       return;
     }
     if (!transcript || transcript.text.trim().length < 20) {
       setStatus("error");
-      setStatusMsg("녹음 설교 전사본(.txt 파일)을 업로드해 주세요.");
+      setStatusMsg("Please upload the recorded sermon transcript (.txt file).");
       return;
     }
 
     setStatus("generating");
-    setStatusMsg("입력 자료를 준비하고 있습니다…");
+    setStatusMsg("Preparing your materials…");
     setDocs({});
     setLive("");
     setActiveLang("ko");
@@ -176,7 +176,7 @@ export default function Page() {
     try {
       const noteImages = await Promise.all(noteFiles.map(imageToBase64));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
-      setStatusMsg("Claude가 설교 요약본을 작성하고 있습니다…");
+      setStatusMsg("Claude is writing the sermon summary…");
 
       const final = await streamRequest(
         {
@@ -195,16 +195,18 @@ export default function Page() {
         setDocs({ ko: html });
         setStatus("error");
         setStatusMsg(
-          "생성이 완료되기 전에 중단된 것 같습니다. 미리보기는 부분 결과입니다. 다시 시도해 주세요.",
+          "Generation seems to have stopped early. The preview is a partial result — please try again.",
         );
         return;
       }
       setDocs({ ko: html });
       setStatus("done");
-      setStatusMsg("한국어 요약본이 완성되었습니다.");
+      setStatusMsg("Your Korean summary is ready.");
     } catch (e) {
       setStatus("error");
-      setStatusMsg(e instanceof Error ? e.message : "생성 중 오류가 발생했습니다.");
+      setStatusMsg(
+        e instanceof Error ? e.message : "Something went wrong during generation.",
+      );
     }
   }
 
@@ -217,7 +219,7 @@ export default function Page() {
 
     setStatus("translating");
     setStatusMsg(
-      lang === "en" ? "영어로 번역하고 있습니다…" : "중국어로 번역하고 있습니다…",
+      lang === "en" ? "Translating into English…" : "Translating into Chinese…",
     );
     setLive("");
     setActiveLang(lang);
@@ -230,15 +232,21 @@ export default function Page() {
       const html = cleanHtml(final);
       if (!html.toLowerCase().includes("</html>")) {
         setStatus("error");
-        setStatusMsg("번역이 중단된 것 같습니다. 다시 시도해 주세요.");
+        setStatusMsg("Translation seems to have stopped early — please try again.");
         return;
       }
       setDocs((d) => ({ ...d, [lang]: html }));
       setStatus("done");
-      setStatusMsg(lang === "en" ? "영어 번역본이 완성되었습니다." : "중국어 번역본이 완성되었습니다.");
+      setStatusMsg(
+        lang === "en"
+          ? "Your English translation is ready."
+          : "Your Chinese translation is ready.",
+      );
     } catch (e) {
       setStatus("error");
-      setStatusMsg(e instanceof Error ? e.message : "번역 중 오류가 발생했습니다.");
+      setStatusMsg(
+        e instanceof Error ? e.message : "Something went wrong during translation.",
+      );
     }
   }
 
@@ -246,7 +254,7 @@ export default function Page() {
     const html = docs[activeLang];
     if (!html) return;
     const date = meta.date.trim() || new Date().toISOString().slice(0, 10);
-    const occ = slug(meta.occasion) || "주일예배";
+    const occ = slug(meta.occasion) || "sunday-service";
     const title = slug(meta.title) || "sermon";
     const suffix = activeLang === "en" ? "-EN" : activeLang === "zh" ? "-中文版" : "";
     const name = `${date}-${occ}-${title}${suffix}.html`;
@@ -268,27 +276,30 @@ export default function Page() {
     <div className="wrap">
       <header className="app-header">
         <h1>Sermorizer</h1>
-        <p>주일 설교 자료를 한 편의 아름다운 모바일 요약본으로 — 갈릴리교회</p>
+        <p>
+          Turn a week of sermon materials into one beautiful mobile summary —
+          Galilee Church
+        </p>
       </header>
 
       <div className="layout">
         {/* ---------- Input panel ---------- */}
         <div className="panel">
-          <h2>1. 설교 정보</h2>
-          <p className="hint">설교의 기본 정보를 입력하세요.</p>
+          <h2>1. Sermon details</h2>
+          <p className="hint">Enter the basic information about the sermon.</p>
 
           <div className="field">
-            <label>설교 제목</label>
+            <label>Sermon title</label>
             <input
               type="text"
               value={meta.title}
-              placeholder="예) 당연한 사랑은 없습니다"
+              placeholder="The title of the sermon"
               onChange={(e) => setField("title", e.target.value)}
             />
           </div>
           <div className="row">
             <div className="field">
-              <label>설교자</label>
+              <label>Preacher</label>
               <input
                 type="text"
                 value={meta.preacher}
@@ -296,11 +307,11 @@ export default function Page() {
               />
             </div>
             <div className="field">
-              <label>본문 성경</label>
+              <label>Scripture passage</label>
               <input
                 type="text"
                 value={meta.scripture}
-                placeholder="예) 출애굽기 20:12"
+                placeholder="e.g. Exodus 20:12"
                 onChange={(e) => setField("scripture", e.target.value)}
               />
             </div>
@@ -308,7 +319,7 @@ export default function Page() {
           <div className="row">
             <div className="field">
               <label>
-                예배 날짜 <span className="opt">(선택)</span>
+                Service date <span className="opt">(optional)</span>
               </label>
               <input
                 type="text"
@@ -319,7 +330,7 @@ export default function Page() {
             </div>
             <div className="field">
               <label>
-                예배 종류 <span className="opt">(선택)</span>
+                Service type <span className="opt">(optional)</span>
               </label>
               <input
                 type="text"
@@ -330,17 +341,17 @@ export default function Page() {
           </div>
           <div className="field">
             <label>
-              절기 / 행사 <span className="opt">(선택)</span>
+              Occasion / liturgical season <span className="opt">(optional)</span>
             </label>
             <input
               type="text"
               value={meta.occasion}
-              placeholder="예) 스승의 주일, 사순절, 부활절"
+              placeholder="e.g. Teachers' Sunday, Lent, Easter"
               onChange={(e) => setField("occasion", e.target.value)}
             />
           </div>
           <div className="field">
-            <label>색상 테마</label>
+            <label>Color theme</label>
             <select value={theme} onChange={(e) => setTheme(e.target.value)}>
               {THEMES.map((t) => (
                 <option key={t.key} value={t.key}>
@@ -352,14 +363,14 @@ export default function Page() {
 
           <hr className="section-divider" />
 
-          <h2>2. 손글씨 노트</h2>
+          <h2>2. Handwritten note</h2>
           <p className="hint">
-            예배 중 적은 손글씨 메모 사진(JPG/PNG). 중요하게 들은 부분을 강조하는 데
-            쓰입니다.
+            Photo(s) of the notes you wrote during the service (JPG/PNG). They
+            are used to highlight the points that mattered most to you.
           </p>
           <label className="drop">
-            <strong>+ 노트 이미지 추가</strong>
-            <span>여러 장 선택 가능</span>
+            <strong>+ Add note image(s)</strong>
+            <span>You can select multiple</span>
             <input
               type="file"
               accept="image/*"
@@ -392,11 +403,13 @@ export default function Page() {
 
           <hr className="section-divider" />
 
-          <h2>3. 녹음 설교 전사본</h2>
-          <p className="hint">Clova Note 등으로 전사한 .txt 파일.</p>
+          <h2>3. Recorded sermon transcript</h2>
+          <p className="hint">A .txt file transcribed with Clova Note or similar.</p>
           <label className="drop">
-            <strong>{transcript ? "전사본 .txt 교체" : "+ 전사본 .txt 업로드"}</strong>
-            <span>{transcript ? transcript.name : ".txt 파일 1개"}</span>
+            <strong>
+              {transcript ? "Replace transcript .txt" : "+ Upload transcript .txt"}
+            </strong>
+            <span>{transcript ? transcript.name : "One .txt file"}</span>
             <input
               type="file"
               accept=".txt,text/plain"
@@ -411,14 +424,15 @@ export default function Page() {
           <hr className="section-divider" />
 
           <h2>
-            4. 주보 <span className="opt">(선택)</span>
+            4. Order of service <span className="opt">(optional)</span>
           </h2>
           <p className="hint">
-            인쇄된 예배 순서지(주보) 사진. 있으면 HTML 표로 변환됩니다.
+            A photo of the printed order of service (주보). If provided, it is
+            converted into an HTML table.
           </p>
           <label className="drop">
-            <strong>+ 주보 이미지 추가</strong>
-            <span>여러 장 선택 가능</span>
+            <strong>+ Add bulletin image(s)</strong>
+            <span>You can select multiple</span>
             <input
               type="file"
               accept="image/*"
@@ -458,8 +472,8 @@ export default function Page() {
             onClick={onGenerate}
           >
             {status === "generating"
-              ? `요약본 생성 중… (${elapsed}초)`
-              : "요약본 생성하기"}
+              ? `Generating… (${elapsed}s)`
+              : "Generate summary"}
           </button>
         </div>
 
@@ -473,7 +487,7 @@ export default function Page() {
                 disabled={!docs.ko || busy}
                 onClick={() => setActiveLang("ko")}
               >
-                한국어
+                Korean
               </button>
               <button
                 type="button"
@@ -489,7 +503,7 @@ export default function Page() {
                 disabled={!docs.zh || busy}
                 onClick={() => setActiveLang("zh")}
               >
-                中文
+                Chinese
               </button>
             </div>
             <div className="spacer" />
@@ -499,7 +513,7 @@ export default function Page() {
               disabled={!docs[activeLang] || busy}
               onClick={download}
             >
-              ⬇ HTML 다운로드
+              ⬇ Download HTML
             </button>
           </div>
 
@@ -515,7 +529,7 @@ export default function Page() {
                       : "working"
               }`}
             >
-              {busy ? `${statusMsg} (${elapsed}초)` : statusMsg}
+              {busy ? `${statusMsg} (${elapsed}s)` : statusMsg}
             </div>
           )}
 
@@ -530,11 +544,9 @@ export default function Page() {
             <div className="placeholder">
               <div className="big">✝</div>
               <p>
-                왼쪽에 설교 정보·손글씨 노트·전사본을 입력하고
-                <br />
-                <strong>요약본 생성하기</strong>를 누르면
-                <br />
-                여기에 미리보기가 표시됩니다.
+                Fill in the sermon details, handwritten note, and transcript on
+                the left, then tap <strong>Generate summary</strong> — the
+                preview will appear here.
               </p>
             </div>
           )}
@@ -546,14 +558,14 @@ export default function Page() {
                 className="btn btn-ghost"
                 onClick={() => onTranslate("en")}
               >
-                {docs.en ? "English 보기" : "English 번역"}
+                {docs.en ? "View English" : "Translate to English"}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost"
                 onClick={() => onTranslate("zh")}
               >
-                {docs.zh ? "中文 보기" : "中文 (简体) 번역"}
+                {docs.zh ? "View Chinese" : "Translate to Chinese"}
               </button>
             </div>
           )}
@@ -561,7 +573,8 @@ export default function Page() {
       </div>
 
       <p className="foot">
-        Sermorizer · 갈릴리교회 설교 요약 도구 · Claude (claude-opus-4-7) 기반
+        Sermorizer · Sermon summary tool for Galilee Church · Powered by Claude
+        (claude-opus-4-7)
       </p>
     </div>
   );
