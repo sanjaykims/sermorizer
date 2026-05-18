@@ -68,6 +68,70 @@ body {
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  /* On a stacked layout the preview shouldn't pin to the viewport. */
+  .preview-panel {
+    position: static;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 16px 12px 56px;
+  }
+  .app-header {
+    padding: 6px 0 16px;
+  }
+  .app-header h1 {
+    font-size: 1.95rem;
+  }
+  .app-header p {
+    font-size: 0.9rem;
+  }
+  .panel {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  /* Paired inputs (preacher/scripture, date/type) stack on narrow screens. */
+  .row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .preview-frame,
+  .placeholder {
+    min-height: 72vh;
+  }
+  .placeholder {
+    padding: 32px 22px;
+  }
+  .preview-bar {
+    gap: 7px;
+  }
+  /* Tabs span the full row, download button takes its own line below. */
+  .tabs {
+    flex: 1;
+  }
+  .tab {
+    flex: 1;
+  }
+  .preview-bar .spacer {
+    display: none;
+  }
+  .preview-bar .btn-ghost {
+    width: 100%;
+  }
+  .translate-row {
+    flex-direction: column;
+  }
+  .files li {
+    font-size: 0.88rem;
+    padding: 9px 11px;
+  }
+  .files li button {
+    font-size: 1.15rem;
+    padding: 4px 10px;
   }
 }
 
@@ -112,13 +176,14 @@ body {
 input[type="text"],
 select {
   width: 100%;
-  padding: 9px 11px;
+  padding: 11px 12px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: #fff;
   color: var(--ink);
   font-family: inherit;
-  font-size: 0.95rem;
+  /* 16px keeps iOS Safari from zooming in when a field is focused */
+  font-size: 1rem;
 }
 
 input[type="text"]:focus,
@@ -203,11 +268,14 @@ select:focus {
   border: none;
   border-radius: 10px;
   padding: 12px 18px;
+  min-height: 46px;
   font-family: inherit;
   font-size: 0.98rem;
   font-weight: 600;
   cursor: pointer;
   transition: filter 0.15s, opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btn-primary {
@@ -261,10 +329,13 @@ select:focus {
   background: #fff;
   color: var(--muted);
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 8px 14px;
+  min-height: 40px;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .tab.active {

@@ -118,6 +118,14 @@ export default function Page() {
 
   const busy = status === "generating" || status === "translating";
   const startedAt = useRef<number>(0);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  /** On a stacked (mobile) layout, bring the preview into view. */
+  function revealPreview() {
+    if (typeof window !== "undefined" && window.innerWidth <= 900) {
+      previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   useEffect(() => {
     if (!busy) return;
@@ -172,6 +180,7 @@ export default function Page() {
     setDocs({});
     setLive("");
     setActiveLang("ko");
+    revealPreview();
 
     try {
       const noteImages = await Promise.all(noteFiles.map(imageToBase64));
@@ -213,6 +222,7 @@ export default function Page() {
   async function onTranslate(lang: "en" | "zh") {
     if (docs[lang]) {
       setActiveLang(lang);
+      revealPreview();
       return;
     }
     if (!docs.ko) return;
@@ -223,6 +233,7 @@ export default function Page() {
     );
     setLive("");
     setActiveLang(lang);
+    revealPreview();
 
     try {
       const final = await streamRequest(
@@ -478,7 +489,7 @@ export default function Page() {
         </div>
 
         {/* ---------- Preview panel ---------- */}
-        <div className="panel preview-panel">
+        <div className="panel preview-panel" ref={previewRef}>
           <div className="preview-bar">
             <div className="tabs">
               <button
