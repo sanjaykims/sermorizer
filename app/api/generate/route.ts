@@ -58,10 +58,19 @@ export async function POST(req: Request): Promise<Response> {
       content = buildTranslationUserContent(body.language, body.sourceHtml);
     } else {
       const m = body.metadata ?? {};
-      if (!m.title?.trim()) throw new Error("A sermon title is required.");
-      if (!m.scripture?.trim()) throw new Error("A scripture passage is required.");
       if (!body.transcript || body.transcript.trim().length < 20) {
         throw new Error("A sermon transcript (.txt) is required.");
+      }
+      const hasBulletin = (body.bulletinImages?.length ?? 0) > 0;
+      if (!hasBulletin && !m.title?.trim()) {
+        throw new Error(
+          "A sermon title is required unless an order-of-service (주보) photo is provided.",
+        );
+      }
+      if (!hasBulletin && !m.scripture?.trim()) {
+        throw new Error(
+          "A scripture passage is required unless an order-of-service (주보) photo is provided.",
+        );
       }
       system = GENERATION_SYSTEM_PROMPT;
       content = buildGenerationUserContent(body);

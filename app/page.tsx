@@ -159,19 +159,24 @@ export default function Page() {
   }
 
   async function onGenerate() {
-    if (!meta.title.trim()) {
-      setStatus("error");
-      setStatusMsg("Please enter a sermon title.");
-      return;
-    }
-    if (!meta.scripture.trim()) {
-      setStatus("error");
-      setStatusMsg("Please enter the scripture passage.");
-      return;
-    }
     if (!transcript || transcript.text.trim().length < 20) {
       setStatus("error");
       setStatusMsg("Please upload the recorded sermon transcript (.txt file).");
+      return;
+    }
+    const hasBulletin = bulletinFiles.length > 0;
+    if (!hasBulletin && !meta.title.trim()) {
+      setStatus("error");
+      setStatusMsg(
+        "Enter a sermon title — or add the order-of-service photo in step 4, and it will be read from there.",
+      );
+      return;
+    }
+    if (!hasBulletin && !meta.scripture.trim()) {
+      setStatus("error");
+      setStatusMsg(
+        "Enter the scripture passage — or add the order-of-service photo in step 4, and it will be read from there.",
+      );
       return;
     }
 
@@ -297,7 +302,11 @@ export default function Page() {
         {/* ---------- Input panel ---------- */}
         <div className="panel">
           <h2>1. Sermon details</h2>
-          <p className="hint">Enter the basic information about the sermon.</p>
+          <p className="hint">
+            Enter the sermon&apos;s basic information. You can leave the title and
+            scripture blank if you add the order-of-service photo in step 4 —
+            they will be read from it.
+          </p>
 
           <div className="field">
             <label>Sermon title</label>
@@ -439,7 +448,8 @@ export default function Page() {
           </h2>
           <p className="hint">
             A photo of the printed order of service (주보). If provided, it is
-            converted into an HTML table.
+            converted into an HTML table, and any sermon details left blank in
+            step 1 are read from it.
           </p>
           <label className="drop">
             <strong>+ Add bulletin image(s)</strong>

@@ -49,7 +49,7 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 5. The recorded sermon transcript — a long, messy Clova Note ASR transcript (~60-80 minutes of speech, often 400-800+ lines). It contains misheard words. Interpret it charitably; never quote verbatim ASR noise; reconstruct what the preacher actually said.
 
 ## How to synthesize the inputs (core logic)
-1. **Metadata** → a gradient header, a key-verse block, an info card, and the footer.
+1. **Metadata** → a gradient header, a key-verse block, an info card, and the footer. A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
 2. **Order-of-service photo** (if provided) → a native HTML \`<table>\`. NEVER embed a photo of the bulletin.
 3. **Transcript** → the body of the document. Break the sermon into roughly 8-10 thematic sections. Each section gets a heading with a small icon, a warm prose summary, scripture boxes where verses are read, illustration cards for the preacher's stories/examples, and pull-quotes for memorable lines. Reconstruct the preacher's actual flow, examples, and illustrations.
 4. **Handwritten note** → cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it.
@@ -117,10 +117,12 @@ export function buildGenerationUserContent(body: GenerationInput): ContentBlock[
   const meta: string[] = [];
   meta.push("# Sermon materials for Sermorizer");
   meta.push("");
+  const NOT_PROVIDED =
+    "(not provided — read it from the order-of-service / 주보 photo if one is supplied, otherwise infer it from the transcript)";
   meta.push("## Sermon metadata");
-  meta.push(`- Title: ${m.title ?? "(untitled)"}`);
+  meta.push(`- Title: ${m.title?.trim() || NOT_PROVIDED}`);
   meta.push(`- Preacher: ${m.preacher?.trim() || "김영복 담임목사"}`);
-  meta.push(`- Scripture: ${m.scripture ?? "(not given)"}`);
+  meta.push(`- Scripture: ${m.scripture?.trim() || NOT_PROVIDED}`);
   if (m.date?.trim()) meta.push(`- Service date: ${m.date.trim()}`);
   if (m.occasion?.trim()) meta.push(`- Occasion / liturgical season: ${m.occasion.trim()}`);
   if (m.serviceType?.trim()) meta.push(`- Service type: ${m.serviceType.trim()}`);
