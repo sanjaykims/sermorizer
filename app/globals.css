@@ -211,9 +211,14 @@ select:focus {
 }
 
 .drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1.5px dashed var(--line);
   border-radius: 11px;
-  padding: 16px;
+  padding: 20px 16px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -231,10 +236,8 @@ select:focus {
 }
 
 .drop span {
-  display: block;
   color: var(--muted);
   font-size: 0.8rem;
-  margin-top: 3px;
 }
 
 .files {
