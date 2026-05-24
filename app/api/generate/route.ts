@@ -85,13 +85,16 @@ export async function POST(req: Request): Promise<Response> {
   const client = new Anthropic();
 
   // Cache the (static) system prompt; per-request content lives in the user message.
-  // No extended thinking: on Opus 4.7, adaptive thinking can spend minutes
-  // reasoning before emitting any text, which makes the stream look frozen and
-  // risks the duration limit. Thinking off → HTML starts streaming right away.
+  // Quality-first: adaptive thinking lets Opus 4.7 plan the synthesis, and
+  // "high" effort is the recommended floor for intelligence-sensitive work
+  // (not "max", to keep cost in check — the second priority). Summarized
+  // thinking is streamed to the client so the pre-HTML wait shows real progress
+  // instead of looking frozen.
   const params = {
     model: MODEL,
     max_tokens: 64000,
-    output_config: { effort: "medium" as const },
+    thinking: { type: "adaptive" as const, display: "summarized" as const },
+    output_config: { effort: "high" as const },
     system: [
       {
         type: "text" as const,
@@ -116,23 +119,27 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
+  // Newline-delimited JSON events: {"t":"html"|"think"|"error","d":"..."}.
+  // This keeps the model's thinking progress on a separate channel from the
+  // HTML document so the client can show one as status and assemble the other.
+  const send = (t: "html" | "think" | "error", d: string) =>
+    JSON.stringify({ t, d }) + "\n";
+
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
+          if (event.type !== "content_block_delta") continue;
+          if (event.delta.type === "text_delta") {
+            controller.enqueue(encoder.encode(send("html", event.delta.text)));
+          } else if (event.delta.type === "thinking_delta") {
+            controller.enqueue(encoder.encode(send("think", event.delta.thinking)));
           }
         }
         controller.close();
       } catch (err) {
-        // The stream has already started; surface the failure inline so the
-        // client can detect an incomplete document.
         const msg = err instanceof Error ? err.message : String(err);
-        controller.enqueue(encoder.encode(`\n<!-- SERMORIZER_STREAM_ERROR: ${msg} -->`));
+        controller.enqueue(encoder.encode(send("error", msg)));
         controller.close();
       }
     },

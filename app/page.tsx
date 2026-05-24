@@ -69,9 +69,16 @@ function slug(s: string): string {
     .slice(0, 60);
 }
 
+type StreamHandlers = {
+  /** assembled HTML so far (throttled) */
+  onHtml: (html: string) => void;
+  /** the model's latest thinking progress, before/while it writes */
+  onThinking?: () => void;
+};
+
 async function streamRequest(
   payload: unknown,
-  onChunk: (acc: string) => void,
+  handlers: StreamHandlers,
 ): Promise<string> {
   const res = await fetch("/api/generate", {
     method: "POST",
@@ -90,22 +97,47 @@ async function streamRequest(
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  let acc = "";
+  let buf = "";
+  let html = "";
   let lastEmit = 0;
+
+  const handleLine = (line: string) => {
+    if (!line) return;
+    let evt: { t?: string; d?: string };
+    try {
+      evt = JSON.parse(line);
+    } catch {
+      return;
+    }
+    if (evt.t === "html") {
+      html += evt.d ?? "";
+      // Throttle iframe repaints — re-rendering on every token bogs down mobile.
+      const now = Date.now();
+      if (now - lastEmit > 450) {
+        lastEmit = now;
+        handlers.onHtml(html);
+      }
+    } else if (evt.t === "think") {
+      handlers.onThinking?.();
+    } else if (evt.t === "error") {
+      throw new Error(evt.d || "The model reported an error mid-generation.");
+    }
+  };
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    acc += decoder.decode(value, { stream: true });
-    // Throttle live-preview updates: re-rendering the iframe on every token is
-    // expensive on mobile. Repaint at most a couple of times per second.
-    const now = Date.now();
-    if (now - lastEmit > 450) {
-      lastEmit = now;
-      onChunk(acc);
+    buf += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl);
+      buf = buf.slice(nl + 1);
+      handleLine(line);
     }
   }
-  onChunk(acc); // always paint the final, complete result
-  return acc;
+  if (buf.trim()) handleLine(buf);
+  handlers.onHtml(html); // always paint the final, complete result
+  return html;
 }
 
 export default function Page() {
@@ -198,10 +230,9 @@ export default function Page() {
     try {
       const noteImages = await Promise.all(noteFiles.map(imageToBase64));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
-      setStatusMsg(
-        "Claude is writing the sermon summary — this can take 1–3 minutes for a long sermon. The preview fills in as it writes.",
-      );
+      setStatusMsg("Claude is reading the sermon and planning the summary…");
 
+      let writing = false;
       const final = await streamRequest(
         {
           mode: "generate",
@@ -211,7 +242,22 @@ export default function Page() {
           noteImages,
           bulletinImages,
         },
-        (acc) => setLive(acc),
+        {
+          onThinking: () => {
+            if (!writing) {
+              setStatusMsg(
+                "Claude is reading & planning the summary… (the preview appears once it starts writing — this can take a minute)",
+              );
+            }
+          },
+          onHtml: (html) => {
+            if (!writing) {
+              writing = true;
+              setStatusMsg("Writing the summary — the preview fills in as it writes.");
+            }
+            setLive(html);
+          },
+        },
       );
 
       const html = cleanHtml(final);
@@ -251,9 +297,31 @@ export default function Page() {
     revealPreview();
 
     try {
+      let writing = false;
       const final = await streamRequest(
         { mode: "translate", language: lang, sourceHtml: docs.ko },
-        (acc) => setLive(acc),
+        {
+          onThinking: () => {
+            if (!writing) {
+              setStatusMsg(
+                lang === "en"
+                  ? "Working through the English translation…"
+                  : "Working through the Chinese translation…",
+              );
+            }
+          },
+          onHtml: (html) => {
+            if (!writing) {
+              writing = true;
+              setStatusMsg(
+                lang === "en"
+                  ? "Writing the English translation — the preview fills in as it writes."
+                  : "Writing the Chinese translation — the preview fills in as it writes.",
+              );
+            }
+            setLive(html);
+          },
+        },
       );
       const html = cleanHtml(final);
       if (!html.toLowerCase().includes("</html>")) {
