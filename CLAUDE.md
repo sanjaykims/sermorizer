@@ -28,7 +28,8 @@ mobile-optimized HTML sermon summary.
    misheard words — interpret charitably, don't quote verbatim noise.
 
 Optional fourth input seen in practice: a **photo of the printed order of
-service (주보)**. If provided, transcribe it into a native HTML table.
+service (주보)**. If provided, use it ONLY to read sermon metadata (title,
+preacher, scripture, date) — it is not included in the output.
 
 ## The output
 
@@ -40,34 +41,40 @@ A **single self-contained `.html` file**:
 - Korean primary. The app must also be able to produce **English** and
   **Chinese (Simplified)** translations of the same document on request,
   preserving identical design/structure.
-- Comprehensive prose, NOT bullet-point skeletons. Capture the whole service
-  start to finish: full prayer texts, scripture, sermon sub-points, liturgy,
-  illustrations, closing prayer.
+- Comprehensive prose, NOT bullet-point skeletons. The summary is the **sermon
+  only** — the preached message: its scripture and exposition, introduction,
+  main points and sub-points, illustrations, applications, and conclusion. Do
+  NOT include other parts of the service (opening, prayers, liturgy, hymns,
+  order of service, announcements, benediction).
 
 ## How to synthesize the three inputs (this is the core logic)
 
 1. **Metadata** → header, key-verse block, info card, footer.
-2. **Order of service photo** (if any) → native HTML `<table>`, never an
-   embedded image of the bulletin.
-3. **Transcript** → the body. Break the sermon into ~8-10 thematic sections,
-   each with a heading, prose summary, scripture boxes, illustration cards,
-   and pull-quotes. Reconstruct the preacher's actual flow and examples.
+2. **Order of service photo** (if any) → used ONLY to read missing metadata
+   (title, preacher, scripture, date). Never render it as a table or embed it;
+   it must not appear in the output.
+3. **Transcript** → the body, which is the sermon. Break the sermon into ~8-10
+   thematic sections, each with a heading, prose summary, scripture boxes,
+   illustration cards, and pull-quotes. Reconstruct the preacher's actual flow
+   and examples. Ignore any non-sermon portions of the recording.
 4. **Handwritten note** → cross-reference against the transcript. The note
    reveals which points the listener found most important — elevate those
    (pull-quotes, highlight boxes). Notes also catch things like exact poem
    names, dates, foreign-word glosses. If the note conflicts with the
    transcript (e.g. a wrong verse number), trust the transcript and silently
    correct.
-5. End with a numbered "at a glance" summary (~10 points) and the closing
-   prayer.
+5. End with a numbered "at a glance" summary (~10 points) of the sermon. (No
+   closing prayer — sermon content only.)
 
 ## Non-negotiable rules
 
 - **Pastor's name is `김영복` (Kim Young-bok).** NOT 김용복, NOT 김영범.
   This has been corrected many times. English: "Rev. Kim Young-bok".
   Chinese: "金永福主任牧师".
+- **Sermon only.** The document contains the sermon and nothing else — no
+  order of service, prayers, liturgy, hymns, announcements, or benediction.
 - **Never bullet-point the sermon.** Full, warm prose. Bullets only for the
-  final summary list and the order-of-service table.
+  final summary list.
 - **Self-contained output.** No CDN images, no external file refs. Base64 only.
 - **Content fidelity.** Theology, pastoral applications, and liturgical text
   must be preserved accurately. Don't invent content not in the sources.
@@ -159,10 +166,11 @@ structure-preserving translation with the font/lang swaps above.
 - [ ] Zero external image refs (`<img src>` is base64 or absent).
 - [ ] All three inputs are reflected; handwritten-note emphases are elevated.
 - [ ] Sermon is prose, not bullets; summary list present at the end.
-- [ ] Order-of-service rendered as a table if a 주보 photo was given.
+- [ ] Document contains ONLY the sermon — no order of service, prayers,
+      liturgy, hymns, or announcements.
 - [ ] Correct `<html lang>` and fonts for the output language.
 - [ ] Mobile layout: content ~760px max, sticky TOC, readable tap targets.
-- [ ] Closing prayer included and (for translations) fully translated.
+- [ ] (For translations) everything is fully translated, including the summary.
 
 ## Glossary
 

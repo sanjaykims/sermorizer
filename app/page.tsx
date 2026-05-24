@@ -786,9 +786,10 @@ export default function Page() {
             4. Order of service <span className="opt">(optional)</span>
           </h2>
           <p className="hint">
-            A photo of the printed order of service (주보). If provided, it is
-            converted into an HTML table, and any sermon details left blank in
-            step 1 are read from it.
+            A photo of the printed order of service (주보). It is used only to
+            read any sermon details you left blank in step 1 (title, preacher,
+            scripture, date) — it won&apos;t appear in the summary, which is the
+            sermon only.
           </p>
           <label className="drop">
             <strong>+ Add bulletin image(s)</strong>

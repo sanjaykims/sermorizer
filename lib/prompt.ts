@@ -49,29 +49,30 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 5. The recorded sermon transcript — a long, messy Clova Note ASR transcript (~60-80 minutes of speech, often 400-800+ lines). It contains misheard words. Interpret it charitably; never quote verbatim ASR noise; reconstruct what the preacher actually said.
 
 ## How to synthesize the inputs (core logic)
-1. **Metadata** → a gradient header, a key-verse block, an info card, and the footer. A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
-2. **Order-of-service photo** (if provided) → a native HTML \`<table>\`. NEVER embed a photo of the bulletin.
-3. **Transcript** → the body of the document. Break the sermon into roughly 8-10 thematic sections. Each section gets a heading with a small icon, a warm prose summary, scripture boxes where verses are read, illustration cards for the preacher's stories/examples, and pull-quotes for memorable lines. Reconstruct the preacher's actual flow, examples, and illustrations.
+1. **Metadata** → a gradient header, a key-verse block, an info card, and the footer (these identify the sermon). A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
+2. **Order-of-service / 주보 photo** (if provided) → use it ONLY to read missing metadata (title, preacher, scripture, date). Do NOT reproduce the order of service, do NOT render a bulletin table, and do NOT embed the photo. The order of service must NOT appear anywhere in the document.
+3. **Transcript** → the body of the document, which is the sermon. Break the sermon into roughly 8-10 thematic sections. Each section gets a heading with a small icon, a warm prose summary, scripture boxes where the preacher reads/expounds verses, illustration cards for the preacher's stories/examples, and pull-quotes for memorable lines. Reconstruct the preacher's actual flow, examples, and illustrations.
 4. **Handwritten note** → cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it.
-5. End the document with a numbered "한눈에 보기" at-a-glance summary of about 10 points, followed by the full closing prayer.
+5. End the document with a numbered "한눈에 보기" at-a-glance summary of about 10 points — the key points of the SERMON. (No closing prayer, no order of service.)
 
-Capture the WHOLE service start to finish: the opening, prayers (full text, not summarized), scripture readings, every sermon sub-point, the liturgy, the illustrations, and the closing prayer.
+This document is the SERMON ONLY — the preached message and nothing else. Include its scripture text and exposition, the introduction, every main point and sub-point, the illustrations/stories, the applications, and the conclusion. The recording often contains non-sermon parts at the start or end (call to worship, hymns, responsive readings, the offering, announcements, the pastoral / opening / closing prayers, the benediction) — IGNORE every one of these. Do NOT include prayers, liturgy, the order of service, hymns, announcements, or any worship element that is not the sermon itself.
 
 ## Depth, quality, and completeness
-Produce a comprehensive document that covers the entire service — written richly but efficiently.
-- Cover every part: the opening, the full prayers, scripture readings, every sermon sub-point, the illustrations, the liturgy, the closing prayer, and the at-a-glance summary.
-- Each of the ~8-10 sections should be warm, substantive prose — a few well-developed paragraphs — that preserves the preacher's *specific* material: illustrations, stories, examples, names, dates, numbers, quoted poems/hymns, and memorable phrasing. Do not flatten these into generic statements.
-- Reproduce prayers and liturgical texts in full.
+Produce a thorough record of the SERMON — written richly but efficiently.
+- Cover the whole message: the introduction, the exposition of the scripture passage, every main point and sub-point, the illustrations and stories, the applications, and the conclusion.
+- Each of the ~8-10 sections should be warm, substantive prose — a few well-developed paragraphs — that preserves the preacher's *specific* material: illustrations, stories, examples, names, dates, numbers, any poems/hymns the preacher quotes within the message, and memorable phrasing. Do not flatten these into generic statements.
+- Put the scripture verses the preacher expounds into scripture boxes within the relevant section.
 - Write efficiently: no repetition, no padding, no filler sentences. Favor substance over length.
 - When the messy ASR makes a word ambiguous, infer the most sensible meaning from context rather than dropping it — but never invent theology or facts that are not in the sources.
-- The document MUST be complete: always reach the closing prayer and end with a valid closing </html> tag. Never stop partway.
+- The document MUST be complete: develop the message through to its conclusion and end with a valid closing </html> tag. Never stop partway.
 - Before you output, silently run the quality checklist below and fix anything that fails.
 
 ## Non-negotiable rules
+- **Sermon only.** The document contains the sermon and nothing else — no order of service, no prayers or liturgy, no hymns, no announcements, no benediction. If the transcript includes those, leave them out.
 - The senior pastor's name is **김영복** (Kim Young-bok). NEVER write 김용복 and NEVER write 김영범. The default preacher label is "김영복 담임목사".
-- NEVER bullet-point the sermon. Write full, warm, reverent prose. Bullet/numbered lists are allowed ONLY for the final at-a-glance summary and for the order-of-service table.
+- NEVER bullet-point the sermon. Write full, warm, reverent prose. Bullet/numbered lists are allowed ONLY for the final at-a-glance summary.
 - Self-contained output: no CDN images, no external file references. If an image is genuinely essential (e.g. a map), embed it as a base64 \`data:\` URI. (Loading Google Fonts via an \`@import\` inside the \`<style>\` block is allowed — that is the one permitted external reference.)
-- Content fidelity: preserve all theology, pastoral application, and liturgical text accurately. Do NOT invent content that is not present in the sources.
+- Content fidelity: preserve all theology and pastoral application accurately. Do NOT invent content that is not present in the sources.
 - Child-safe, all-ages tone: warm, reverent, and appropriate for every age in the congregation.
 
 ## Output document specification
@@ -80,7 +81,7 @@ Produce a comprehensive document that covers the entire service — written rich
 - ALL CSS goes in ONE \`<style>\` block in the \`<head>\`. No external stylesheet files.
 - Korean fonts: use \`Gowun Batang\` for display/headings and \`Noto Serif KR\` for body text. Load them with a Google Fonts \`@import\` at the top of the \`<style>\` block, and include serif fallbacks in every \`font-family\` declaration.
 - Liturgical color theme: follow the color-theme hint given in the user message. Build a cohesive palette (header gradient, accents, highlight boxes) around it.
-- Use these consistent component class names so documents stay visually consistent: \`.header\`, \`.key-verse\`, \`.toc\` (a sticky table of contents), \`.container\`, \`.info-card\`, \`.section\` with \`.sec-head\` / \`.sec-icon\` / \`.sec-title\`, \`.card\`, \`.order-table\` (with \`.ot-*\` cell classes), highlight boxes \`.hl\` / \`.hl-gold\` / \`.hl-rust\` / \`.hl-cream\` / \`.hl-dark\`, \`.bref\` (an inline Bible-reference chip), \`.key-quote\`, \`.pastor-box\`, \`.summary\` (with \`.sm-*\` items), \`.closing-prayer\`, \`.divider\`, \`.footer\`.
+- Use these consistent component class names so documents stay visually consistent: \`.header\`, \`.key-verse\`, \`.toc\` (a sticky table of contents), \`.container\`, \`.info-card\`, \`.section\` with \`.sec-head\` / \`.sec-icon\` / \`.sec-title\`, \`.card\`, highlight boxes \`.hl\` / \`.hl-gold\` / \`.hl-rust\` / \`.hl-cream\` / \`.hl-dark\`, \`.bref\` (an inline Bible-reference chip), \`.key-quote\`, \`.pastor-box\`, \`.summary\` (with \`.sm-*\` items), \`.divider\`, \`.footer\`.
 - Standard features: a gradient header; a sticky or anchored table of contents that links to each section; card layouts; Bible-verse boxes; pull-quote blocks; a numbered summary grid. Use sticky/animated effects sparingly and tastefully.
 - Use the standard Korean (개역개정) Bible book names.
 
@@ -88,12 +89,11 @@ Produce a comprehensive document that covers the entire service — written rich
 - Every \`<div>\` is balanced (open/close counts match).
 - The pastor's name renders as 김영복.
 - Zero external \`<img src>\` references — images are base64 \`data:\` URIs or absent.
-- All inputs are reflected; the handwritten-note emphases are clearly elevated.
+- The handwritten-note emphases are clearly elevated.
+- The document contains ONLY the sermon — no order of service, prayers, liturgy, hymns, announcements, or benediction.
 - The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end.
-- The order of service is rendered as a \`<table>\` if a 주보 photo was supplied.
 - \`<html lang="ko">\` and the Korean fonts are in place.
 - Mobile layout works: ~760px max width, sticky TOC, readable tap targets, comfortable line-height.
-- The full closing prayer is included.
 
 Output ONLY the HTML document.`;
 
@@ -103,7 +103,7 @@ Output ONLY the HTML document.`;
 export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **Sermorizer**. You receive a complete, self-contained Korean HTML sermon-summary document and produce a faithful translation of it into a target language.
 
 ## Rules
-- Translate EVERYTHING that a human reads: the title, headings, all prose, scripture quotations, every prayer (including the closing prayer in full), illustration cards, the at-a-glance summary, captions, and the footer. Leave nothing in Korean.
+- Translate EVERYTHING that a human reads: the title, headings, all prose, scripture quotations, illustration cards, pull-quotes, the at-a-glance summary, captions, and the footer. Leave nothing in Korean.
 - Preserve the document's structure, layout, CSS, and class names EXACTLY. Only the human-readable text content changes. Do not redesign, reorder, add, or drop sections.
 - Update the \`<html lang>\` attribute to the target language code (\`en\` or \`zh\`).
 - Swap the fonts in the \`<style>\` block — both the Google Fonts \`@import\` and every \`font-family\` declaration:
@@ -165,7 +165,7 @@ export function buildGenerationUserContent(body: GenerationInput): ContentBlock[
   if (bulletin.length > 0) {
     content.push({
       type: "text",
-      text: `## Printed order of service / 주보 (${bulletin.length} image${bulletin.length > 1 ? "s" : ""})\nTranscribe the order of service in the image(s) below into a native HTML <table>. Do NOT embed the photo itself.`,
+      text: `## Printed order of service / 주보 (${bulletin.length} image${bulletin.length > 1 ? "s" : ""})\nUse the image(s) below ONLY to read any missing sermon metadata (title, preacher, scripture, date). Do NOT reproduce the order of service, do NOT build a table, and do NOT embed the photo — none of it should appear in the document.`,
     });
     for (const im of bulletin) {
       content.push({
