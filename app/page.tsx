@@ -373,13 +373,58 @@ export default function Page() {
     jobRef.current = null;
   }
 
-  function onJobTimeout(job: Job) {
+  async function onJobTimeout(job: Job) {
+    if (jobRef.current?.id !== job.id) return;
+    // The work may actually have completed — verify before declaring failure,
+    // so a finished summary/translation is never mismarked as "error".
+    try {
+      const row = await cloudGet(job.id);
+      const haveResult =
+        job.kind === "translate"
+          ? Boolean(job.lang && row?.docs?.[job.lang])
+          : Boolean(row?.docs?.ko);
+      if (row && (row.status === "done" || haveResult)) {
+        stopPolling();
+        applyHistory((prev) => upsert(prev, { ...row, status: "done" }));
+        if (currentIdRef.current === job.id) {
+          setDocs(row.docs);
+          setActiveLang(
+            job.kind === "translate" && job.lang
+              ? job.lang
+              : row.docs.ko
+                ? "ko"
+                : row.docs.en
+                  ? "en"
+                  : "zh",
+          );
+          setStatus("done");
+          setStatusMsg(
+            job.kind === "translate"
+              ? "Your translation is ready."
+              : "Your summary is ready and saved to the web.",
+          );
+        }
+        announce(
+          job.kind === "translate"
+            ? "Your translation is ready."
+            : "Your sermon summary is ready.",
+          true,
+        );
+        if (row.status !== "done") {
+          cloudUpdate(job.id, { status: "done", error: null }).catch(() => {});
+        }
+        return;
+      }
+    } catch {
+      /* fall through to the genuine-timeout path */
+    }
+
     if (jobRef.current?.id !== job.id) return;
     stopPolling();
     if (currentIdRef.current === job.id) {
       setStatus("error");
       setStatusMsg(
-        "This took longer than the server allows (~5 min) and was stopped. The sermon may be very long — please try again. (A higher time limit needs Vercel Pro.)",
+        "This took longer than the server allows (~5 min) and was stopped. The sermon may be very long — please try again.",
       );
     }
     announce("It didn't finish in time — please try again.", false);
@@ -445,7 +490,7 @@ export default function Page() {
     stopPolling();
     jobRef.current = job;
     pollRef.current = setInterval(() => void pollOnce(job), 3000);
-    timeoutRef.current = setTimeout(() => onJobTimeout(job), JOB_TIMEOUT_MS);
+    timeoutRef.current = setTimeout(() => void onJobTimeout(job), JOB_TIMEOUT_MS);
     void pollOnce(job);
   }
 
@@ -830,11 +875,9 @@ export default function Page() {
                     <span className="hist-date">{formatEntryDate(e)}</span>
                   </div>
                   <div className="hist-actions">
-                    {inProgress ? (
-                      <span className="hist-tag">generating…</span>
-                    ) : e.status === "error" ? (
-                      <span className="hist-tag">failed</span>
-                    ) : langs.length > 0 ? (
+                    {/* Show downloads whenever files exist — even if the row was
+                        mistakenly marked failed — so nothing usable is hidden. */}
+                    {langs.length > 0 ? (
                       langs.map((l) => (
                         <button
                           key={l}
@@ -845,6 +888,10 @@ export default function Page() {
                           ⬇ {l.toUpperCase()}
                         </button>
                       ))
+                    ) : inProgress ? (
+                      <span className="hist-tag">generating…</span>
+                    ) : e.status === "error" ? (
+                      <span className="hist-tag">failed</span>
                     ) : (
                       <span className="hist-tag">no file</span>
                     )}
