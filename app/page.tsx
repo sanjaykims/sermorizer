@@ -40,7 +40,10 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
     i.onerror = () => reject(new Error(`Could not decode ${file.name}`));
     i.src = dataUrl;
   });
-  const MAX = 1800;
+  // Higher resolution = more accurate OCR of the Korean handwriting, which is a
+  // key quality input. Capped at 2048px / q0.85 to stay under the upload size
+  // limit even with a few photos.
+  const MAX = 2048;
   const scale = Math.min(1, MAX / Math.max(img.width, img.height));
   const w = Math.max(1, Math.round(img.width * scale));
   const h = Math.max(1, Math.round(img.height * scale));
@@ -50,7 +53,7 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available in this browser.");
   ctx.drawImage(img, 0, 0, w, h);
-  const out = canvas.toDataURL("image/jpeg", 0.82);
+  const out = canvas.toDataURL("image/jpeg", 0.85);
   return { media_type: "image/jpeg", data: out.split(",")[1] ?? "" };
 }
 

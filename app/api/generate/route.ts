@@ -85,16 +85,17 @@ export async function POST(req: Request): Promise<Response> {
   const client = new Anthropic();
 
   // Cache the (static) system prompt; per-request content lives in the user message.
-  // Quality-first: adaptive thinking lets Opus 4.7 plan the synthesis, and
-  // "high" effort is the recommended floor for intelligence-sensitive work
-  // (not "max", to keep cost in check — the second priority). Summarized
-  // thinking is streamed to the client so the pre-HTML wait shows real progress
-  // instead of looking frozen.
+  // Quality-first: adaptive thinking + "xhigh" effort (one step below the
+  // ceiling) for the strongest synthesis. We stop short of "max" deliberately —
+  // the whole run must finish inside the serverless time limit, and max effort
+  // can spend so long thinking that the document itself gets truncated. xhigh
+  // is the best quality that still reliably completes. Summarized thinking is
+  // streamed so the planning phase shows visible progress.
   const params = {
     model: MODEL,
     max_tokens: 64000,
     thinking: { type: "adaptive" as const, display: "summarized" as const },
-    output_config: { effort: "high" as const },
+    output_config: { effort: "xhigh" as const },
     system: [
       {
         type: "text" as const,
