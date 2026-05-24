@@ -17,6 +17,15 @@ type Metadata = {
 
 type ImagePayload = { media_type: string; data: string };
 
+type HistoryEntry = {
+  id: string;
+  title: string;
+  createdAt: number;
+  serviceDate?: string;
+  occasion?: string;
+  docs: Partial<Record<Lang, string>>;
+};
+
 const EMPTY_META: Metadata = {
   title: "",
   preacher: "김영복 담임목사",
@@ -70,6 +79,50 @@ function slug(s: string): string {
     .replace(/[\\/:*?"<>|]+/g, " ")
     .replace(/\s+/g, "-")
     .slice(0, 60);
+}
+
+const HISTORY_KEY = "sermorizer.history.v1";
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? (parsed as HistoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Persist newest-first, capping count and shedding oldest if storage is full. */
+function persistHistory(list: HistoryEntry[]): HistoryEntry[] {
+  let candidate = list.slice(0, 40);
+  for (;;) {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(candidate));
+      return candidate;
+    } catch {
+      if (candidate.length <= 1) return candidate; // can't shrink further
+      candidate = candidate.slice(0, candidate.length - 1); // drop the oldest
+    }
+  }
+}
+
+/** Fallback title from the generated HTML when the user left the field blank. */
+function extractTitle(html: string): string {
+  const t = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
+  if (t && t.trim()) return t.trim();
+  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+  if (h1) return h1.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return "";
+}
+
+function formatEntryDate(e: HistoryEntry): string {
+  if (e.serviceDate) return e.serviceDate;
+  try {
+    return new Date(e.createdAt).toISOString().slice(0, 10);
+  } catch {
+    return "";
+  }
 }
 
 type StreamHandlers = {
@@ -158,10 +211,21 @@ export default function Page() {
   const [live, setLive] = useState<string>("");
   const [activeLang, setActiveLang] = useState<Lang>("ko");
   const [elapsed, setElapsed] = useState<number>(0);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [currentId, setCurrentId] = useState<string | null>(null);
 
   const busy = status === "generating" || status === "translating";
   const startedAt = useRef<number>(0);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  // Load saved summaries from the browser on first mount (client-only).
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
+
+  function commitHistory(updater: (prev: HistoryEntry[]) => HistoryEntry[]) {
+    setHistory((prev) => persistHistory(updater(prev)));
+  }
 
   /** On a stacked (mobile) layout, bring the preview into view. */
   function revealPreview() {
@@ -228,6 +292,7 @@ export default function Page() {
     setDocs({});
     setLive("");
     setActiveLang("ko");
+    setCurrentId(null);
     revealPreview();
 
     try {
@@ -272,9 +337,19 @@ export default function Page() {
         );
         return;
       }
+      const entry: HistoryEntry = {
+        id: `${Date.now()}`,
+        title: meta.title.trim() || extractTitle(html) || "Untitled sermon",
+        createdAt: Date.now(),
+        serviceDate: meta.date.trim() || undefined,
+        occasion: meta.occasion.trim() || undefined,
+        docs: { ko: html },
+      };
+      commitHistory((prev) => [entry, ...prev]);
+      setCurrentId(entry.id);
       setDocs({ ko: html });
       setStatus("done");
-      setStatusMsg("Your Korean summary is ready.");
+      setStatusMsg("Your Korean summary is ready and saved below.");
     } catch (e) {
       setStatus("error");
       setStatusMsg(
@@ -333,6 +408,13 @@ export default function Page() {
         return;
       }
       setDocs((d) => ({ ...d, [lang]: html }));
+      if (currentId) {
+        commitHistory((prev) =>
+          prev.map((e) =>
+            e.id === currentId ? { ...e, docs: { ...e.docs, [lang]: html } } : e,
+          ),
+        );
+      }
       setStatus("done");
       setStatusMsg(
         lang === "en"
@@ -347,12 +429,37 @@ export default function Page() {
     }
   }
 
+  function loadEntry(entry: HistoryEntry) {
+    setCurrentId(entry.id);
+    setDocs(entry.docs);
+    setActiveLang(entry.docs.ko ? "ko" : entry.docs.en ? "en" : "zh");
+    setLive("");
+    setStatus("done");
+    setStatusMsg(`Loaded "${entry.title}".`);
+    revealPreview();
+  }
+
+  function deleteEntry(id: string) {
+    commitHistory((prev) => prev.filter((e) => e.id !== id));
+    if (currentId === id) {
+      setCurrentId(null);
+      setDocs({});
+      setStatus("idle");
+      setStatusMsg("");
+    }
+  }
+
   function download() {
     const html = docs[activeLang];
     if (!html) return;
-    const date = meta.date.trim() || new Date().toISOString().slice(0, 10);
-    const occ = slug(meta.occasion) || "sunday-service";
-    const title = slug(meta.title) || "sermon";
+    const entry = currentId ? history.find((e) => e.id === currentId) : undefined;
+    const date =
+      entry?.serviceDate ||
+      meta.date.trim() ||
+      (entry ? new Date(entry.createdAt).toISOString().slice(0, 10) : "") ||
+      new Date().toISOString().slice(0, 10);
+    const occ = slug(entry?.occasion || meta.occasion) || "sunday-service";
+    const title = slug(entry?.title || meta.title) || "sermon";
     const suffix = activeLang === "en" ? "-EN" : activeLang === "zh" ? "-中文版" : "";
     const name = `${date}-${occ}-${title}${suffix}.html`;
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -378,6 +485,39 @@ export default function Page() {
           Galilee Church
         </p>
       </header>
+
+      {history.length > 0 && (
+        <details className="panel history">
+          <summary>Saved summaries ({history.length})</summary>
+          <ul className="hist-list">
+            {history.map((e) => (
+              <li key={e.id} className={e.id === currentId ? "active" : ""}>
+                <button
+                  type="button"
+                  className="hist-open"
+                  onClick={() => loadEntry(e)}
+                >
+                  <span className="hist-title">{e.title}</span>
+                  <span className="hist-date">
+                    {formatEntryDate(e)} ·{" "}
+                    {Object.keys(e.docs)
+                      .map((l) => l.toUpperCase())
+                      .join(" ")}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="hist-del"
+                  aria-label="delete saved summary"
+                  onClick={() => deleteEntry(e.id)}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <div className="layout">
         {/* ---------- Input panel ---------- */}

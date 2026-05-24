@@ -428,3 +428,92 @@ select:focus {
   font-size: 0.8rem;
   margin-top: 36px;
 }
+
+/* Saved summaries (history) */
+.history {
+  padding: 0;
+  margin-bottom: 24px;
+}
+
+.history > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 15px 20px;
+  font-weight: 600;
+  color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.history > summary::-webkit-details-marker {
+  display: none;
+}
+
+.history > summary::after {
+  content: "▾";
+  float: right;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.history[open] > summary::after {
+  content: "▴";
+}
+
+.hist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 10px;
+}
+
+.hist-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.hist-list li.active {
+  background: #faf5ec;
+  border-radius: 8px;
+}
+
+.hist-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 11px 10px;
+  text-align: left;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hist-title {
+  max-width: 100%;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hist-date {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.hist-del {
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 10px 12px;
+  -webkit-tap-highlight-color: transparent;
+}
