@@ -11,6 +11,7 @@ import {
   type ImagePayload,
 } from "@/lib/prompt";
 import { cloudInsert, cloudUpdate, cloudGet, type Lang } from "@/lib/summaries";
+import { ensureEnhanceCss } from "@/lib/enhance";
 
 export const runtime = "nodejs";
 // The background generation runs inside this function via after(); the work
@@ -120,13 +121,14 @@ export async function POST(req: Request): Promise<Response> {
       // Detached background work — continues even if the client disconnects.
       after(async () => {
         try {
-          const html = await runAnthropic(
+          const raw = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
           );
-          if (!html.toLowerCase().includes("</html>")) {
+          if (!raw.toLowerCase().includes("</html>")) {
             throw new Error("Translation stopped early — please try again.");
           }
+          const html = ensureEnhanceCss(raw);
           const row = await cloudGet(id);
           const docs = { ...(row?.docs ?? {}), [lang]: html };
           await cloudUpdate(id, { docs, status: "done", error: null });
@@ -220,10 +222,11 @@ export async function POST(req: Request): Promise<Response> {
 
     after(async () => {
       try {
-        const html = await runAnthropic(GENERATION_SYSTEM_PROMPT, content);
-        if (!html.toLowerCase().includes("</html>")) {
+        const raw = await runAnthropic(GENERATION_SYSTEM_PROMPT, content);
+        if (!raw.toLowerCase().includes("</html>")) {
           throw new Error("Generation stopped early — please try again.");
         }
+        const html = ensureEnhanceCss(raw);
         const title = m.title?.trim() || extractTitle(html) || "Untitled sermon";
         await cloudUpdate(pending.id, {
           docs: { ko: html },

@@ -11,6 +11,7 @@ import {
   type Lang,
   type Summary,
 } from "@/lib/summaries";
+import { ENHANCE_LAYOUT_CSS } from "@/lib/enhance";
 
 type Status = "idle" | "generating" | "translating" | "done" | "error";
 
@@ -251,18 +252,6 @@ function splitTranscript(text: string, n: number): string[] {
   return out.length ? out : [text];
 }
 
-// Layout-only guarantees injected into stitched docs (colors come from the
-// generated theme; these just ensure the tab bar scrolls/sticks and the
-// summary lays out as cards regardless of what each part's CSS did).
-const STITCH_LAYOUT_CSS = `.toc{position:sticky;top:0;z-index:60;display:flex;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
-.toc h3{display:none;}
-.toc a{flex:0 0 auto;}
-html{scroll-behavior:smooth;}
-[id]{scroll-margin-top:60px;}
-.sm-grid{display:grid;gap:12px;}
-.sm-item{display:flex;gap:14px;align-items:flex-start;}
-.sm-num{flex:0 0 auto;}`;
-
 /** Merge each part's #sermon-body into part 0's document → one continuous file,
  *  with a sticky tab table-of-contents and a numbered at-a-glance summary. */
 function stitchParts(parts: Record<string, string>, n: number): string {
@@ -316,9 +305,10 @@ function stitchParts(parts: Record<string, string>, n: number): string {
 
   // Guarantee the tab-bar + summary-card layout regardless of generated CSS.
   const head = base.querySelector("head");
-  if (head) {
+  if (head && !base.getElementById("sermorizer-layout")) {
     const style = base.createElement("style");
-    style.textContent = STITCH_LAYOUT_CSS;
+    style.id = "sermorizer-layout";
+    style.textContent = ENHANCE_LAYOUT_CSS;
     head.appendChild(style);
   }
 
