@@ -3,8 +3,10 @@ import { after } from "next/server";
 import {
   GENERATION_SYSTEM_PROMPT,
   TRANSLATION_SYSTEM_PROMPT,
+  PART_SYSTEM_PROMPT,
   buildGenerationUserContent,
   buildTranslationUserContent,
+  buildPartUserContent,
   type SermonMetadata,
   type ImagePayload,
 } from "@/lib/prompt";
@@ -19,7 +21,7 @@ export const maxDuration = 300;
 const MODEL = "claude-opus-4-7";
 
 type RequestBody = {
-  mode?: "generate" | "translate";
+  mode?: "generate" | "translate" | "part";
   metadata?: SermonMetadata;
   theme?: string;
   transcript?: string;
@@ -28,6 +30,8 @@ type RequestBody = {
   id?: string;
   language?: Lang;
   sourceHtml?: string;
+  partIndex?: number;
+  partCount?: number;
 };
 
 type UserContent = ReturnType<typeof buildGenerationUserContent>;
@@ -135,6 +139,55 @@ export async function POST(req: Request): Promise<Response> {
       });
 
       return Response.json({ id });
+    }
+
+    if (body.mode === "part") {
+      const m = body.metadata ?? {};
+      const partIndex = body.partIndex ?? 0;
+      const partCount = body.partCount ?? 1;
+      if (!body.transcript || body.transcript.trim().length < 10) {
+        throw new Error("This part is missing its transcript slice.");
+      }
+      if (partIndex < 0 || partCount < 1 || partIndex >= partCount) {
+        throw new Error("Invalid part index.");
+      }
+
+      // Part 0 creates the row; later parts reference it.
+      let id = body.id;
+      if (partIndex === 0) {
+        const pending = await cloudInsert({
+          title: m.title?.trim() || "Generating…",
+          serviceDate: m.date?.trim() || undefined,
+          occasion: m.occasion?.trim() || undefined,
+          docs: {},
+          status: "generating",
+        });
+        id = pending.id;
+      }
+      if (!id) throw new Error("A part after the first requires the summary id.");
+      const rowId = id;
+
+      const content = buildPartUserContent({ ...body, partIndex, partCount });
+
+      after(async () => {
+        try {
+          const html = await runAnthropic(PART_SYSTEM_PROMPT, content);
+          if (!html.toLowerCase().includes("</html>")) {
+            throw new Error("A part stopped early — please try again.");
+          }
+          // Merge this part into the row's parts map (re-read to avoid clobber).
+          const row = await cloudGet(rowId);
+          const parts = { ...(row?.parts ?? {}), [String(partIndex)]: html };
+          await cloudUpdate(rowId, { parts });
+        } catch (e) {
+          await cloudUpdate(rowId, {
+            status: "error",
+            error: e instanceof Error ? e.message : "A part failed to generate.",
+          });
+        }
+      });
+
+      return Response.json({ id: rowId });
     }
 
     // mode: generate

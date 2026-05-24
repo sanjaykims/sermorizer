@@ -217,6 +217,108 @@ function announce(message: string, ok: boolean) {
   }
 }
 
+/* ---- Split generation: chunk a long transcript into multiple parts ---- */
+
+// Above this transcript size, one generation risks exceeding the 300s server
+// limit, so we split into parts of roughly this many characters each.
+const SPLIT_TRANSCRIPT_CHARS = 16000;
+const STEP_TIMEOUT_MS = 330_000;
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function extractTitleFromHtml(html: string): string {
+  const t = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
+  if (t && t.trim()) return t.trim();
+  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+  if (h1) return h1.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return "";
+}
+
+function splitTranscript(text: string, n: number): string[] {
+  const lines = text.split(/\r?\n/);
+  const per = Math.ceil(lines.length / n);
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const slice = lines.slice(i * per, (i + 1) * per).join("\n").trim();
+    if (slice) out.push(slice);
+  }
+  return out.length ? out : [text];
+}
+
+/** Merge each part's #sermon-body into part 0's document → one continuous file. */
+function stitchParts(parts: Record<string, string>, n: number): string {
+  const part0 = parts["0"];
+  if (!part0) return "";
+  const parser = new DOMParser();
+  const base = parser.parseFromString(part0, "text/html");
+  const body = base.querySelector("#sermon-body");
+  if (!body) return part0; // fallback: no wrapper to merge into
+
+  for (let k = 1; k < n; k++) {
+    const html = parts[String(k)];
+    if (!html) continue;
+    const d = parser.parseFromString(html, "text/html");
+    const b = d.querySelector("#sermon-body");
+    if (b) body.insertAdjacentHTML("beforeend", b.innerHTML);
+  }
+
+  // Renumber sections and rebuild the table of contents + at-a-glance list.
+  const sections = Array.from(body.querySelectorAll("section"));
+  const toc: { id: string; title: string }[] = [];
+  sections.forEach((sec, i) => {
+    const id = `sec-${i + 1}`;
+    sec.id = id;
+    const titleEl = sec.querySelector(".sec-title") ?? sec.querySelector("h2, h3");
+    const title = (titleEl?.textContent ?? `Section ${i + 1}`).trim();
+    toc.push({ id, title });
+  });
+  const tocEl = base.querySelector(".toc, #toc, nav.toc");
+  if (tocEl && toc.length) {
+    tocEl.innerHTML = toc
+      .map((t) => `<a href="#${t.id}">${escapeHtml(t.title)}</a>`)
+      .join("");
+  }
+  if (toc.length) {
+    const summary = `<div class="summary"><div class="sec-head"><span class="sec-icon">✦</span><span class="sec-title">한눈에 보기</span></div><ol>${toc
+      .map((t) => `<li>${escapeHtml(t.title)}</li>`)
+      .join("")}</ol></div>`;
+    body.insertAdjacentHTML("afterend", summary);
+  }
+
+  return "<!DOCTYPE html>\n" + base.documentElement.outerHTML;
+}
+
+/** Poll a row until `predicate` is true, throwing on error/timeout. */
+async function waitForRow(
+  id: string,
+  predicate: (r: Summary) => boolean,
+  timeoutMs = STEP_TIMEOUT_MS,
+): Promise<Summary> {
+  const start = Date.now();
+  for (;;) {
+    let row: Summary | null = null;
+    try {
+      row = await cloudGet(id);
+    } catch {
+      /* transient — keep waiting */
+    }
+    if (row) {
+      if (row.status === "error") throw new Error(row.error || "Generation failed.");
+      if (predicate(row)) return row;
+    }
+    if (Date.now() - start > timeoutMs) {
+      throw new Error("A part took longer than the server allows. Please try again.");
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+}
+
 type Job = { id: string; kind: "generate" | "translate"; lang?: Lang };
 
 export default function Page() {
@@ -471,8 +573,16 @@ export default function Page() {
     try {
       const noteImages = await Promise.all(noteFiles.map(imageToBase64));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
-      setStatusMsg("Starting generation…");
 
+      // Long sermons are split into parts that each fit the 300s server limit,
+      // then stitched into one continuous file.
+      const nParts = Math.ceil(transcript.text.length / SPLIT_TRANSCRIPT_CHARS);
+      if (nParts > 1) {
+        await runSplitGeneration(transcript.text, nParts, noteImages, bulletinImages);
+        return;
+      }
+
+      setStatusMsg("Starting generation…");
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -503,12 +613,91 @@ export default function Page() {
       );
       startPolling({ id, kind: "generate" });
     } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Something went wrong starting generation.";
       setStatus("error");
-      setStatusMsg(
-        e instanceof Error ? e.message : "Something went wrong starting generation.",
-      );
-      announce("Generation didn't start — please try again.", false);
+      setStatusMsg(msg);
+      announce("Generation didn't finish — please try again.", false);
+      if (currentIdRef.current) {
+        cloudUpdate(currentIdRef.current, { status: "error", error: msg }).catch(() => {});
+      }
     }
+  }
+
+  /** Generate a long sermon in parts (each under the time limit) and stitch them. */
+  async function runSplitGeneration(
+    text: string,
+    requestedParts: number,
+    noteImages: ImagePayload[],
+    bulletinImages: ImagePayload[],
+  ) {
+    const slices = splitTranscript(text, requestedParts);
+    const n = slices.length;
+    let id: string | null = null;
+
+    for (let k = 0; k < n; k++) {
+      setStatusMsg(
+        `Long sermon — writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
+      );
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "part",
+          id,
+          partIndex: k,
+          partCount: n,
+          metadata: meta,
+          theme,
+          transcript: slices[k],
+          noteImages,
+          bulletinImages: k === 0 ? bulletinImages : [],
+        }),
+      });
+      if (!res.ok) {
+        let msg = `Request failed (HTTP ${res.status}).`;
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* keep default */
+        }
+        throw new Error(msg);
+      }
+      const j = (await res.json()) as { id: string };
+      id = j.id;
+      if (k === 0) {
+        setCurrentId(id);
+        currentIdRef.current = id;
+      }
+      await waitForRow(id, (r) => Boolean(r.parts?.[String(k)]));
+    }
+
+    setStatusMsg("Assembling the parts into one document…");
+    const finalRow = await cloudGet(id!);
+    const combined = stitchParts(finalRow?.parts ?? {}, n);
+    if (!combined.toLowerCase().includes("</html>")) {
+      throw new Error("Could not assemble the parts. Please try again.");
+    }
+    const title = meta.title.trim() || extractTitleFromHtml(combined) || "Untitled sermon";
+    await cloudUpdate(id!, { docs: { ko: combined }, title, status: "done", error: null });
+
+    setDocs({ ko: combined });
+    setActiveLang("ko");
+    setStatus("done");
+    setStatusMsg(`Your summary is ready — assembled from ${n} parts — and saved to the web.`);
+    announce("Your sermon summary is ready.", true);
+    applyHistory((prev) =>
+      upsert(prev, {
+        id: id!,
+        title,
+        createdAt: finalRow?.createdAt ?? Date.now(),
+        serviceDate: meta.date.trim() || undefined,
+        occasion: meta.occasion.trim() || undefined,
+        docs: { ko: combined },
+        status: "done",
+      }),
+    );
   }
 
   async function onTranslate(lang: "en" | "zh") {

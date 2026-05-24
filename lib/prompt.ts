@@ -123,6 +123,16 @@ Output ONLY the translated HTML document — it must begin with \`<!DOCTYPE html
 /* ------------------------------------------------------------------ */
 
 export function buildGenerationUserContent(body: GenerationInput): ContentBlock[] {
+  const content = buildInputBlocks(body);
+  content.push({
+    type: "text",
+    text: "Now synthesize everything above into ONE complete, self-contained, mobile-friendly Korean HTML sermon-summary document, following every rule in your instructions. Output ONLY the HTML — begin with <!DOCTYPE html> and end with </html>. No code fences, no commentary.",
+  });
+  return content;
+}
+
+/** Shared input blocks (metadata, theme, note images, bulletin, transcript). */
+function buildInputBlocks(body: GenerationInput): ContentBlock[] {
   const m = body.metadata ?? {};
   const meta: string[] = [];
   meta.push("# Sermon materials for Sermorizer");
@@ -182,12 +192,64 @@ export function buildGenerationUserContent(body: GenerationInput): ContentBlock[
       (body.transcript ?? ""),
   });
 
+  return content;
+}
+
+/* ------------------------------------------------------------------ */
+/* Split (multi-part) generation for very long sermons                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * System prompt for generating ONE part of a sermon summary that is too long
+ * to produce in a single run. Each part is a complete, styled HTML document,
+ * but the app stitches the parts' bodies into one continuous file afterward.
+ */
+export const PART_SYSTEM_PROMPT = `You are the generation engine for **Sermorizer** (sermon summaries for Galilee Church / 갈릴리교회, a Korean Methodist church). A long sermon is being summarized in several PARTS that will be stitched together into one continuous document. You are writing ONE part.
+
+You receive a slice of the sermon transcript (this part's portion), plus the metadata, the listener's handwritten note, and which part this is ("Part k of N").
+
+Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Output ONLY the HTML — begin with \`<!DOCTYPE html>\` and end with \`</html>\`. No preamble, no commentary, no code fences.
+
+## How parts are combined (critical)
+- Wrap ALL of this part's sermon sections in a single \`<div id="sermon-body"> … </div>\`. The app keeps the FIRST part's full page (head, fonts, CSS, header) and then appends every later part's \`#sermon-body\` contents into it, so the parts must use the SAME standard component classes.
+- Each thematic section is a \`<section>\` containing a \`.sec-head\` with \`.sec-icon\` + \`.sec-title\`, then warm prose, scripture boxes, illustration cards, and pull-quotes.
+- Do NOT write an "at a glance" summary — the app adds it after the final part.
+- If this is **Part 1**: also produce the full page shell — \`<html lang="ko">\`, \`<head>\` with the \`<style>\` block and Google-Fonts \`@import\` (Gowun Batang + Noto Serif KR), a gradient \`.header\` with the title/preacher/scripture, a \`.key-verse\` block, an \`.info-card\`, an (optionally empty) \`.toc\`, then the \`<div id="sermon-body">\`, then a \`.footer\`. Build a cohesive liturgical color theme from the theme hint.
+- If this is **Part 2 or later**: still output a complete valid HTML document with the same \`<style>\` and structure, but its header/footer will be ignored — only its \`#sermon-body\` sections are used. Continue the sermon's flow; do NOT re-introduce the sermon or repeat earlier sections.
+
+## Scope and rules (same as always)
+- **Sermon only.** Only the preached message — no order of service, prayers, liturgy, hymns, announcements, or benediction. Ignore any such material in the transcript slice.
+- The senior pastor's name is **김영복** (Kim Young-bok). NEVER 김용복, NEVER 김영범. Default label "김영복 담임목사".
+- NEVER bullet-point the sermon — warm, reverent prose. Use the standard classes: \`.header\`, \`.key-verse\`, \`.toc\`, \`.container\`, \`.info-card\`, \`.section\`/\`.sec-head\`/\`.sec-icon\`/\`.sec-title\`, \`.card\`, \`.hl\`/\`.hl-gold\`/\`.hl-rust\`/\`.hl-cream\`/\`.hl-dark\`, \`.bref\`, \`.key-quote\`, \`.pastor-box\`, \`.divider\`, \`.footer\`.
+- Self-contained: no external images (base64 only); Google Fonts \`@import\` is the one allowed external reference.
+- Preserve the preacher's specific illustrations, examples, names, numbers, and memorable phrasing for this portion. Write efficiently — no padding.
+- Mobile-first, max content width ~760px, \`<html lang="ko">\`, Korean fonts.
+
+Output ONLY the HTML document for this part.`;
+
+export type PartInput = GenerationInput & { partIndex: number; partCount: number };
+
+export function buildPartUserContent(body: PartInput): ContentBlock[] {
+  const content = buildInputBlocks(body);
+  const human = body.partIndex + 1;
+  const first = body.partIndex === 0;
   content.push({
     type: "text",
-    text: "Now synthesize everything above into ONE complete, self-contained, mobile-friendly Korean HTML sermon-summary document, following every rule in your instructions. Output ONLY the HTML — begin with <!DOCTYPE html> and end with </html>. No code fences, no commentary.",
+    text: `This is **Part ${human} of ${body.partCount}** of the sermon summary. The transcript above is this part's portion of the sermon (roughly the ${ordinal(human)} ${fractionWord(body.partCount)} of the message).\n${first ? "Because this is Part 1, produce the full page shell (head, CSS, fonts, header, key-verse, info-card, footer) with the sermon sections inside <div id=\"sermon-body\">." : "Produce a complete HTML document with the same <style>/structure, but only its <div id=\"sermon-body\"> sections will be used — continue the sermon's flow from the earlier parts and do not re-introduce it."}\nDo NOT write an at-a-glance summary. Output ONLY the HTML for this part.`,
   });
-
   return content;
+}
+
+function ordinal(n: number): string {
+  const names = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
+  return names[n] ?? `${n}th`;
+}
+
+function fractionWord(count: number): string {
+  if (count === 2) return "half";
+  if (count === 3) return "third";
+  if (count === 4) return "quarter";
+  return "portion";
 }
 
 export function buildTranslationUserContent(

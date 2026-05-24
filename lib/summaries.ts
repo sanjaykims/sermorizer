@@ -12,6 +12,8 @@ export type Summary = {
   docs: Partial<Record<Lang, string>>;
   status: JobStatus;
   error?: string;
+  /** For split generation: each part's raw HTML, keyed by part index. */
+  parts?: Record<string, string>;
 };
 
 // Public Supabase project for Sermorizer. A publishable key is meant to be
@@ -41,6 +43,7 @@ type Row = {
   docs: Partial<Record<Lang, string>> | null;
   status: JobStatus | null;
   error: string | null;
+  parts: Record<string, string> | null;
   created_at: string | null;
 };
 
@@ -54,6 +57,7 @@ function toSummary(r: Row): Summary {
     docs: r.docs ?? {},
     status: r.status ?? "done",
     error: r.error ?? undefined,
+    parts: r.parts ?? undefined,
   };
 }
 
@@ -110,6 +114,7 @@ export async function cloudUpdate(
     title?: string;
     status?: JobStatus;
     error?: string | null;
+    parts?: Record<string, string>;
   },
 ): Promise<void> {
   if (!client) throw new Error("Cloud storage is not configured.");
