@@ -251,7 +251,20 @@ function splitTranscript(text: string, n: number): string[] {
   return out.length ? out : [text];
 }
 
-/** Merge each part's #sermon-body into part 0's document → one continuous file. */
+// Layout-only guarantees injected into stitched docs (colors come from the
+// generated theme; these just ensure the tab bar scrolls/sticks and the
+// summary lays out as cards regardless of what each part's CSS did).
+const STITCH_LAYOUT_CSS = `.toc{position:sticky;top:0;z-index:60;display:flex;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+.toc h3{display:none;}
+.toc a{flex:0 0 auto;}
+html{scroll-behavior:smooth;}
+[id]{scroll-margin-top:60px;}
+.sm-grid{display:grid;gap:12px;}
+.sm-item{display:flex;gap:14px;align-items:flex-start;}
+.sm-num{flex:0 0 auto;}`;
+
+/** Merge each part's #sermon-body into part 0's document → one continuous file,
+ *  with a sticky tab table-of-contents and a numbered at-a-glance summary. */
 function stitchParts(parts: Record<string, string>, n: number): string {
   const part0 = parts["0"];
   if (!part0) return "";
@@ -268,7 +281,7 @@ function stitchParts(parts: Record<string, string>, n: number): string {
     if (b) body.insertAdjacentHTML("beforeend", b.innerHTML);
   }
 
-  // Renumber sections and rebuild the table of contents + at-a-glance list.
+  // Renumber sections and collect the table of contents.
   const sections = Array.from(body.querySelectorAll("section"));
   const toc: { id: string; title: string }[] = [];
   sections.forEach((sec, i) => {
@@ -278,17 +291,35 @@ function stitchParts(parts: Record<string, string>, n: number): string {
     const title = (titleEl?.textContent ?? `Section ${i + 1}`).trim();
     toc.push({ id, title });
   });
+
+  // Sticky tab bar: one link per section (tap to jump) + the summary.
   const tocEl = base.querySelector(".toc, #toc, nav.toc");
   if (tocEl && toc.length) {
-    tocEl.innerHTML = toc
-      .map((t) => `<a href="#${t.id}">${escapeHtml(t.title)}</a>`)
-      .join("");
+    tocEl.innerHTML =
+      toc.map((t) => `<a href="#${t.id}">${escapeHtml(t.title)}</a>`).join("") +
+      `<a href="#summary">한눈에 보기</a>`;
   }
+
+  // Numbered at-a-glance summary cards.
   if (toc.length) {
-    const summary = `<div class="summary"><div class="sec-head"><span class="sec-icon">✦</span><span class="sec-title">한눈에 보기</span></div><ol>${toc
-      .map((t) => `<li>${escapeHtml(t.title)}</li>`)
-      .join("")}</ol></div>`;
+    const items = toc
+      .map(
+        (t, i) =>
+          `<div class="sm-item"><div class="sm-num">${i + 1}</div><div class="sm-text">${escapeHtml(
+            t.title,
+          )}</div></div>`,
+      )
+      .join("");
+    const summary = `<section class="summary" id="summary"><div class="sec-head"><span class="sec-icon">★</span><span class="sec-title">한눈에 보기</span></div><div class="sm-grid">${items}</div></section>`;
     body.insertAdjacentHTML("afterend", summary);
+  }
+
+  // Guarantee the tab-bar + summary-card layout regardless of generated CSS.
+  const head = base.querySelector("head");
+  if (head) {
+    const style = base.createElement("style");
+    style.textContent = STITCH_LAYOUT_CSS;
+    head.appendChild(style);
   }
 
   return "<!DOCTYPE html>\n" + base.documentElement.outerHTML;
