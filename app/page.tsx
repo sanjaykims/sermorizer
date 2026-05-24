@@ -6,6 +6,7 @@ import {
   cloudEnabled,
   cloudList,
   cloudGet,
+  cloudUpdate,
   cloudDelete,
   type Lang,
   type Summary,
@@ -239,7 +240,14 @@ export default function Page() {
   const startedAt = useRef<number>(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jobRef = useRef<Job | null>(null);
+
+  // Safety net: if a job never reports done/error within this window, the
+  // server almost certainly hit its time limit and died without recording a
+  // result. Surface it as a failure instead of spinning forever. (Server limit
+  // is 300s; allow a 30s buffer.)
+  const JOB_TIMEOUT_MS = 330_000;
 
   function applyHistory(updater: (prev: Summary[]) => Summary[]) {
     setHistory((prev) => {
@@ -257,8 +265,31 @@ export default function Page() {
 
   function stopPolling() {
     if (pollRef.current) clearInterval(pollRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     pollRef.current = null;
+    timeoutRef.current = null;
     jobRef.current = null;
+  }
+
+  function onJobTimeout(job: Job) {
+    if (jobRef.current?.id !== job.id) return;
+    stopPolling();
+    if (currentIdRef.current === job.id) {
+      setStatus("error");
+      setStatusMsg(
+        "This took longer than the server allows (~5 min) and was stopped. The sermon may be very long — please try again. (A higher time limit needs Vercel Pro.)",
+      );
+    }
+    announce("It didn't finish in time — please try again.", false);
+    applyHistory((prev) =>
+      prev.map((e) =>
+        e.id === job.id ? { ...e, status: "error", error: "Timed out." } : e,
+      ),
+    );
+    cloudUpdate(job.id, {
+      status: "error",
+      error: "Timed out — generation exceeded the server time limit.",
+    }).catch(() => {});
   }
 
   async function pollOnce(job: Job) {
@@ -312,6 +343,7 @@ export default function Page() {
     stopPolling();
     jobRef.current = job;
     pollRef.current = setInterval(() => void pollOnce(job), 3000);
+    timeoutRef.current = setTimeout(() => onJobTimeout(job), JOB_TIMEOUT_MS);
     void pollOnce(job);
   }
 

@@ -58,7 +58,7 @@ async function runAnthropic(system: string, content: UserContent): Promise<strin
   const client = new Anthropic();
   const params = {
     model: MODEL,
-    max_tokens: 28000,
+    max_tokens: 24000,
     output_config: { effort: "medium" as const },
     system: [
       {
