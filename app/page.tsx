@@ -5,12 +5,12 @@ import { THEMES } from "@/lib/themes";
 import {
   cloudEnabled,
   cloudList,
-  cloudInsert,
-  cloudUpdateDocs,
+  cloudGet,
   cloudDelete,
+  type Lang,
+  type Summary,
 } from "@/lib/summaries";
 
-type Lang = "ko" | "en" | "zh";
 type Status = "idle" | "generating" | "translating" | "done" | "error";
 
 type Metadata = {
@@ -23,15 +23,6 @@ type Metadata = {
 };
 
 type ImagePayload = { media_type: string; data: string };
-
-type HistoryEntry = {
-  id: string;
-  title: string;
-  createdAt: number;
-  serviceDate?: string;
-  occasion?: string;
-  docs: Partial<Record<Lang, string>>;
-};
 
 const EMPTY_META: Metadata = {
   title: "",
@@ -56,9 +47,8 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
     i.onerror = () => reject(new Error(`Could not decode ${file.name}`));
     i.src = dataUrl;
   });
-  // Higher resolution = more accurate OCR of the Korean handwriting, which is a
-  // key quality input. Capped at 2048px / q0.85 to stay under the upload size
-  // limit even with a few photos.
+  // Higher resolution = more accurate OCR of the Korean handwriting (a key
+  // quality input). Capped at 2048px / q0.85 to stay under the upload limit.
   const MAX = 2048;
   const scale = Math.min(1, MAX / Math.max(img.width, img.height));
   const w = Math.max(1, Math.round(img.width * scale));
@@ -73,13 +63,6 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
   return { media_type: "image/jpeg", data: out.split(",")[1] ?? "" };
 }
 
-function cleanHtml(raw: string): string {
-  let t = raw.trim();
-  if (t.startsWith("```")) t = t.replace(/^```[a-zA-Z]*\s*\n?/, "");
-  if (t.endsWith("```")) t = t.replace(/\n?```$/, "");
-  return t.trim();
-}
-
 function slug(s: string): string {
   return (s || "")
     .trim()
@@ -88,48 +71,45 @@ function slug(s: string): string {
     .slice(0, 60);
 }
 
-const HISTORY_KEY = "sermorizer.history.v1";
+/* ---- Local cache (metadata only) — a fallback when the cloud is unreachable ---- */
 
-function loadHistory(): HistoryEntry[] {
+const CACHE_KEY = "sermorizer.history.v2";
+
+function loadCache(): Summary[] {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = localStorage.getItem(CACHE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as HistoryEntry[]) : [];
+    return Array.isArray(parsed) ? (parsed as Summary[]) : [];
   } catch {
     return [];
   }
 }
 
-/** Persist newest-first, capping count and shedding oldest if storage is full. */
-function persistHistory(list: HistoryEntry[]): HistoryEntry[] {
-  let candidate = list.slice(0, 40);
-  for (;;) {
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(candidate));
-      return candidate;
-    } catch {
-      if (candidate.length <= 1) return candidate; // can't shrink further
-      candidate = candidate.slice(0, candidate.length - 1); // drop the oldest
-    }
+function saveCache(list: Summary[]) {
+  try {
+    // Store metadata only (no large HTML) so the cache always fits.
+    const lite = list
+      .slice(0, 60)
+      .map(({ docs: _docs, ...rest }) => ({ ...rest, docs: {} }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify(lite));
+  } catch {
+    /* quota or unavailable — fine, cache is optional */
   }
 }
 
-/** Fallback title from the generated HTML when the user left the field blank. */
-function extractTitle(html: string): string {
-  const t = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
-  if (t && t.trim()) return t.trim();
-  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
-  if (h1) return h1.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return "";
-}
-
-function formatEntryDate(e: HistoryEntry): string {
+function formatEntryDate(e: Summary): string {
   if (e.serviceDate) return e.serviceDate;
   try {
     return new Date(e.createdAt).toISOString().slice(0, 10);
   } catch {
     return "";
   }
+}
+
+function upsert(list: Summary[], row: Summary): Summary[] {
+  return list.some((e) => e.id === row.id)
+    ? list.map((e) => (e.id === row.id ? row : e))
+    : [row, ...list];
 }
 
 /* ---- Completion alerts (sound / vibration / notification / tab title) ---- */
@@ -210,76 +190,7 @@ function announce(message: string, ok: boolean) {
   }
 }
 
-type StreamHandlers = {
-  /** assembled HTML so far (throttled) */
-  onHtml: (html: string) => void;
-  /** the model's latest thinking progress, before/while it writes */
-  onThinking?: () => void;
-};
-
-async function streamRequest(
-  payload: unknown,
-  handlers: StreamHandlers,
-): Promise<string> {
-  const res = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok || !res.body) {
-    let msg = `Request failed (HTTP ${res.status}).`;
-    try {
-      const j = await res.json();
-      if (j?.error) msg = j.error;
-    } catch {
-      /* keep default message */
-    }
-    throw new Error(msg);
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  let html = "";
-  let lastEmit = 0;
-
-  const handleLine = (line: string) => {
-    if (!line) return;
-    let evt: { t?: string; d?: string };
-    try {
-      evt = JSON.parse(line);
-    } catch {
-      return;
-    }
-    if (evt.t === "html") {
-      html += evt.d ?? "";
-      // Throttle iframe repaints — re-rendering on every token bogs down mobile.
-      const now = Date.now();
-      if (now - lastEmit > 450) {
-        lastEmit = now;
-        handlers.onHtml(html);
-      }
-    } else if (evt.t === "think") {
-      handlers.onThinking?.();
-    } else if (evt.t === "error") {
-      throw new Error(evt.d || "The model reported an error mid-generation.");
-    }
-  };
-
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let nl: number;
-    while ((nl = buf.indexOf("\n")) >= 0) {
-      const line = buf.slice(0, nl);
-      buf = buf.slice(nl + 1);
-      handleLine(line);
-    }
-  }
-  if (buf.trim()) handleLine(buf);
-  handlers.onHtml(html); // always paint the final, complete result
-  return html;
-}
+type Job = { id: string; kind: "generate" | "translate"; lang?: Lang };
 
 export default function Page() {
   const [meta, setMeta] = useState<Metadata>(EMPTY_META);
@@ -293,82 +204,149 @@ export default function Page() {
   const [status, setStatus] = useState<Status>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [docs, setDocs] = useState<Partial<Record<Lang, string>>>({});
-  const [live, setLive] = useState<string>("");
   const [activeLang, setActiveLang] = useState<Lang>("ko");
   const [elapsed, setElapsed] = useState<number>(0);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [history, setHistory] = useState<Summary[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
 
   const busy = status === "generating" || status === "translating";
   const startedAt = useRef<number>(0);
   const previewRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const jobRef = useRef<Job | null>(null);
 
-  // Load saved summaries on first mount: from the cloud when configured (so
-  // they show on any device), otherwise from this browser's local storage.
-  useEffect(() => {
-    let cancelled = false;
-    if (cloudEnabled()) {
-      cloudList()
-        .then((list) => {
-          if (!cancelled) setHistory(list);
-        })
-        .catch(() => {
-          if (!cancelled) setHistory(loadHistory());
-        });
-    } else {
-      setHistory(loadHistory());
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  function commitHistory(updater: (prev: HistoryEntry[]) => HistoryEntry[]) {
-    setHistory((prev) => persistHistory(updater(prev)));
+  function applyHistory(updater: (prev: Summary[]) => Summary[]) {
+    setHistory((prev) => {
+      const next = updater(prev);
+      saveCache(next);
+      return next;
+    });
   }
 
-  /** Save a new summary to the cloud (or local storage); returns its id. */
-  async function addSummary(data: {
-    title: string;
-    serviceDate?: string;
-    occasion?: string;
-    docs: Partial<Record<Lang, string>>;
-  }): Promise<string> {
-    if (cloudEnabled()) {
-      try {
-        const saved = await cloudInsert(data);
-        setHistory((prev) => [saved, ...prev]);
-        return saved.id;
-      } catch {
-        /* fall back to local storage below */
-      }
-    }
-    const entry: HistoryEntry = { id: `${Date.now()}`, createdAt: Date.now(), ...data };
-    commitHistory((prev) => [entry, ...prev]);
-    return entry.id;
-  }
-
-  /** Update an existing summary's documents (e.g. after a translation). */
-  async function updateSummaryDocs(id: string, docs: Partial<Record<Lang, string>>) {
-    if (cloudEnabled()) {
-      setHistory((prev) => prev.map((e) => (e.id === id ? { ...e, docs } : e)));
-      try {
-        await cloudUpdateDocs(id, docs);
-      } catch {
-        /* keep the in-memory update even if the cloud write fails */
-      }
-    } else {
-      commitHistory((prev) => prev.map((e) => (e.id === id ? { ...e, docs } : e)));
-    }
-  }
-
-  /** On a stacked (mobile) layout, bring the preview into view. */
   function revealPreview() {
     if (typeof window !== "undefined" && window.innerWidth <= 900) {
       previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
+  function stopPolling() {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
+    jobRef.current = null;
+  }
+
+  async function pollOnce(job: Job) {
+    let row: Summary | null;
+    try {
+      row = await cloudGet(job.id);
+    } catch {
+      return; // transient network error — keep polling
+    }
+    if (!row) return;
+    applyHistory((prev) => upsert(prev, row!));
+
+    if (row.status === "done") {
+      stopPolling();
+      // Only swap the preview if this job is still the one being viewed.
+      if (currentIdRef.current === job.id) {
+        setDocs(row.docs);
+        setActiveLang(
+          job.kind === "translate" && job.lang
+            ? job.lang
+            : row.docs.ko
+              ? "ko"
+              : row.docs.en
+                ? "en"
+                : "zh",
+        );
+        setStatus("done");
+        setStatusMsg(
+          job.kind === "translate"
+            ? "Your translation is ready."
+            : "Your summary is ready and saved to the web.",
+        );
+      }
+      announce(
+        job.kind === "translate"
+          ? "Your translation is ready."
+          : "Your sermon summary is ready.",
+        true,
+      );
+    } else if (row.status === "error") {
+      stopPolling();
+      if (currentIdRef.current === job.id) {
+        setStatus("error");
+        setStatusMsg(row.error || "It didn't finish — please try again.");
+      }
+      announce("It didn't finish — please try again.", false);
+    }
+  }
+
+  function startPolling(job: Job) {
+    stopPolling();
+    jobRef.current = job;
+    pollRef.current = setInterval(() => void pollOnce(job), 3000);
+    void pollOnce(job);
+  }
+
+  // Keep a ref of currentId so the polling closure always sees the latest value.
+  const currentIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    currentIdRef.current = currentId;
+  }, [currentId]);
+
+  // Load saved summaries on mount; resume polling anything still in progress.
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      let list: Summary[] = [];
+      if (cloudEnabled()) {
+        try {
+          list = await cloudList();
+        } catch {
+          list = loadCache();
+        }
+      } else {
+        list = loadCache();
+      }
+      if (cancelled) return;
+      setHistory(list);
+      saveCache(list);
+      const pending = list.find(
+        (e) => e.status === "generating" || e.status === "translating",
+      );
+      if (pending) {
+        setCurrentId(pending.id);
+        currentIdRef.current = pending.id;
+        setStatus(pending.status === "translating" ? "translating" : "generating");
+        setStatusMsg("Picking up a summary that was still being generated…");
+        startPolling({
+          id: pending.id,
+          kind: pending.status === "translating" ? "translate" : "generate",
+        });
+      }
+    };
+    void init();
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the app returns to the foreground, poll immediately for a fast catch-up.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && jobRef.current) {
+        void pollOnce(jobRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Elapsed-time counter while a job is running.
   useEffect(() => {
     if (!busy) return;
     startedAt.current = Date.now();
@@ -423,78 +401,55 @@ export default function Page() {
     }
 
     primeAlerts();
+    stopPolling();
     setStatus("generating");
     setStatusMsg("Preparing your materials…");
     setDocs({});
-    setLive("");
-    setActiveLang("ko");
     setCurrentId(null);
+    currentIdRef.current = null;
+    setActiveLang("ko");
     revealPreview();
 
     try {
       const noteImages = await Promise.all(noteFiles.map(imageToBase64));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
-      setStatusMsg("Claude is reading the sermon and planning the summary…");
+      setStatusMsg("Starting generation…");
 
-      let writing = false;
-      const final = await streamRequest(
-        {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           mode: "generate",
           metadata: meta,
           theme,
           transcript: transcript.text,
           noteImages,
           bulletinImages,
-        },
-        {
-          onThinking: () => {
-            if (!writing) {
-              setStatusMsg(
-                "Claude is reading & planning the summary… (the preview appears once it starts writing — this can take a minute)",
-              );
-            }
-          },
-          onHtml: (html) => {
-            if (!writing) {
-              writing = true;
-              setStatusMsg("Writing the summary — the preview fills in as it writes.");
-            }
-            setLive(html);
-          },
-        },
-      );
-
-      const html = cleanHtml(final);
-      if (!html.toLowerCase().includes("</html>")) {
-        setDocs({ ko: html });
-        setStatus("error");
-        setStatusMsg(
-          "Generation seems to have stopped early. The preview is a partial result — please try again.",
-        );
-        announce("Generation stopped early — please retry.", false);
-        return;
-      }
-      const id = await addSummary({
-        title: meta.title.trim() || extractTitle(html) || "Untitled sermon",
-        serviceDate: meta.date.trim() || undefined,
-        occasion: meta.occasion.trim() || undefined,
-        docs: { ko: html },
+        }),
       });
+      if (!res.ok) {
+        let msg = `Request failed (HTTP ${res.status}).`;
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* keep default */
+        }
+        throw new Error(msg);
+      }
+      const { id } = (await res.json()) as { id: string };
       setCurrentId(id);
-      setDocs({ ko: html });
-      setStatus("done");
+      currentIdRef.current = id;
       setStatusMsg(
-        cloudEnabled()
-          ? "Your Korean summary is ready and saved to the web."
-          : "Your Korean summary is ready and saved below.",
+        "Claude is writing the summary on the server — you can lock your phone or switch apps; it keeps working. You'll be alerted when it's ready.",
       );
-      announce("Your sermon summary is ready.", true);
+      startPolling({ id, kind: "generate" });
     } catch (e) {
       setStatus("error");
       setStatusMsg(
-        e instanceof Error ? e.message : "Something went wrong during generation.",
+        e instanceof Error ? e.message : "Something went wrong starting generation.",
       );
-      announce("Generation didn't finish — please try again.", false);
+      announce("Generation didn't start — please try again.", false);
     }
   }
 
@@ -504,94 +459,95 @@ export default function Page() {
       revealPreview();
       return;
     }
-    if (!docs.ko) return;
+    if (!docs.ko || !currentId) return;
 
     primeAlerts();
+    stopPolling();
     setStatus("translating");
-    setStatusMsg(
-      lang === "en" ? "Translating into English…" : "Translating into Chinese…",
-    );
-    setLive("");
+    setStatusMsg("Starting translation…");
     setActiveLang(lang);
     revealPreview();
 
     try {
-      let writing = false;
-      const final = await streamRequest(
-        { mode: "translate", language: lang, sourceHtml: docs.ko },
-        {
-          onThinking: () => {
-            if (!writing) {
-              setStatusMsg(
-                lang === "en"
-                  ? "Working through the English translation…"
-                  : "Working through the Chinese translation…",
-              );
-            }
-          },
-          onHtml: (html) => {
-            if (!writing) {
-              writing = true;
-              setStatusMsg(
-                lang === "en"
-                  ? "Writing the English translation — the preview fills in as it writes."
-                  : "Writing the Chinese translation — the preview fills in as it writes.",
-              );
-            }
-            setLive(html);
-          },
-        },
-      );
-      const html = cleanHtml(final);
-      if (!html.toLowerCase().includes("</html>")) {
-        setStatus("error");
-        setStatusMsg("Translation seems to have stopped early — please try again.");
-        announce("Translation stopped early — please retry.", false);
-        return;
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "translate",
+          id: currentId,
+          language: lang,
+          sourceHtml: docs.ko,
+        }),
+      });
+      if (!res.ok) {
+        let msg = `Request failed (HTTP ${res.status}).`;
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* keep default */
+        }
+        throw new Error(msg);
       }
-      const newDocs = { ...docs, [lang]: html };
-      setDocs(newDocs);
-      if (currentId) await updateSummaryDocs(currentId, newDocs);
-      setStatus("done");
+      await res.json();
       setStatusMsg(
-        lang === "en"
-          ? "Your English translation is ready."
-          : "Your Chinese translation is ready.",
+        "Translating on the server — you can switch away; it keeps working and will alert you when done.",
       );
-      announce(
-        lang === "en"
-          ? "Your English translation is ready."
-          : "Your Chinese translation is ready.",
-        true,
-      );
+      startPolling({ id: currentId, kind: "translate", lang });
     } catch (e) {
       setStatus("error");
       setStatusMsg(
-        e instanceof Error ? e.message : "Something went wrong during translation.",
+        e instanceof Error ? e.message : "Something went wrong starting translation.",
       );
-      announce("Translation didn't finish — please try again.", false);
+      announce("Translation didn't start — please try again.", false);
     }
   }
 
-  function loadEntry(entry: HistoryEntry) {
+  async function loadEntry(entry: Summary) {
+    stopPolling();
     setCurrentId(entry.id);
-    setDocs(entry.docs);
-    setActiveLang(entry.docs.ko ? "ko" : entry.docs.en ? "en" : "zh");
-    setLive("");
-    setStatus("done");
-    setStatusMsg(`Loaded "${entry.title}".`);
+    currentIdRef.current = entry.id;
+
+    let full = entry;
+    if (!entry.docs || Object.keys(entry.docs).length === 0) {
+      try {
+        const r = await cloudGet(entry.id);
+        if (r) full = r;
+      } catch {
+        /* use what we have */
+      }
+    }
+
+    if (full.status === "generating" || full.status === "translating") {
+      setStatus(full.status);
+      setStatusMsg("This one is still being generated… it will appear when ready.");
+      setDocs(full.docs ?? {});
+      revealPreview();
+      startPolling({
+        id: full.id,
+        kind: full.status === "translating" ? "translate" : "generate",
+      });
+      return;
+    }
+
+    setDocs(full.docs ?? {});
+    setActiveLang(full.docs?.ko ? "ko" : full.docs?.en ? "en" : "zh");
+    setStatus(full.status === "error" ? "error" : "done");
+    setStatusMsg(
+      full.status === "error"
+        ? full.error || "This summary failed to generate."
+        : `Loaded "${full.title}".`,
+    );
     revealPreview();
   }
 
   function deleteEntry(id: string) {
-    if (cloudEnabled()) {
-      setHistory((prev) => prev.filter((e) => e.id !== id));
-      cloudDelete(id).catch(() => {});
-    } else {
-      commitHistory((prev) => prev.filter((e) => e.id !== id));
-    }
+    applyHistory((prev) => prev.filter((e) => e.id !== id));
+    if (cloudEnabled()) cloudDelete(id).catch(() => {});
     if (currentId === id) {
+      stopPolling();
       setCurrentId(null);
+      currentIdRef.current = null;
       setDocs({});
       setStatus("idle");
       setStatusMsg("");
@@ -622,8 +578,8 @@ export default function Page() {
     URL.revokeObjectURL(url);
   }
 
-  const previewHtml = busy ? live : docs[activeLang] ?? "";
-  const hasAnyDoc = Boolean(docs.ko);
+  const previewHtml = docs[activeLang] ?? "";
+  const hasAnyDoc = Boolean(docs.ko || docs.en || docs.zh);
 
   return (
     <div className="wrap">
@@ -644,31 +600,39 @@ export default function Page() {
             </p>
           )}
           <ul className="hist-list">
-            {history.map((e) => (
-              <li key={e.id} className={e.id === currentId ? "active" : ""}>
-                <button
-                  type="button"
-                  className="hist-open"
-                  onClick={() => loadEntry(e)}
-                >
-                  <span className="hist-title">{e.title}</span>
-                  <span className="hist-date">
-                    {formatEntryDate(e)} ·{" "}
-                    {Object.keys(e.docs)
-                      .map((l) => l.toUpperCase())
-                      .join(" ")}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="hist-del"
-                  aria-label="delete saved summary"
-                  onClick={() => deleteEntry(e.id)}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
+            {history.map((e) => {
+              const inProgress =
+                e.status === "generating" || e.status === "translating";
+              return (
+                <li key={e.id} className={e.id === currentId ? "active" : ""}>
+                  <button
+                    type="button"
+                    className="hist-open"
+                    onClick={() => loadEntry(e)}
+                  >
+                    <span className="hist-title">{e.title}</span>
+                    <span className="hist-date">
+                      {formatEntryDate(e)}
+                      {inProgress
+                        ? " · generating…"
+                        : e.status === "error"
+                          ? " · failed"
+                          : ` · ${Object.keys(e.docs)
+                              .map((l) => l.toUpperCase())
+                              .join(" ")}`}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="hist-del"
+                    aria-label="delete saved summary"
+                    onClick={() => deleteEntry(e.id)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </details>
       )}
@@ -929,7 +893,16 @@ export default function Page() {
             </div>
           )}
 
-          {previewHtml ? (
+          {busy ? (
+            <div className="placeholder">
+              <div className="big">⏳</div>
+              <p>
+                Working on the server — this can take 1–3 minutes.
+                <br />
+                You can lock your phone or switch apps; it won&apos;t stop.
+              </p>
+            </div>
+          ) : previewHtml ? (
             <iframe
               className="preview-frame"
               title="sermon preview"

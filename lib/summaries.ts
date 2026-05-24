@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type Lang = "ko" | "en" | "zh";
+export type JobStatus = "generating" | "translating" | "done" | "error";
 
 export type Summary = {
   id: string;
@@ -9,12 +10,15 @@ export type Summary = {
   serviceDate?: string;
   occasion?: string;
   docs: Partial<Record<Lang, string>>;
+  status: JobStatus;
+  error?: string;
 };
 
 // Public Supabase project for Sermorizer. A publishable key is meant to be
 // shipped in the browser; access is governed by the row-level-security policies
 // on the `summaries` table (public read/write — the "public link" model the
-// user chose). Env vars override the baked-in defaults if ever needed.
+// user chose). Env vars override the baked-in defaults if ever needed. The same
+// client is used server-side (in the background job) and client-side (polling).
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://aeygqjuhqjvlhjrslbxd.supabase.co";
 const SUPABASE_KEY =
@@ -35,6 +39,8 @@ type Row = {
   service_date: string | null;
   occasion: string | null;
   docs: Partial<Record<Lang, string>> | null;
+  status: JobStatus | null;
+  error: string | null;
   created_at: string | null;
 };
 
@@ -46,6 +52,8 @@ function toSummary(r: Row): Summary {
     serviceDate: r.service_date ?? undefined,
     occasion: r.occasion ?? undefined,
     docs: r.docs ?? {},
+    status: r.status ?? "done",
+    error: r.error ?? undefined,
   };
 }
 
@@ -60,11 +68,24 @@ export async function cloudList(): Promise<Summary[]> {
   return ((data ?? []) as Row[]).map(toSummary);
 }
 
+export async function cloudGet(id: string): Promise<Summary | null> {
+  if (!client) return null;
+  const { data, error } = await client
+    .from("summaries")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? toSummary(data as Row) : null;
+}
+
+/** Insert a row (used by the server to create a pending job). Returns its id. */
 export async function cloudInsert(input: {
   title: string;
   serviceDate?: string;
   occasion?: string;
-  docs: Partial<Record<Lang, string>>;
+  docs?: Partial<Record<Lang, string>>;
+  status?: JobStatus;
 }): Promise<Summary> {
   if (!client) throw new Error("Cloud storage is not configured.");
   const { data, error } = await client
@@ -73,7 +94,8 @@ export async function cloudInsert(input: {
       title: input.title,
       service_date: input.serviceDate ?? null,
       occasion: input.occasion ?? null,
-      docs: input.docs,
+      docs: input.docs ?? {},
+      status: input.status ?? "done",
     })
     .select()
     .single();
@@ -81,12 +103,17 @@ export async function cloudInsert(input: {
   return toSummary(data as Row);
 }
 
-export async function cloudUpdateDocs(
+export async function cloudUpdate(
   id: string,
-  docs: Partial<Record<Lang, string>>,
+  patch: {
+    docs?: Partial<Record<Lang, string>>;
+    title?: string;
+    status?: JobStatus;
+    error?: string | null;
+  },
 ): Promise<void> {
   if (!client) throw new Error("Cloud storage is not configured.");
-  const { error } = await client.from("summaries").update({ docs }).eq("id", id);
+  const { error } = await client.from("summaries").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
 }
 
