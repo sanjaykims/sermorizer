@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { THEMES } from "@/lib/themes";
+import {
+  cloudEnabled,
+  cloudList,
+  cloudInsert,
+  cloudUpdateDocs,
+  cloudDelete,
+} from "@/lib/summaries";
 
 type Lang = "ko" | "en" | "zh";
 type Status = "idle" | "generating" | "translating" | "done" | "error";
@@ -218,13 +225,63 @@ export default function Page() {
   const startedAt = useRef<number>(0);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Load saved summaries from the browser on first mount (client-only).
+  // Load saved summaries on first mount: from the cloud when configured (so
+  // they show on any device), otherwise from this browser's local storage.
   useEffect(() => {
-    setHistory(loadHistory());
+    let cancelled = false;
+    if (cloudEnabled()) {
+      cloudList()
+        .then((list) => {
+          if (!cancelled) setHistory(list);
+        })
+        .catch(() => {
+          if (!cancelled) setHistory(loadHistory());
+        });
+    } else {
+      setHistory(loadHistory());
+    }
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function commitHistory(updater: (prev: HistoryEntry[]) => HistoryEntry[]) {
     setHistory((prev) => persistHistory(updater(prev)));
+  }
+
+  /** Save a new summary to the cloud (or local storage); returns its id. */
+  async function addSummary(data: {
+    title: string;
+    serviceDate?: string;
+    occasion?: string;
+    docs: Partial<Record<Lang, string>>;
+  }): Promise<string> {
+    if (cloudEnabled()) {
+      try {
+        const saved = await cloudInsert(data);
+        setHistory((prev) => [saved, ...prev]);
+        return saved.id;
+      } catch {
+        /* fall back to local storage below */
+      }
+    }
+    const entry: HistoryEntry = { id: `${Date.now()}`, createdAt: Date.now(), ...data };
+    commitHistory((prev) => [entry, ...prev]);
+    return entry.id;
+  }
+
+  /** Update an existing summary's documents (e.g. after a translation). */
+  async function updateSummaryDocs(id: string, docs: Partial<Record<Lang, string>>) {
+    if (cloudEnabled()) {
+      setHistory((prev) => prev.map((e) => (e.id === id ? { ...e, docs } : e)));
+      try {
+        await cloudUpdateDocs(id, docs);
+      } catch {
+        /* keep the in-memory update even if the cloud write fails */
+      }
+    } else {
+      commitHistory((prev) => prev.map((e) => (e.id === id ? { ...e, docs } : e)));
+    }
   }
 
   /** On a stacked (mobile) layout, bring the preview into view. */
@@ -337,19 +394,20 @@ export default function Page() {
         );
         return;
       }
-      const entry: HistoryEntry = {
-        id: `${Date.now()}`,
+      const id = await addSummary({
         title: meta.title.trim() || extractTitle(html) || "Untitled sermon",
-        createdAt: Date.now(),
         serviceDate: meta.date.trim() || undefined,
         occasion: meta.occasion.trim() || undefined,
         docs: { ko: html },
-      };
-      commitHistory((prev) => [entry, ...prev]);
-      setCurrentId(entry.id);
+      });
+      setCurrentId(id);
       setDocs({ ko: html });
       setStatus("done");
-      setStatusMsg("Your Korean summary is ready and saved below.");
+      setStatusMsg(
+        cloudEnabled()
+          ? "Your Korean summary is ready and saved to the web."
+          : "Your Korean summary is ready and saved below.",
+      );
     } catch (e) {
       setStatus("error");
       setStatusMsg(
@@ -407,14 +465,9 @@ export default function Page() {
         setStatusMsg("Translation seems to have stopped early — please try again.");
         return;
       }
-      setDocs((d) => ({ ...d, [lang]: html }));
-      if (currentId) {
-        commitHistory((prev) =>
-          prev.map((e) =>
-            e.id === currentId ? { ...e, docs: { ...e.docs, [lang]: html } } : e,
-          ),
-        );
-      }
+      const newDocs = { ...docs, [lang]: html };
+      setDocs(newDocs);
+      if (currentId) await updateSummaryDocs(currentId, newDocs);
       setStatus("done");
       setStatusMsg(
         lang === "en"
@@ -440,7 +493,12 @@ export default function Page() {
   }
 
   function deleteEntry(id: string) {
-    commitHistory((prev) => prev.filter((e) => e.id !== id));
+    if (cloudEnabled()) {
+      setHistory((prev) => prev.filter((e) => e.id !== id));
+      cloudDelete(id).catch(() => {});
+    } else {
+      commitHistory((prev) => prev.filter((e) => e.id !== id));
+    }
     if (currentId === id) {
       setCurrentId(null);
       setDocs({});
@@ -489,6 +547,11 @@ export default function Page() {
       {history.length > 0 && (
         <details className="panel history">
           <summary>Saved summaries ({history.length})</summary>
+          {cloudEnabled() && (
+            <p className="hist-note">
+              Stored online — visible on any device that opens this app.
+            </p>
+          )}
           <ul className="hist-list">
             {history.map((e) => (
               <li key={e.id} className={e.id === currentId ? "active" : ""}>

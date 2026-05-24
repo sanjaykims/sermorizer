@@ -459,6 +459,13 @@ select:focus {
   content: "▴";
 }
 
+.hist-note {
+  margin: 0;
+  padding: 0 20px 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .hist-list {
   list-style: none;
   margin: 0;
