@@ -410,6 +410,21 @@ select:focus {
 .status.done {
   background: #e8f0e6;
   color: var(--ok);
+  animation: done-pulse 0.6s ease;
+}
+
+@keyframes done-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(63, 111, 74, 0.35);
+  }
+  35% {
+    transform: scale(1.015);
+    box-shadow: 0 0 0 6px rgba(63, 111, 74, 0);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .translate-row {

@@ -132,6 +132,84 @@ function formatEntryDate(e: HistoryEntry): string {
   }
 }
 
+/* ---- Completion alerts (sound / vibration / notification / tab title) ---- */
+
+const APP_TITLE = "Sermorizer — Sermon Summary Tool";
+let audioCtx: AudioContext | null = null;
+
+/** Create/resume the audio context during a user gesture so a chime can play later. */
+function primeAlerts() {
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (Ctx) {
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === "suspended") void audioCtx.resume();
+    }
+  } catch {
+    /* audio unavailable */
+  }
+  try {
+    if ("Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  } catch {
+    /* notifications unavailable */
+  }
+}
+
+function playChime(ok: boolean) {
+  if (!audioCtx) return;
+  try {
+    const ctx = audioCtx;
+    const now = ctx.currentTime;
+    const notes = ok ? [880, 1174.66] : [392, 311.13];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = now + i * 0.18;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.42);
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Fire every available "finished" cue. `message` is short, for the notification. */
+function announce(message: string, ok: boolean) {
+  playChime(ok);
+  try {
+    navigator.vibrate?.(ok ? [180, 90, 180] : [90, 60, 90, 60, 90]);
+  } catch {
+    /* vibration unsupported (e.g. iOS) */
+  }
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Sermorizer", { body: message, icon: "/icon" });
+      }
+    } catch {
+      /* ignore */
+    }
+    document.title = `${ok ? "✅" : "⚠️"} ${message}`;
+    const restore = () => {
+      document.title = APP_TITLE;
+      document.removeEventListener("visibilitychange", restore);
+    };
+    document.addEventListener("visibilitychange", restore);
+  }
+}
+
 type StreamHandlers = {
   /** assembled HTML so far (throttled) */
   onHtml: (html: string) => void;
@@ -344,6 +422,7 @@ export default function Page() {
       return;
     }
 
+    primeAlerts();
     setStatus("generating");
     setStatusMsg("Preparing your materials…");
     setDocs({});
@@ -392,6 +471,7 @@ export default function Page() {
         setStatusMsg(
           "Generation seems to have stopped early. The preview is a partial result — please try again.",
         );
+        announce("Generation stopped early — please retry.", false);
         return;
       }
       const id = await addSummary({
@@ -408,11 +488,13 @@ export default function Page() {
           ? "Your Korean summary is ready and saved to the web."
           : "Your Korean summary is ready and saved below.",
       );
+      announce("Your sermon summary is ready.", true);
     } catch (e) {
       setStatus("error");
       setStatusMsg(
         e instanceof Error ? e.message : "Something went wrong during generation.",
       );
+      announce("Generation didn't finish — please try again.", false);
     }
   }
 
@@ -424,6 +506,7 @@ export default function Page() {
     }
     if (!docs.ko) return;
 
+    primeAlerts();
     setStatus("translating");
     setStatusMsg(
       lang === "en" ? "Translating into English…" : "Translating into Chinese…",
@@ -463,6 +546,7 @@ export default function Page() {
       if (!html.toLowerCase().includes("</html>")) {
         setStatus("error");
         setStatusMsg("Translation seems to have stopped early — please try again.");
+        announce("Translation stopped early — please retry.", false);
         return;
       }
       const newDocs = { ...docs, [lang]: html };
@@ -474,11 +558,18 @@ export default function Page() {
           ? "Your English translation is ready."
           : "Your Chinese translation is ready.",
       );
+      announce(
+        lang === "en"
+          ? "Your English translation is ready."
+          : "Your Chinese translation is ready.",
+        true,
+      );
     } catch (e) {
       setStatus("error");
       setStatusMsg(
         e instanceof Error ? e.message : "Something went wrong during translation.",
       );
+      announce("Translation didn't finish — please try again.", false);
     }
   }
 
