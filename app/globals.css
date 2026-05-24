@@ -489,30 +489,17 @@ select:focus {
 
 .hist-list li {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 10px;
   border-top: 1px solid var(--line);
 }
 
-.hist-list li.active {
-  background: #faf5ec;
-  border-radius: 8px;
-}
-
-.hist-open {
-  flex: 1;
-  min-width: 0;
+.hist-meta {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 2px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 11px 10px;
-  text-align: left;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
 }
 
 .hist-title {
@@ -530,12 +517,38 @@ select:focus {
   font-size: 0.78rem;
 }
 
+.hist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.hist-dl {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--accent);
+  border-radius: 7px;
+  padding: 7px 11px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hist-tag {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .hist-del {
+  margin-left: auto;
   border: none;
   background: transparent;
   color: var(--danger);
   cursor: pointer;
   font-size: 1rem;
-  padding: 10px 12px;
+  padding: 6px 10px;
   -webkit-tap-highlight-color: transparent;
 }

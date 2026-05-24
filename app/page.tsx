@@ -71,6 +71,32 @@ function slug(s: string): string {
     .slice(0, 60);
 }
 
+function downloadBlob(html: string, filename: string) {
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function fileName(
+  parts: { title?: string; occasion?: string; date?: string; createdAt?: number },
+  lang: Lang,
+): string {
+  const date =
+    parts.date?.trim() ||
+    (parts.createdAt ? new Date(parts.createdAt).toISOString().slice(0, 10) : "") ||
+    new Date().toISOString().slice(0, 10);
+  const occ = slug(parts.occasion || "") || "sunday-service";
+  const title = slug(parts.title || "") || "sermon";
+  const suffix = lang === "en" ? "-EN" : lang === "zh" ? "-中文版" : "";
+  return `${date}-${occ}-${title}${suffix}.html`;
+}
+
 /* ---- Local cache (metadata only) — a fallback when the cloud is unreachable ---- */
 
 const CACHE_KEY = "sermorizer.history.v2";
@@ -503,42 +529,19 @@ export default function Page() {
     }
   }
 
-  async function loadEntry(entry: Summary) {
-    stopPolling();
-    setCurrentId(entry.id);
-    currentIdRef.current = entry.id;
-
-    let full = entry;
-    if (!entry.docs || Object.keys(entry.docs).length === 0) {
+  /** Download a past summary's file directly — no in-app viewing. */
+  async function downloadEntry(entry: Summary, lang: Lang) {
+    let html = entry.docs?.[lang];
+    if (!html) {
       try {
         const r = await cloudGet(entry.id);
-        if (r) full = r;
+        html = r?.docs?.[lang];
       } catch {
-        /* use what we have */
+        /* leave undefined */
       }
     }
-
-    if (full.status === "generating" || full.status === "translating") {
-      setStatus(full.status);
-      setStatusMsg("This one is still being generated… it will appear when ready.");
-      setDocs(full.docs ?? {});
-      revealPreview();
-      startPolling({
-        id: full.id,
-        kind: full.status === "translating" ? "translate" : "generate",
-      });
-      return;
-    }
-
-    setDocs(full.docs ?? {});
-    setActiveLang(full.docs?.ko ? "ko" : full.docs?.en ? "en" : "zh");
-    setStatus(full.status === "error" ? "error" : "done");
-    setStatusMsg(
-      full.status === "error"
-        ? full.error || "This summary failed to generate."
-        : `Loaded "${full.title}".`,
-    );
-    revealPreview();
+    if (!html) return;
+    downloadBlob(html, fileName(entry, lang));
   }
 
   function deleteEntry(id: string) {
@@ -558,24 +561,18 @@ export default function Page() {
     const html = docs[activeLang];
     if (!html) return;
     const entry = currentId ? history.find((e) => e.id === currentId) : undefined;
-    const date =
-      entry?.serviceDate ||
-      meta.date.trim() ||
-      (entry ? new Date(entry.createdAt).toISOString().slice(0, 10) : "") ||
-      new Date().toISOString().slice(0, 10);
-    const occ = slug(entry?.occasion || meta.occasion) || "sunday-service";
-    const title = slug(entry?.title || meta.title) || "sermon";
-    const suffix = activeLang === "en" ? "-EN" : activeLang === "zh" ? "-中文版" : "";
-    const name = `${date}-${occ}-${title}${suffix}.html`;
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadBlob(
+      html,
+      fileName(
+        {
+          title: entry?.title || meta.title,
+          occasion: entry?.occasion || meta.occasion,
+          date: entry?.serviceDate || meta.date,
+          createdAt: entry?.createdAt,
+        },
+        activeLang,
+      ),
+    );
   }
 
   const previewHtml = docs[activeLang] ?? "";
@@ -593,43 +590,52 @@ export default function Page() {
 
       {history.length > 0 && (
         <details className="panel history">
-          <summary>Saved summaries ({history.length})</summary>
-          {cloudEnabled() && (
-            <p className="hist-note">
-              Stored online — visible on any device that opens this app.
-            </p>
-          )}
+          <summary>Download a past summary ({history.length})</summary>
+          <p className="hist-note">
+            Past summaries aren&apos;t displayed — tap a language to download the
+            file.
+          </p>
           <ul className="hist-list">
             {history.map((e) => {
               const inProgress =
                 e.status === "generating" || e.status === "translating";
+              const langs = (["ko", "en", "zh"] as Lang[]).filter(
+                (l) => e.docs?.[l],
+              );
               return (
-                <li key={e.id} className={e.id === currentId ? "active" : ""}>
-                  <button
-                    type="button"
-                    className="hist-open"
-                    onClick={() => loadEntry(e)}
-                  >
+                <li key={e.id}>
+                  <div className="hist-meta">
                     <span className="hist-title">{e.title}</span>
-                    <span className="hist-date">
-                      {formatEntryDate(e)}
-                      {inProgress
-                        ? " · generating…"
-                        : e.status === "error"
-                          ? " · failed"
-                          : ` · ${Object.keys(e.docs)
-                              .map((l) => l.toUpperCase())
-                              .join(" ")}`}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="hist-del"
-                    aria-label="delete saved summary"
-                    onClick={() => deleteEntry(e.id)}
-                  >
-                    ✕
-                  </button>
+                    <span className="hist-date">{formatEntryDate(e)}</span>
+                  </div>
+                  <div className="hist-actions">
+                    {inProgress ? (
+                      <span className="hist-tag">generating…</span>
+                    ) : e.status === "error" ? (
+                      <span className="hist-tag">failed</span>
+                    ) : langs.length > 0 ? (
+                      langs.map((l) => (
+                        <button
+                          key={l}
+                          type="button"
+                          className="hist-dl"
+                          onClick={() => downloadEntry(e, l)}
+                        >
+                          ⬇ {l.toUpperCase()}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="hist-tag">no file</span>
+                    )}
+                    <button
+                      type="button"
+                      className="hist-del"
+                      aria-label="delete saved summary"
+                      onClick={() => deleteEntry(e.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </li>
               );
             })}
