@@ -85,11 +85,13 @@ export async function POST(req: Request): Promise<Response> {
   const client = new Anthropic();
 
   // Cache the (static) system prompt; per-request content lives in the user message.
+  // No extended thinking: on Opus 4.7, adaptive thinking can spend minutes
+  // reasoning before emitting any text, which makes the stream look frozen and
+  // risks the duration limit. Thinking off → HTML starts streaming right away.
   const params = {
     model: MODEL,
     max_tokens: 64000,
-    thinking: { type: "adaptive" as const },
-    output_config: { effort: "high" as const },
+    output_config: { effort: "medium" as const },
     system: [
       {
         type: "text" as const,
@@ -140,6 +142,8 @@ export async function POST(req: Request): Promise<Response> {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
+      // Disable proxy/CDN buffering so chunks reach the browser as they stream.
+      "X-Accel-Buffering": "no",
     },
   });
 }

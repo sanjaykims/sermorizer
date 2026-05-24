@@ -91,12 +91,20 @@ async function streamRequest(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let acc = "";
+  let lastEmit = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     acc += decoder.decode(value, { stream: true });
-    onChunk(acc);
+    // Throttle live-preview updates: re-rendering the iframe on every token is
+    // expensive on mobile. Repaint at most a couple of times per second.
+    const now = Date.now();
+    if (now - lastEmit > 450) {
+      lastEmit = now;
+      onChunk(acc);
+    }
   }
+  onChunk(acc); // always paint the final, complete result
   return acc;
 }
 
@@ -190,7 +198,9 @@ export default function Page() {
     try {
       const noteImages = await Promise.all(noteFiles.map(imageToBase64));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
-      setStatusMsg("Claude is writing the sermon summary…");
+      setStatusMsg(
+        "Claude is writing the sermon summary — this can take 1–3 minutes for a long sermon. The preview fills in as it writes.",
+      );
 
       const final = await streamRequest(
         {
