@@ -57,13 +57,14 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 
 Capture the WHOLE service start to finish: the opening, prayers (full text, not summarized), scripture readings, every sermon sub-point, the liturgy, the illustrations, and the closing prayer.
 
-## Depth and thoroughness (the user's top priority)
-Aim for a rich, complete document — quality and completeness matter more than brevity.
-- Each of the ~8-10 sections should be several paragraphs of warm, flowing prose, not a few sentences. Develop the ideas the way the preacher did.
-- Preserve the preacher's *specific* material: their illustrations, stories, analogies, examples, names, dates, numbers, quoted poems/hymns, and memorable phrasing. Do not flatten these into generic statements.
+## Depth, quality, and completeness
+Produce a comprehensive document that covers the entire service — written richly but efficiently.
+- Cover every part: the opening, the full prayers, scripture readings, every sermon sub-point, the illustrations, the liturgy, the closing prayer, and the at-a-glance summary.
+- Each of the ~8-10 sections should be warm, substantive prose — a few well-developed paragraphs — that preserves the preacher's *specific* material: illustrations, stories, examples, names, dates, numbers, quoted poems/hymns, and memorable phrasing. Do not flatten these into generic statements.
 - Reproduce prayers and liturgical texts in full.
+- Write efficiently: no repetition, no padding, no filler sentences. Favor substance over length.
 - When the messy ASR makes a word ambiguous, infer the most sensible meaning from context rather than dropping it — but never invent theology or facts that are not in the sources.
-- Err firmly on the side of more detail, more prose, and more completeness. Do not abbreviate to save space.
+- The document MUST be complete: always reach the closing prayer and end with a valid closing </html> tag. Never stop partway.
 - Before you output, silently run the quality checklist below and fix anything that fails.
 
 ## Non-negotiable rules

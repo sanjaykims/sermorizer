@@ -85,17 +85,18 @@ export async function POST(req: Request): Promise<Response> {
   const client = new Anthropic();
 
   // Cache the (static) system prompt; per-request content lives in the user message.
-  // Quality-first: adaptive thinking + "xhigh" effort (one step below the
-  // ceiling) for the strongest synthesis. We stop short of "max" deliberately —
-  // the whole run must finish inside the serverless time limit, and max effort
-  // can spend so long thinking that the document itself gets truncated. xhigh
-  // is the best quality that still reliably completes. Summarized thinking is
-  // streamed so the planning phase shows visible progress.
+  // Cost-bounded — target under $1 per summary. Output tokens dominate cost on
+  // Opus 4.7 ($25 / 1M), so:
+  //  (a) no extended thinking — its (summarized) reasoning is billed as output
+  //      and was the single biggest variable cost; and
+  //  (b) max_tokens is capped so worst-case output is bounded
+  //      (28k tokens * $25/1M = ~$0.70; plus input keeps the total under ~$0.90).
+  // Effort "medium" keeps the writing thorough without overspending. The system
+  // prompt stays prompt-cached.
   const params = {
     model: MODEL,
-    max_tokens: 64000,
-    thinking: { type: "adaptive" as const, display: "summarized" as const },
-    output_config: { effort: "xhigh" as const },
+    max_tokens: 28000,
+    output_config: { effort: "medium" as const },
     system: [
       {
         type: "text" as const,
