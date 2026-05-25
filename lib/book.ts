@@ -34,7 +34,7 @@ function formatDate(s?: string, createdAt?: number): string {
   return raw;
 }
 
-type Chapter = { title: string; sub: string; keyVerse: string; body: string };
+export type Chapter = { title: string; sub: string; keyVerse: string; body: string };
 
 /** Pull one sermon's content out of its stored HTML for use as a book chapter. */
 function extractChapter(html: string, summary: Summary): Chapter {
@@ -70,11 +70,17 @@ function extractChapter(html: string, summary: Summary): Chapter {
   return { title, sub, keyVerse, body };
 }
 
+/** Extract chapters (in the given order) for the chosen language. */
+export function compileChapters(summaries: Summary[], lang: Lang): Chapter[] {
+  return summaries
+    .filter((s) => s.docs?.[lang])
+    .map((s) => extractChapter(s.docs[lang] as string, s));
+}
+
 /** Assemble selected summaries into one complete, printable book HTML document. */
 export function buildBookHtml(summaries: Summary[], meta: BookMeta): string {
   const lang = meta.lang;
-  const usable = summaries.filter((s) => s.docs?.[lang]);
-  const chapters = usable.map((s) => extractChapter(s.docs[lang] as string, s));
+  const chapters = compileChapters(summaries, lang);
 
   const langCode = LANG_NAMES[lang] ?? "ko";
   const bookTitle = meta.title.trim() || "설교 모음집";

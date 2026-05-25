@@ -3,6 +3,18 @@
 import { useState } from "react";
 import { cloudGet, type Lang, type Summary } from "@/lib/summaries";
 import { buildBookHtml, type BookMeta } from "@/lib/book";
+import { buildEpub } from "@/lib/epub";
+
+function dl(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 function slug(s: string): string {
   return (s || "book")
@@ -77,13 +89,13 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
     return full;
   }
 
-  async function makeBook(action: "open" | "download") {
+  async function makeBook(action: "open" | "download" | "epub") {
     if (selected.size === 0) {
       setMsg("Select at least one summary to include.");
       return;
     }
     setBusy(true);
-    setMsg("Compiling the book…");
+    setMsg(action === "epub" ? "Building the EPUB…" : "Compiling the book…");
     try {
       const items = await gather();
       if (items.length === 0) {
@@ -91,8 +103,15 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
         return;
       }
       const bookMeta: BookMeta = { ...meta, lang };
-      const html = buildBookHtml(items, bookMeta);
 
+      if (action === "epub") {
+        const blob = await buildEpub(items, bookMeta);
+        dl(blob, `${slug(meta.title)}-${lang}.epub`);
+        setMsg(`Downloaded a ${items.length}-chapter EPUB (e-reader file).`);
+        return;
+      }
+
+      const html = buildBookHtml(items, bookMeta);
       if (action === "open") {
         const w = window.open("", "_blank");
         if (!w) {
@@ -106,15 +125,7 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
           `Opened a ${items.length}-chapter book. Use the “Save as PDF / 인쇄” button (or your browser’s Print) to make the PDF.`,
         );
       } else {
-        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${slug(meta.title)}-${lang}.html`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        dl(new Blob([html], { type: "text/html;charset=utf-8" }), `${slug(meta.title)}-${lang}.html`);
         setMsg(`Downloaded a ${items.length}-chapter book (HTML). Open it and print to PDF.`);
       }
     } catch (e) {
@@ -199,7 +210,10 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
 
         <div className="book-actions">
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => makeBook("open")}>
-            {busy ? "Compiling…" : "Open book → Save as PDF"}
+            {busy ? "Working…" : "Open book → Save as PDF"}
+          </button>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => makeBook("epub")}>
+            Download EPUB (e-reader)
           </button>
           <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => makeBook("download")}>
             Download book (.html)
