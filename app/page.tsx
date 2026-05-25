@@ -12,6 +12,7 @@ import {
   type Summary,
 } from "@/lib/summaries";
 import { ENHANCE_LAYOUT_CSS } from "@/lib/enhance";
+import BookPanel from "./BookPanel";
 
 type Status = "idle" | "generating" | "translating" | "done" | "error";
 
@@ -931,6 +932,8 @@ export default function Page() {
           </ul>
         </details>
       )}
+
+      {history.length > 0 && <BookPanel summaries={history} />}
 
       <div className="layout">
         {/* ---------- Input panel ---------- */}
