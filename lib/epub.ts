@@ -1,17 +1,28 @@
 import JSZip from "jszip";
 import type { Lang, Summary } from "@/lib/summaries";
-import { compileChapters, type BookMeta, type Chapter } from "@/lib/book";
+import {
+  compileChapters,
+  coverInner,
+  scriptureIndexInner,
+  collectScriptureRefs,
+  LABELS,
+  type BookMeta,
+  type Chapter,
+} from "@/lib/book";
 
 /* Reflowable stylesheet for the EPUB (color; the reader controls fonts/size). */
 const EPUB_CSS = `
 body { font-family: serif; color: #241f18; line-height: 1.7; margin: 0; padding: 0 4%; }
 h1, h2, .ch-title, .sec-title, .card h4, .card-title { font-family: serif; }
-.title-page { text-align: center; margin: 18% 0; }
-.title-page .tp-title { font-size: 1.9em; font-weight: 700; color: #3a2f23; margin: 0 0 .4em; }
-.title-page .tp-sub { font-size: 1.1em; color: #7c4a32; margin: 0 0 1.5em; }
-.title-page .tp-author { font-size: 1em; color: #4a4036; margin-top: 2.5em; }
-.title-page .tp-church { color: #7c4a32; letter-spacing: .08em; margin-top: .4em; }
-.copyright { font-size: .8em; color: #6b6257; line-height: 1.9; }
+.book-cover { background: linear-gradient(160deg,#1f3a2e,#2d5a3d 58%,#3a6b4a); color: #f5efe2; text-align: center; padding: 22% 8%; min-height: 90vh; box-sizing: border-box; margin: 0 -4%; }
+.bc-cross { font-size: 2em; color: #c8a96a; margin-bottom: .5em; }
+.bc-title { font-size: 1.9em; font-weight: 700; line-height: 1.25; margin: 0 0 .3em; color: #f5efe2; }
+.bc-sub { font-size: 1.05em; color: #e7d9b6; margin: 0 0 .3em; }
+.bc-rule { width: 64px; height: 2px; background: #c8a96a; margin: 1.2em auto; }
+.bc-church { letter-spacing: .12em; color: #f0e6cf; margin: 0; }
+.bc-year { font-size: .85em; color: #cdbf9c; margin: .3em 0 0; }
+.copyright { font-size: .82em; color: #6b6257; line-height: 1.85; }
+.copyright .cp-title { font-size: 1.1em; color: #3a2f23; margin-bottom: .4em; }
 .preface h1 { text-align: center; color: #3a2f23; }
 .preface p { text-indent: 1em; margin: 0 0 .7em; }
 .ch-num { text-align: center; color: #a9764f; letter-spacing: .3em; font-size: .85em; margin: 1em 0 .4em; }
@@ -40,14 +51,15 @@ h1, h2, .ch-title, .sec-title, .card h4, .card-title { font-family: serif; }
 .pastor-box { background: #faf6ee; border: 1px solid #c8a96a; border-radius: 5px; padding: .8em 1em; margin: 1em 0; font-style: italic; }
 .pastor-box .label { font-size: .72em; letter-spacing: .12em; color: #a85a3c; font-style: normal; display: block; margin-bottom: .4em; }
 .divider { text-align: center; color: #c8a96a; letter-spacing: .8em; margin: 1em 0; }
+.scripture-index h2 { text-align: center; color: #3a2f23; }
+.scripture-index .si-note { text-align: center; color: #8a8072; font-size: .8em; margin: 0 0 1em; }
+.scripture-index ul { list-style: none; padding: 0; }
+.scripture-index li { display: flex; gap: 6px; align-items: baseline; margin: 0 0 .4em; }
+.scripture-index .si-ref { font-weight: 600; color: #3a2f23; }
+.scripture-index .si-dots { flex: 1; border-bottom: 1px dotted #c9bfa9; }
+.scripture-index .si-ch { color: #6b6257; font-size: .9em; }
 .toc, .summary, .footer, .header { display: none; }
 `;
-
-const LABELS: Record<Lang, { chapter: (n: number) => string; contents: string; preface: string }> = {
-  ko: { chapter: (n) => `제 ${n} 장`, contents: "차 례", preface: "여는 글" },
-  en: { chapter: (n) => `Chapter ${n}`, contents: "Contents", preface: "Preface" },
-  zh: { chapter: (n) => `第 ${n} 章`, contents: "目录", preface: "前言" },
-};
 
 function escXml(s: string): string {
   return (s || "")
@@ -96,7 +108,7 @@ ${inner}
 function chapterXhtml(c: Chapter, i: number, lang: Lang): string {
   const inner =
     `<section class="chapter" id="ch${i + 1}">` +
-    `<p class="ch-num">${escXml(LABELS[lang].chapter(i + 1))}</p>` +
+    `<p class="ch-num">${escXml((LABELS[lang] ?? LABELS.ko).chapter(i + 1))}</p>` +
     `<h1 class="ch-title">${escXml(c.title)}</h1>` +
     (c.sub ? `<p class="ch-sub">${escXml(c.sub)}</p>` : "") +
     (c.keyVerse ? `<div class="ch-epigraph">${toXhtml(c.keyVerse)}</div>` : "") +
@@ -112,9 +124,12 @@ export async function buildEpub(summaries: Summary[], meta: BookMeta): Promise<B
   const chapters = compileChapters(summaries, lang);
   const bookTitle = meta.title.trim() || "설교 모음집";
   const author = meta.author.trim() || "김영복 담임목사";
+  const year = meta.year.trim() || String(new Date().getFullYear());
   const id = uuid();
   const modified = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const hasPreface = Boolean(meta.preface.trim());
+  const indexInner = scriptureIndexInner(chapters, lang);
+  const hasIndex = Boolean(indexInner) && collectScriptureRefs(chapters).length > 0;
 
   const zip = new JSZip();
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -130,21 +145,22 @@ export async function buildEpub(summaries: Summary[], meta: BookMeta): Promise<B
   if (!oebps) throw new Error("Could not create EPUB structure.");
   oebps.file("style.css", EPUB_CSS);
 
-  // Title page
-  oebps.file(
-    "title.xhtml",
-    xhtmlDoc(
-      lang,
-      bookTitle,
-      `<section class="title-page">
-<h1 class="tp-title">${escXml(bookTitle)}</h1>
-${meta.subtitle.trim() ? `<p class="tp-sub">${escXml(meta.subtitle.trim())}</p>` : ""}
-${author ? `<p class="tp-author">${escXml(author)}</p>` : ""}
-<p class="tp-church">갈릴리교회</p>
-<p class="copyright">© ${escXml(meta.year.trim() || String(new Date().getFullYear()))} 갈릴리교회${meta.isbn.trim() ? ` · ISBN ${escXml(meta.isbn.trim())}` : ""}<br/>Sermorizer로 엮음</p>
-</section>`,
-    ),
-  );
+  // Cover
+  oebps.file("cover.xhtml", xhtmlDoc(lang, bookTitle, coverInner(meta, bookTitle)));
+
+  // Copyright
+  const copyrightInner = `<section class="copyright">
+<p class="cp-title">${escXml(bookTitle)}</p>
+${meta.subtitle.trim() ? `<p>${escXml(meta.subtitle.trim())}</p>` : ""}
+<p>${escXml(L.editedBy)} · ${escXml(author)}</p>
+<p>© ${escXml(year)} ${escXml(L.publisher)}</p>
+<p>${escXml(L.rights)}</p>
+${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
+<p>설교 · 김영복 담임목사</p>
+<p>${escXml(L.scriptureNote)}</p>
+<p>Sermorizer로 엮음</p>
+</section>`;
+  oebps.file("copyright.xhtml", xhtmlDoc(lang, "©", copyrightInner));
 
   // Preface
   if (hasPreface) {
@@ -162,12 +178,18 @@ ${author ? `<p class="tp-author">${escXml(author)}</p>` : ""}
   // Chapters
   chapters.forEach((c, i) => oebps.file(`ch${i + 1}.xhtml`, chapterXhtml(c, i, lang)));
 
+  // Scripture index
+  if (hasIndex) {
+    oebps.file("index.xhtml", xhtmlDoc(lang, L.index, toXhtml(indexInner)));
+  }
+
   // Navigation (EPUB3 nav doc)
   const navItems =
     (hasPreface ? `<li><a href="preface.xhtml">${escXml(L.preface)}</a></li>` : "") +
     chapters
       .map((c, i) => `<li><a href="ch${i + 1}.xhtml">${i + 1}. ${escXml(c.title)}</a></li>`)
-      .join("");
+      .join("") +
+    (hasIndex ? `<li><a href="index.xhtml">${escXml(L.index)}</a></li>` : "");
   oebps.file(
     "nav.xhtml",
     `<?xml version="1.0" encoding="UTF-8"?>
@@ -184,18 +206,22 @@ ${author ? `<p class="tp-author">${escXml(author)}</p>` : ""}
   const manifestItems = [
     `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `<item id="css" href="style.css" media-type="text/css"/>`,
-    `<item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>`,
+    `<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+    `<item id="copyright" href="copyright.xhtml" media-type="application/xhtml+xml"/>`,
     hasPreface ? `<item id="preface" href="preface.xhtml" media-type="application/xhtml+xml"/>` : "",
     ...chapters.map(
       (_, i) => `<item id="ch${i + 1}" href="ch${i + 1}.xhtml" media-type="application/xhtml+xml"/>`,
     ),
+    hasIndex ? `<item id="index" href="index.xhtml" media-type="application/xhtml+xml"/>` : "",
   ]
     .filter(Boolean)
     .join("\n    ");
   const spineItems = [
-    `<itemref idref="title"/>`,
+    `<itemref idref="cover"/>`,
+    `<itemref idref="copyright"/>`,
     hasPreface ? `<itemref idref="preface"/>` : "",
     ...chapters.map((_, i) => `<itemref idref="ch${i + 1}"/>`),
+    hasIndex ? `<itemref idref="index"/>` : "",
   ]
     .filter(Boolean)
     .join("\n    ");
@@ -208,7 +234,7 @@ ${author ? `<p class="tp-author">${escXml(author)}</p>` : ""}
     <dc:title>${escXml(bookTitle)}</dc:title>
     <dc:language>${lang}</dc:language>
     <dc:creator>${escXml(author)}</dc:creator>
-    <dc:publisher>갈릴리교회</dc:publisher>
+    <dc:publisher>${escXml(L.publisher)}</dc:publisher>
     <meta property="dcterms:modified">${modified}</meta>
   </metadata>
   <manifest>
