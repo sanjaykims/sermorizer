@@ -51,9 +51,23 @@ export async function getAuthConfig(): Promise<AuthConfig> {
     session_secret: newSecret(),
     webauthn_user_id: newRandomId(16),
   };
-  const insert = await supa.from("auth_config").insert(fresh).select().single();
+  // Use upsert(ignoreDuplicates) so concurrent first-time requests don't
+  // collide on the singleton primary-key. If we lose the race the insert
+  // returns no row — fall back to selecting the winner's row.
+  const insert = await supa
+    .from("auth_config")
+    .upsert(fresh, { onConflict: "id", ignoreDuplicates: true })
+    .select()
+    .maybeSingle();
   if (insert.error) throw new Error(insert.error.message);
-  return insert.data as AuthConfig;
+  if (insert.data) return insert.data as AuthConfig;
+  const after = await supa
+    .from("auth_config")
+    .select("*")
+    .eq("id", "singleton")
+    .single();
+  if (after.error) throw new Error(after.error.message);
+  return after.data as AuthConfig;
 }
 
 /** Has the install been set up (at least a passcode configured)? */
