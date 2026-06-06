@@ -4,7 +4,7 @@
 
 import { isSetupComplete, readSession } from "@/lib/auth/server";
 import { hasAnyPasskey } from "@/lib/auth/webauthn";
-import { supabaseAdminAvailable } from "@/lib/supabase-server";
+import { supabaseAdminAvailable, withSupabaseRetry } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
@@ -19,11 +19,12 @@ export async function GET(): Promise<Response> {
     );
   }
   try {
-    const [setup, session, passkey] = await Promise.all([
-      isSetupComplete(),
-      readSession(),
-      hasAnyPasskey(),
-    ]);
+    // Retry-once wrapper hides a brief cold-start clock skew between the
+    // Vercel Lambda and Supabase that can otherwise surface as "JWT issued
+    // at future" on the AuthGate's very first call.
+    const [setup, session, passkey] = await withSupabaseRetry(() =>
+      Promise.all([isSetupComplete(), readSession(), hasAnyPasskey()]),
+    );
     return Response.json({
       setup,
       authed: Boolean(session),

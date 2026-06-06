@@ -27,3 +27,21 @@ export function getSupabaseAdmin(): SupabaseClient {
   });
   return cached;
 }
+
+/** Run a Supabase-touching async fn, retrying once on transient clock-skew
+ *  errors ("JWT issued at future", "JWT expired"). These can surface on a
+ *  cold-start when the Vercel Lambda's wall clock briefly disagrees with
+ *  Supabase's validator. Retry on a clean second instance — never on real
+ *  config / auth errors. */
+export async function withSupabaseRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/JWT.*(future|expired)/i.test(msg)) {
+      await new Promise((r) => setTimeout(r, 250));
+      return await fn();
+    }
+    throw e;
+  }
+}
