@@ -10,9 +10,17 @@ import {
   type SermonMetadata,
   type ImagePayload,
 } from "@/lib/prompt";
-import { cloudInsert, cloudUpdate, cloudGet, cloudMergePart, type Lang } from "@/lib/summaries";
+import {
+  insertSummaryServer,
+  updateSummaryServer,
+  getSummaryServer,
+  mergePartServer,
+} from "@/lib/summaries-server";
+import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
 import { extractHtmlTitle } from "@/lib/util";
+import { requireSessionOrUnauthorized } from "@/lib/auth/server";
+import { supabaseAdminAvailable } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 // The background generation runs inside this function via after(); the work
@@ -89,6 +97,14 @@ export async function POST(req: Request): Promise<Response> {
       { status: 503 },
     );
   }
+  if (!supabaseAdminAvailable()) {
+    return Response.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY is not configured." },
+      { status: 503 },
+    );
+  }
+  const guard = await requireSessionOrUnauthorized();
+  if (guard) return guard;
 
   let body: RequestBody;
   try {
@@ -97,8 +113,7 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Request body was not valid JSON." }, { status: 400 });
   }
 
-  // Defensive input caps — bound worst-case Claude cost/abuse on this public
-  // (no-auth) endpoint without changing the intended public-link model.
+  // Defensive input caps — bound worst-case Claude cost even after auth.
   const MAX_TRANSCRIPT = 400_000; // chars (~well beyond a 90-min sermon)
   const MAX_IMAGES = 8;
   const MAX_SOURCE_HTML = 600_000;
@@ -128,7 +143,7 @@ export async function POST(req: Request): Promise<Response> {
       const lang = body.language;
       const sourceHtml = body.sourceHtml;
 
-      await cloudUpdate(id, { status: "translating", error: null });
+      await updateSummaryServer(id, { status: "translating", error: null });
 
       // Detached background work — continues even if the client disconnects.
       after(async () => {
@@ -141,11 +156,11 @@ export async function POST(req: Request): Promise<Response> {
             throw new Error("Translation stopped early — please try again.");
           }
           const html = ensureEnhanceCss(raw);
-          const row = await cloudGet(id);
+          const row = await getSummaryServer(id);
           const docs = { ...(row?.docs ?? {}), [lang]: html };
-          await cloudUpdate(id, { docs, status: "done", error: null });
+          await updateSummaryServer(id, { docs, status: "done", error: null });
         } catch (e) {
-          await cloudUpdate(id, {
+          await updateSummaryServer(id, {
             status: "error",
             error: e instanceof Error ? e.message : "Translation failed.",
           });
@@ -169,7 +184,7 @@ export async function POST(req: Request): Promise<Response> {
       // Part 0 creates the row; later parts reference it.
       let id = body.id;
       if (partIndex === 0) {
-        const pending = await cloudInsert({
+        const pending = await insertSummaryServer({
           title: m.title?.trim() || "Generating…",
           serviceDate: m.date?.trim() || undefined,
           occasion: m.occasion?.trim() || undefined,
@@ -190,9 +205,9 @@ export async function POST(req: Request): Promise<Response> {
             throw new Error("A part stopped early — please try again.");
           }
           // Atomic server-side merge — safe even if parts finish concurrently.
-          await cloudMergePart(rowId, String(partIndex), html);
+          await mergePartServer(rowId, String(partIndex), html);
         } catch (e) {
-          await cloudUpdate(rowId, {
+          await updateSummaryServer(rowId, {
             status: "error",
             error: e instanceof Error ? e.message : "A part failed to generate.",
           });
@@ -222,7 +237,7 @@ export async function POST(req: Request): Promise<Response> {
     const content = buildGenerationUserContent(body);
 
     // Create the pending row first so the client gets an id to poll immediately.
-    const pending = await cloudInsert({
+    const pending = await insertSummaryServer({
       title: m.title?.trim() || "Generating…",
       serviceDate: m.date?.trim() || undefined,
       occasion: m.occasion?.trim() || undefined,
@@ -238,14 +253,14 @@ export async function POST(req: Request): Promise<Response> {
         }
         const html = ensureEnhanceCss(raw);
         const title = m.title?.trim() || extractHtmlTitle(html) || "Untitled sermon";
-        await cloudUpdate(pending.id, {
+        await updateSummaryServer(pending.id, {
           docs: { ko: html },
           title,
           status: "done",
           error: null,
         });
       } catch (e) {
-        await cloudUpdate(pending.id, {
+        await updateSummaryServer(pending.id, {
           status: "error",
           error: e instanceof Error ? e.message : "Generation failed.",
         });

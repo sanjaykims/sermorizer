@@ -14,6 +14,7 @@ import {
 import { ENHANCE_LAYOUT_CSS } from "@/lib/enhance";
 import { slug, escapeHtml, downloadBlob, extractHtmlTitle } from "@/lib/util";
 import dynamic from "next/dynamic";
+import AuthGate from "./AuthGate";
 
 // Lazy-load the book panel so it isn't shipped in the initial bundle.
 const BookPanel = dynamic(() => import("./BookPanel"), { ssr: false, loading: () => null });
@@ -309,6 +310,14 @@ async function waitForRow(
 type Job = { id: string; kind: "generate" | "translate"; lang?: Lang };
 
 export default function Page() {
+  return (
+    <AuthGate>
+      <Sermorizer />
+    </AuthGate>
+  );
+}
+
+function Sermorizer() {
   const [meta, setMeta] = useState<Metadata>(EMPTY_META);
   const [theme, setTheme] = useState<string>("auto");
   const [noteFiles, setNoteFiles] = useState<File[]>([]);

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.1",
     "@supabase/supabase-js": "^2.106.1",
     "jszip": "^3.10.1",
     "next": "^15.1.6",
