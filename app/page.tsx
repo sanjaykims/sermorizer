@@ -152,6 +152,8 @@ function playChime(ok: boolean) {
   }
 }
 
+let titleRestore: (() => void) | null = null;
+
 /** Fire every available "finished" cue. `message` is short, for the notification. */
 function announce(message: string, ok: boolean) {
   playChime(ok);
@@ -168,13 +170,30 @@ function announce(message: string, ok: boolean) {
     } catch {
       /* ignore */
     }
+    // Remove any prior pending restorer so listeners can't stack up across
+    // multiple completions while the tab stays hidden.
+    if (titleRestore) titleRestore();
     document.title = `${ok ? "✅" : "⚠️"} ${message}`;
     const restore = () => {
       document.title = APP_TITLE;
       document.removeEventListener("visibilitychange", restore);
+      titleRestore = null;
     };
+    titleRestore = restore;
     document.addEventListener("visibilitychange", restore);
   }
+}
+
+/** Self-contained "(Ns)" ticker — owns its own 1Hz state so the parent tree
+ *  doesn't re-render every second while a job runs. */
+function ElapsedTimer() {
+  const [s, setS] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => setS(Math.round((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>({s}s)</>;
 }
 
 /* ---- Split generation: chunk a long transcript into multiple parts ---- */
@@ -302,12 +321,10 @@ export default function Page() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [docs, setDocs] = useState<Partial<Record<Lang, string>>>({});
   const [activeLang, setActiveLang] = useState<Lang>("ko");
-  const [elapsed, setElapsed] = useState<number>(0);
   const [history, setHistory] = useState<Summary[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
 
   const busy = status === "generating" || status === "translating";
-  const startedAt = useRef<number>(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -506,17 +523,6 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Elapsed-time counter while a job is running.
-  useEffect(() => {
-    if (!busy) return;
-    startedAt.current = Date.now();
-    setElapsed(0);
-    const id = setInterval(
-      () => setElapsed(Math.round((Date.now() - startedAt.current) / 1000)),
-      1000,
-    );
-    return () => clearInterval(id);
-  }, [busy]);
 
   function setField(key: keyof Metadata, value: string) {
     setMeta((m) => ({ ...m, [key]: value }));
@@ -1066,9 +1072,11 @@ export default function Page() {
             disabled={busy}
             onClick={onGenerate}
           >
-            {status === "generating"
-              ? `Generating… (${elapsed}s)`
-              : "Generate summary"}
+            {status === "generating" ? (
+              <>Generating… <ElapsedTimer /></>
+            ) : (
+              "Generate summary"
+            )}
           </button>
         </div>
 
@@ -1124,7 +1132,7 @@ export default function Page() {
                       : "working"
               }`}
             >
-              {busy ? `${statusMsg} (${elapsed}s)` : statusMsg}
+              {statusMsg} {busy && <ElapsedTimer />}
             </div>
           )}
 

@@ -121,6 +121,17 @@ export async function cloudUpdate(
   if (error) throw new Error(error.message);
 }
 
+/** Atomically merge one generated part into the row's `parts` map (no clobber). */
+export async function cloudMergePart(id: string, key: string, html: string): Promise<void> {
+  if (!client) throw new Error("Cloud storage is not configured.");
+  const { error } = await client.rpc("merge_summary_part", {
+    p_id: id,
+    p_key: key,
+    p_html: html,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function cloudDelete(id: string): Promise<void> {
   if (!client) throw new Error("Cloud storage is not configured.");
   const { error } = await client.from("summaries").delete().eq("id", id);

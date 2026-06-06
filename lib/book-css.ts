@@ -120,8 +120,8 @@ body {
 .scripture-index { break-before: page; }
 .scripture-index h2 { font-family: 'Gowun Batang', serif; font-size: 17pt; color: #3a2f23; text-align: center; margin: 0 0 6px; letter-spacing: .1em; }
 .scripture-index .si-note { text-align: center; color: #8a8072; font-size: 8.5pt; margin: 0 0 20px; }
-.scripture-index ul { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 22px; }
-.scripture-index li { display: flex; align-items: baseline; gap: 6px; font-size: 9.5pt; margin: 0 0 6px; break-inside: avoid; }
+.scripture-index ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+.scripture-index li { display: flex; align-items: baseline; gap: 6px; font-size: 9.5pt; margin: 0; break-inside: avoid; }
 .scripture-index .si-ref { font-weight: 600; color: #3a2f23; }
 .scripture-index .si-dots { flex: 1; border-bottom: 1px dotted #c9bfa9; transform: translateY(-3px); }
 .scripture-index .si-ch { color: #6b6257; font-size: 9pt; }

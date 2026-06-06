@@ -10,7 +10,7 @@ import {
   type SermonMetadata,
   type ImagePayload,
 } from "@/lib/prompt";
-import { cloudInsert, cloudUpdate, cloudGet, type Lang } from "@/lib/summaries";
+import { cloudInsert, cloudUpdate, cloudGet, cloudMergePart, type Lang } from "@/lib/summaries";
 import { ensureEnhanceCss } from "@/lib/enhance";
 import { extractHtmlTitle } from "@/lib/util";
 
@@ -97,6 +97,24 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Request body was not valid JSON." }, { status: 400 });
   }
 
+  // Defensive input caps — bound worst-case Claude cost/abuse on this public
+  // (no-auth) endpoint without changing the intended public-link model.
+  const MAX_TRANSCRIPT = 400_000; // chars (~well beyond a 90-min sermon)
+  const MAX_IMAGES = 8;
+  const MAX_SOURCE_HTML = 600_000;
+  if ((body.transcript?.length ?? 0) > MAX_TRANSCRIPT) {
+    return Response.json({ error: "Transcript is too large." }, { status: 413 });
+  }
+  if (
+    (body.noteImages?.length ?? 0) > MAX_IMAGES ||
+    (body.bulletinImages?.length ?? 0) > MAX_IMAGES
+  ) {
+    return Response.json({ error: `Too many images (max ${MAX_IMAGES} each).` }, { status: 413 });
+  }
+  if ((body.sourceHtml?.length ?? 0) > MAX_SOURCE_HTML) {
+    return Response.json({ error: "Source document is too large." }, { status: 413 });
+  }
+
   try {
     if (body.mode === "translate") {
       if (body.language !== "en" && body.language !== "zh") {
@@ -171,10 +189,8 @@ export async function POST(req: Request): Promise<Response> {
           if (!html.toLowerCase().includes("</html>")) {
             throw new Error("A part stopped early — please try again.");
           }
-          // Merge this part into the row's parts map (re-read to avoid clobber).
-          const row = await cloudGet(rowId);
-          const parts = { ...(row?.parts ?? {}), [String(partIndex)]: html };
-          await cloudUpdate(rowId, { parts });
+          // Atomic server-side merge — safe even if parts finish concurrently.
+          await cloudMergePart(rowId, String(partIndex), html);
         } catch (e) {
           await cloudUpdate(rowId, {
             status: "error",

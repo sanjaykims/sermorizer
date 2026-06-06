@@ -96,6 +96,8 @@ function extractChapter(html: string, summary: Summary): Chapter {
   const scripture = (
     doc.querySelector(".key-verse .kv-ref")?.textContent ||
     doc.querySelector(".scripture-ref")?.textContent ||
+    // EN/ZH docs may use neither class — fall back to any verse-like text.
+    findScriptureRef(doc.querySelector(".key-verse")?.textContent || "") ||
     ""
   )
     .replace(/^[\s—–\-·]+/, "")
@@ -106,6 +108,10 @@ function extractChapter(html: string, summary: Summary): Chapter {
   const bodyEl = doc.querySelector("#sermon-body");
   let body = "";
   if (bodyEl) {
+    // Drop any screen-only chrome that slipped into the body.
+    bodyEl
+      .querySelectorAll(".toc, .summary, .footer, .header")
+      .forEach((n) => n.remove());
     bodyEl.querySelectorAll("section").forEach((sec, i) => {
       const icon = sec.querySelector(".sec-icon");
       if (icon) icon.textContent = String(i + 1);
@@ -122,7 +128,18 @@ export function compileChapters(summaries: Summary[], lang: Lang): Chapter[] {
 }
 
 /* ---- Scripture index ---- */
-const VERSE_RE = /[0-9]+\s*[:장章节]/;
+// A reference looks like a book name followed by chapter[:verse] or chapter장,
+// in Korean (창세기 1:1 / 출애굽기 20장), English (Genesis 1:1, Psalm 23), or
+// Chinese (创世记 1:1 / 加拉太书 6:17).
+const VERSE_RE = /[가-힣A-Za-z一-鿿].*?\d+\s*[:장章節节]?\s*\d*/;
+const HAS_NUMBER = /\d/;
+
+/** Pull the first verse-like reference out of a free-text string, if any. */
+function findScriptureRef(text: string): string {
+  const t = (text || "").replace(/\s+/g, " ").trim();
+  const m = t.match(/[가-힣A-Za-z一-鿿][^.,;\n]*?\d+(?:\s*[:장章節节]\s*\d+(?:[-–]\d+)?)?/);
+  return m ? m[0].trim() : "";
+}
 
 export function collectScriptureRefs(
   chapters: Chapter[],
@@ -130,7 +147,7 @@ export function collectScriptureRefs(
   const map = new Map<string, Set<number>>();
   const add = (raw: string, ch: number) => {
     const ref = (raw || "").replace(/^[\s—–\-·]+/, "").replace(/\s+/g, " ").trim();
-    if (!ref || ref.length > 40 || !VERSE_RE.test(ref)) return;
+    if (!ref || ref.length > 80 || !HAS_NUMBER.test(ref) || !VERSE_RE.test(ref)) return;
     if (!map.has(ref)) map.set(ref, new Set());
     map.get(ref)!.add(ch);
   };

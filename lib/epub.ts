@@ -13,6 +13,8 @@ import { escapeXml as escXml } from "@/lib/util";
 /* Reflowable stylesheet for the EPUB (color; the reader controls fonts/size). */
 const EPUB_CSS = `
 body { font-family: serif; color: #241f18; line-height: 1.7; margin: 0; padding: 0 4%; }
+.cover-img { margin: 0 -4%; text-align: center; }
+.cover-img img { max-width: 100%; height: auto; }
 h1, h2, .ch-title, .sec-title, .card h4, .card-title { font-family: serif; }
 .book-cover { background: linear-gradient(160deg,#1f3a2e,#2d5a3d 58%,#3a6b4a); color: #f5efe2; text-align: center; padding: 22% 8%; min-height: 90vh; box-sizing: border-box; margin: 0 -4%; }
 .bc-cross { font-size: 2em; color: #c8a96a; margin-bottom: .5em; }
@@ -61,6 +63,86 @@ h1, h2, .ch-title, .sec-title, .card h4, .card-title { font-family: serif; }
 .toc, .summary, .footer, .header { display: none; }
 `;
 
+/** Map our short lang codes to BCP-47 for EPUB metadata. */
+function bcp47(lang: Lang): string {
+  return lang === "zh" ? "zh-Hans" : lang;
+}
+
+/** Render the book cover to a PNG (canvas) so readers show a library thumbnail. */
+async function renderCoverPng(meta: BookMeta, bookTitle: string): Promise<Uint8Array | null> {
+  if (typeof document === "undefined") return null;
+  const W = 1200;
+  const H = 1800;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, "#1f3a2e");
+  grad.addColorStop(0.58, "#2d5a3d");
+  grad.addColorStop(1, "#3a6b4a");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#c8a96a";
+  ctx.font = "120px serif";
+  ctx.fillText("✝", W / 2, 360);
+
+  // Title — wrap to the canvas width.
+  ctx.fillStyle = "#f5efe2";
+  const titleSize = bookTitle.length > 16 ? 84 : 104;
+  ctx.font = `700 ${titleSize}px serif`;
+  const maxW = W - 220;
+  const words = bookTitle.split(/(\s+)/);
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    const test = line + w;
+    if (ctx.measureText(test).width > maxW && line.trim()) {
+      lines.push(line.trim());
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+  let y = 620;
+  for (const l of lines) {
+    ctx.fillText(l, W / 2, y);
+    y += titleSize * 1.3;
+  }
+
+  if (meta.subtitle.trim()) {
+    ctx.fillStyle = "#e7d9b6";
+    ctx.font = "52px serif";
+    ctx.fillText(meta.subtitle.trim().slice(0, 40), W / 2, y + 40);
+    y += 100;
+  }
+
+  ctx.strokeStyle = "#c8a96a";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 90, y + 90);
+  ctx.lineTo(W / 2 + 90, y + 90);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f0e6cf";
+  ctx.font = "56px serif";
+  ctx.fillText("갈릴리교회", W / 2, H - 230);
+  ctx.fillStyle = "#cdbf9c";
+  ctx.font = "40px serif";
+  ctx.fillText(meta.year.trim() || String(new Date().getFullYear()), W / 2, H - 150);
+
+  const blob: Blob | null = await new Promise((res) =>
+    canvas.toBlob((b) => res(b), "image/png"),
+  );
+  if (!blob) return null;
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
 function uuid(): string {
   try {
     if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -105,7 +187,7 @@ function chapterXhtml(c: Chapter, i: number, lang: Lang): string {
     (c.keyVerse ? `<div class="ch-epigraph">${toXhtml(c.keyVerse)}</div>` : "") +
     `<div class="ch-body">${toXhtml(c.body)}</div>` +
     `</section>`;
-  return xhtmlDoc(lang, c.title, inner);
+  return xhtmlDoc(bcp47(lang), c.title, inner);
 }
 
 /** Build a downloadable EPUB Blob from the selected summaries. */
@@ -121,6 +203,9 @@ export async function buildEpub(summaries: Summary[], meta: BookMeta): Promise<B
   const hasPreface = Boolean(meta.preface.trim());
   const indexInner = scriptureIndexInner(chapters, lang);
   const hasIndex = Boolean(indexInner) && collectScriptureRefs(chapters).length > 0;
+
+  const langTag = bcp47(lang);
+  const coverPng = await renderCoverPng(meta, bookTitle);
 
   // Lazy-load JSZip so it isn't shipped in the initial bundle.
   const JSZip = (await import("jszip")).default;
@@ -138,8 +223,21 @@ export async function buildEpub(summaries: Summary[], meta: BookMeta): Promise<B
   if (!oebps) throw new Error("Could not create EPUB structure.");
   oebps.file("style.css", EPUB_CSS);
 
-  // Cover
-  oebps.file("cover.xhtml", xhtmlDoc(lang, bookTitle, coverInner(meta, bookTitle)));
+  // Cover — a raster image (for the reader's library thumbnail) when the canvas
+  // is available, otherwise the CSS gradient cover as a fallback.
+  if (coverPng) {
+    oebps.file("cover.png", coverPng);
+    oebps.file(
+      "cover.xhtml",
+      xhtmlDoc(
+        langTag,
+        bookTitle,
+        `<section class="cover-img"><img src="cover.png" alt="${escXml(bookTitle)}"/></section>`,
+      ),
+    );
+  } else {
+    oebps.file("cover.xhtml", xhtmlDoc(langTag, bookTitle, coverInner(meta, bookTitle)));
+  }
 
   // Copyright
   const copyrightInner = `<section class="copyright">
@@ -153,7 +251,7 @@ ${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
 <p>${escXml(L.scriptureNote)}</p>
 <p>Sermorizer로 엮음</p>
 </section>`;
-  oebps.file("copyright.xhtml", xhtmlDoc(lang, "©", copyrightInner));
+  oebps.file("copyright.xhtml", xhtmlDoc(langTag, "©", copyrightInner));
 
   // Preface
   if (hasPreface) {
@@ -164,7 +262,7 @@ ${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
       .join("");
     oebps.file(
       "preface.xhtml",
-      xhtmlDoc(lang, L.preface, `<section class="preface"><h1>${escXml(L.preface)}</h1>${paras}</section>`),
+      xhtmlDoc(langTag, L.preface, `<section class="preface"><h1>${escXml(L.preface)}</h1>${paras}</section>`),
     );
   }
 
@@ -173,7 +271,7 @@ ${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
 
   // Scripture index
   if (hasIndex) {
-    oebps.file("index.xhtml", xhtmlDoc(lang, L.index, toXhtml(indexInner)));
+    oebps.file("index.xhtml", xhtmlDoc(langTag, L.index, toXhtml(indexInner)));
   }
 
   // Navigation (EPUB3 nav doc)
@@ -187,10 +285,11 @@ ${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
     "nav.xhtml",
     `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${lang}" lang="${lang}">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${langTag}" lang="${langTag}">
 <head><meta charset="utf-8"/><title>${escXml(L.contents)}</title><link rel="stylesheet" type="text/css" href="style.css"/></head>
 <body>
 <nav epub:type="toc" id="toc"><h1>${escXml(L.contents)}</h1><ol>${navItems}</ol></nav>
+<nav epub:type="landmarks" hidden="hidden"><ol><li><a epub:type="cover" href="cover.xhtml">Cover</a></li><li><a epub:type="bodymatter" href="ch1.xhtml">Start</a></li><li><a epub:type="toc" href="nav.xhtml">${escXml(L.contents)}</a></li></ol></nav>
 </body>
 </html>`,
   );
@@ -199,6 +298,7 @@ ${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
   const manifestItems = [
     `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `<item id="css" href="style.css" media-type="text/css"/>`,
+    coverPng ? `<item id="cover-img" href="cover.png" media-type="image/png" properties="cover-image"/>` : "",
     `<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
     `<item id="copyright" href="copyright.xhtml" media-type="application/xhtml+xml"/>`,
     hasPreface ? `<item id="preface" href="preface.xhtml" media-type="application/xhtml+xml"/>` : "",
@@ -221,14 +321,14 @@ ${meta.isbn.trim() ? `<p>ISBN ${escXml(meta.isbn.trim())}</p>` : ""}
   oebps.file(
     "content.opf",
     `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${lang}">
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${langTag}">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="bookid">urn:uuid:${id}</dc:identifier>
     <dc:title>${escXml(bookTitle)}</dc:title>
-    <dc:language>${lang}</dc:language>
+    <dc:language>${langTag}</dc:language>
     <dc:creator>${escXml(author)}</dc:creator>
     <dc:publisher>${escXml(L.publisher)}</dc:publisher>
-    <meta property="dcterms:modified">${modified}</meta>
+    <meta property="dcterms:modified">${modified}</meta>${coverPng ? `\n    <meta name="cover" content="cover-img"/>` : ""}
   </metadata>
   <manifest>
     ${manifestItems}
