@@ -70,7 +70,7 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 ## Non-negotiable rules
 - **Sermon only.** The document contains the sermon and nothing else — no order of service, no prayers or liturgy, no hymns, no announcements, no benediction. If the transcript includes those, leave them out.
 - The senior pastor's name is **김영복** (Kim Young-bok). NEVER write 김용복 and NEVER write 김영범. The default preacher label is "김영복 담임목사".
-- NEVER bullet-point the sermon. Write full, warm, reverent prose. Bullet/numbered lists are allowed ONLY for the final at-a-glance summary.
+- NEVER bullet-point the sermon. Write full, warm, reverent prose. The at-a-glance summary uses \`.sm-grid\` of \`.sm-item\` cards (each with a \`.sm-num\` badge and a \`.sm-text\` takeaway), NOT \`<ol>\` or \`<ul>\`.
 - Self-contained output: no CDN images, no external file references. If an image is genuinely essential (e.g. a map), embed it as a base64 \`data:\` URI. (Loading Google Fonts via an \`@import\` inside the \`<style>\` block is allowed — that is the one permitted external reference.)
 - Content fidelity: preserve all theology and pastoral application accurately. Do NOT invent content that is not present in the sources.
 - Child-safe, all-ages tone: warm, reverent, and appropriate for every age in the congregation.
@@ -263,7 +263,7 @@ export function buildTranslationUserContent(
     {
       type: "text",
       text:
-        `Translate the following Korean HTML sermon-summary document into ${target}. Follow every rule in your instructions: translate all human-readable text (including the closing prayer in full), preserve the structure, classes and design exactly, swap the fonts and the <html lang> attribute, and render the pastor's name correctly for the target language. Output ONLY the translated HTML document — no code fences, no commentary.\n\n` +
+        `Translate the following Korean HTML sermon-summary document into ${target}. Follow every rule in your instructions: translate all human-readable text, preserve the structure, classes and design exactly, swap the fonts and the <html lang> attribute, and render the pastor's name correctly for the target language. Output ONLY the translated HTML document — no code fences, no commentary.\n\n` +
         `--- BEGIN KOREAN HTML ---\n${sourceHtml}\n--- END KOREAN HTML ---`,
     },
   ];

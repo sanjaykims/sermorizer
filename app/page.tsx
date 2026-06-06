@@ -12,7 +12,11 @@ import {
   type Summary,
 } from "@/lib/summaries";
 import { ENHANCE_LAYOUT_CSS } from "@/lib/enhance";
-import BookPanel from "./BookPanel";
+import { slug, escapeHtml, downloadBlob, extractHtmlTitle } from "@/lib/util";
+import dynamic from "next/dynamic";
+
+// Lazy-load the book panel so it isn't shipped in the initial bundle.
+const BookPanel = dynamic(() => import("./BookPanel"), { ssr: false, loading: () => null });
 
 type Status = "idle" | "generating" | "translating" | "done" | "error";
 
@@ -66,26 +70,6 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
   return { media_type: "image/jpeg", data: out.split(",")[1] ?? "" };
 }
 
-function slug(s: string): string {
-  return (s || "")
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, " ")
-    .replace(/\s+/g, "-")
-    .slice(0, 60);
-}
-
-function downloadBlob(html: string, filename: string) {
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 function fileName(
   parts: { title?: string; occasion?: string; date?: string; createdAt?: number },
   lang: Lang,
@@ -94,36 +78,10 @@ function fileName(
     parts.date?.trim() ||
     (parts.createdAt ? new Date(parts.createdAt).toISOString().slice(0, 10) : "") ||
     new Date().toISOString().slice(0, 10);
-  const occ = slug(parts.occasion || "") || "sunday-service";
-  const title = slug(parts.title || "") || "sermon";
+  const occ = slug(parts.occasion || "", "sunday-service");
+  const title = slug(parts.title || "", "sermon");
   const suffix = lang === "en" ? "-EN" : lang === "zh" ? "-中文版" : "";
   return `${date}-${occ}-${title}${suffix}.html`;
-}
-
-/* ---- Local cache (metadata only) — a fallback when the cloud is unreachable ---- */
-
-const CACHE_KEY = "sermorizer.history.v2";
-
-function loadCache(): Summary[] {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as Summary[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveCache(list: Summary[]) {
-  try {
-    // Store metadata only (no large HTML) so the cache always fits.
-    const lite = list
-      .slice(0, 60)
-      .map(({ docs: _docs, ...rest }) => ({ ...rest, docs: {} }));
-    localStorage.setItem(CACHE_KEY, JSON.stringify(lite));
-  } catch {
-    /* quota or unavailable — fine, cache is optional */
-  }
 }
 
 function formatEntryDate(e: Summary): string {
@@ -226,22 +184,6 @@ function announce(message: string, ok: boolean) {
 const SPLIT_TRANSCRIPT_CHARS = 16000;
 const STEP_TIMEOUT_MS = 330_000;
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function extractTitleFromHtml(html: string): string {
-  const t = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
-  if (t && t.trim()) return t.trim();
-  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
-  if (h1) return h1.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return "";
-}
-
 function splitTranscript(text: string, n: number): string[] {
   const lines = text.split(/\r?\n/);
   const per = Math.ceil(lines.length / n);
@@ -261,7 +203,11 @@ function stitchParts(parts: Record<string, string>, n: number): string {
   const parser = new DOMParser();
   const base = parser.parseFromString(part0, "text/html");
   const body = base.querySelector("#sermon-body");
-  if (!body) return part0; // fallback: no wrapper to merge into
+  if (!body) {
+    throw new Error(
+      'Stitching failed: part 1 is missing the <div id="sermon-body"> wrapper. Please try again.',
+    );
+  }
 
   for (let k = 1; k < n; k++) {
     const html = parts[String(k)];
@@ -373,14 +319,6 @@ export default function Page() {
   // is 300s; allow a 30s buffer.)
   const JOB_TIMEOUT_MS = 330_000;
 
-  function applyHistory(updater: (prev: Summary[]) => Summary[]) {
-    setHistory((prev) => {
-      const next = updater(prev);
-      saveCache(next);
-      return next;
-    });
-  }
-
   function revealPreview() {
     if (typeof window !== "undefined" && window.innerWidth <= 900) {
       previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -407,7 +345,7 @@ export default function Page() {
           : Boolean(row?.docs?.ko);
       if (row && (row.status === "done" || haveResult)) {
         stopPolling();
-        applyHistory((prev) => upsert(prev, { ...row, status: "done" }));
+        setHistory((prev) => upsert(prev, { ...row, status: "done" }));
         if (currentIdRef.current === job.id) {
           setDocs(row.docs);
           setActiveLang(
@@ -450,7 +388,7 @@ export default function Page() {
       );
     }
     announce("It didn't finish in time — please try again.", false);
-    applyHistory((prev) =>
+    setHistory((prev) =>
       prev.map((e) =>
         e.id === job.id ? { ...e, status: "error", error: "Timed out." } : e,
       ),
@@ -469,7 +407,7 @@ export default function Page() {
       return; // transient network error — keep polling
     }
     if (!row) return;
-    applyHistory((prev) => upsert(prev, row!));
+    setHistory((prev) => upsert(prev, row!));
 
     if (row.status === "done") {
       stopPolling();
@@ -527,18 +465,13 @@ export default function Page() {
     let cancelled = false;
     const init = async () => {
       let list: Summary[] = [];
-      if (cloudEnabled()) {
-        try {
-          list = await cloudList();
-        } catch {
-          list = loadCache();
-        }
-      } else {
-        list = loadCache();
+      try {
+        list = await cloudList();
+      } catch {
+        /* keep empty list on cloud-unreachable */
       }
       if (cancelled) return;
       setHistory(list);
-      saveCache(list);
       const pending = list.find(
         (e) => e.status === "generating" || e.status === "translating",
       );
@@ -746,7 +679,7 @@ export default function Page() {
     if (!combined.toLowerCase().includes("</html>")) {
       throw new Error("Could not assemble the parts. Please try again.");
     }
-    const title = meta.title.trim() || extractTitleFromHtml(combined) || "Untitled sermon";
+    const title = meta.title.trim() || extractHtmlTitle(combined) || "Untitled sermon";
     await cloudUpdate(id!, { docs: { ko: combined }, title, status: "done", error: null });
 
     setDocs({ ko: combined });
@@ -754,7 +687,7 @@ export default function Page() {
     setStatus("done");
     setStatusMsg(`Your summary is ready — assembled from ${n} parts — and saved to the web.`);
     announce("Your sermon summary is ready.", true);
-    applyHistory((prev) =>
+    setHistory((prev) =>
       upsert(prev, {
         id: id!,
         title,
@@ -829,11 +762,14 @@ export default function Page() {
       }
     }
     if (!html) return;
-    downloadBlob(html, fileName(entry, lang));
+    downloadBlob(
+      new Blob([html], { type: "text/html;charset=utf-8" }),
+      fileName(entry, lang),
+    );
   }
 
   function deleteEntry(id: string) {
-    applyHistory((prev) => prev.filter((e) => e.id !== id));
+    setHistory((prev) => prev.filter((e) => e.id !== id));
     if (cloudEnabled()) cloudDelete(id).catch(() => {});
     if (currentId === id) {
       stopPolling();
@@ -850,7 +786,7 @@ export default function Page() {
     if (!html) return;
     const entry = currentId ? history.find((e) => e.id === currentId) : undefined;
     downloadBlob(
-      html,
+      new Blob([html], { type: "text/html;charset=utf-8" }),
       fileName(
         {
           title: entry?.title || meta.title,

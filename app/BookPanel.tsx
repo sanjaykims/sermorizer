@@ -4,25 +4,7 @@ import { useState } from "react";
 import { cloudGet, type Lang, type Summary } from "@/lib/summaries";
 import { buildBookHtml, type BookMeta } from "@/lib/book";
 import { buildEpub } from "@/lib/epub";
-
-function dl(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function slug(s: string): string {
-  return (s || "book")
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, " ")
-    .replace(/\s+/g, "-")
-    .slice(0, 50);
-}
+import { slug, downloadBlob as dl } from "@/lib/util";
 
 const LANG_LABEL: Record<Lang, string> = { ko: "한국어", en: "English", zh: "中文" };
 
@@ -113,14 +95,18 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
 
       const html = buildBookHtml(items, bookMeta);
       if (action === "open") {
-        const w = window.open("", "_blank");
+        // Open via a Blob URL — gives the popup an opaque origin so it can't
+        // touch the app's storage, and avoids the document.write XSS surface.
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, "_blank", "noopener");
         if (!w) {
+          URL.revokeObjectURL(url);
           setMsg("Please allow pop-ups, then tap “Open book” again.");
           return;
         }
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
+        // Keep the URL alive long enough for the popup (and Paged.js) to load.
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
         setMsg(
           `Opened a ${items.length}-chapter book. Use the “Save as PDF / 인쇄” button (or your browser’s Print) to make the PDF.`,
         );

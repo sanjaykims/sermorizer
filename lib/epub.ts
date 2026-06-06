@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 import type { Lang, Summary } from "@/lib/summaries";
 import {
   compileChapters,
@@ -9,6 +8,7 @@ import {
   type BookMeta,
   type Chapter,
 } from "@/lib/book";
+import { escapeXml as escXml } from "@/lib/util";
 
 /* Reflowable stylesheet for the EPUB (color; the reader controls fonts/size). */
 const EPUB_CSS = `
@@ -60,15 +60,6 @@ h1, h2, .ch-title, .sec-title, .card h4, .card-title { font-family: serif; }
 .scripture-index .si-ch { color: #6b6257; font-size: .9em; }
 .toc, .summary, .footer, .header { display: none; }
 `;
-
-function escXml(s: string): string {
-  return (s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
 
 function uuid(): string {
   try {
@@ -131,6 +122,8 @@ export async function buildEpub(summaries: Summary[], meta: BookMeta): Promise<B
   const indexInner = scriptureIndexInner(chapters, lang);
   const hasIndex = Boolean(indexInner) && collectScriptureRefs(chapters).length > 0;
 
+  // Lazy-load JSZip so it isn't shipped in the initial bundle.
+  const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
   zip.file(

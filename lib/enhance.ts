@@ -7,7 +7,7 @@ export const ENHANCE_LAYOUT_CSS = `.toc{position:sticky;top:0;z-index:60;display
 .toc h3{display:none;}
 .toc a{flex:0 0 auto;}
 html{scroll-behavior:smooth;}
-[id]{scroll-margin-top:60px;}
+section[id],h1[id],h2[id],h3[id]{scroll-margin-top:60px;}
 .sm-grid{display:grid;gap:12px;}
 .sm-item{display:flex;gap:14px;align-items:flex-start;}
 .sm-num{flex:0 0 auto;}`;

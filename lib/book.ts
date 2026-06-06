@@ -1,5 +1,6 @@
 import type { Lang, Summary } from "@/lib/summaries";
 import { BOOK_CSS, BOOK_SCRIPTS } from "@/lib/book-css";
+import { escapeHtml as esc } from "@/lib/util";
 
 export type BookMeta = {
   title: string;
@@ -58,14 +59,6 @@ export const LABELS: Record<Lang, BookLabels> = {
     publisher: "加利利教会 (基督教大韩监理会)",
   },
 };
-
-function esc(s: string): string {
-  return (s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function cleanTitle(t: string): string {
   return (t || "").replace(/\s*[—–-]\s*갈릴리교회\s*$/u, "").trim();

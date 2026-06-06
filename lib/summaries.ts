@@ -37,7 +37,6 @@ export function cloudEnabled(): boolean {
 type Row = {
   id: string;
   title: string;
-  scripture: string | null;
   service_date: string | null;
   occasion: string | null;
   docs: Partial<Record<Lang, string>> | null;

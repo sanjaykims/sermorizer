@@ -12,6 +12,7 @@ import {
 } from "@/lib/prompt";
 import { cloudInsert, cloudUpdate, cloudGet, type Lang } from "@/lib/summaries";
 import { ensureEnhanceCss } from "@/lib/enhance";
+import { extractHtmlTitle } from "@/lib/util";
 
 export const runtime = "nodejs";
 // The background generation runs inside this function via after(); the work
@@ -44,13 +45,6 @@ function stripFences(s: string): string {
   return t.trim();
 }
 
-function extractTitle(html: string): string {
-  const t = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
-  if (t && t.trim()) return t.trim();
-  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
-  if (h1) return h1.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return "";
-}
 
 /**
  * Run one Anthropic generation to completion and return the cleaned HTML.
@@ -227,7 +221,7 @@ export async function POST(req: Request): Promise<Response> {
           throw new Error("Generation stopped early — please try again.");
         }
         const html = ensureEnhanceCss(raw);
-        const title = m.title?.trim() || extractTitle(html) || "Untitled sermon";
+        const title = m.title?.trim() || extractHtmlTitle(html) || "Untitled sermon";
         await cloudUpdate(pending.id, {
           docs: { ko: html },
           title,
