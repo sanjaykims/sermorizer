@@ -71,6 +71,32 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
   return { media_type: "image/jpeg", data: out.split(",")[1] ?? "" };
 }
 
+// Largest PDF note we'll send inline (base64). A handwritten-note scan is tiny;
+// this just guards against someone attaching a huge document.
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+/** Read a PDF File as base64 for a Claude `document` block (no downscaling). */
+async function pdfToBase64(file: File): Promise<ImagePayload> {
+  if (file.size > MAX_PDF_BYTES) {
+    throw new Error(
+      `${file.name} is too large (max 20 MB). Please attach a smaller PDF or photos.`,
+    );
+  }
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as string);
+    fr.onerror = () => reject(new Error(`Could not read ${file.name}`));
+    fr.readAsDataURL(file);
+  });
+  return { media_type: "application/pdf", data: dataUrl.split(",")[1] ?? "" };
+}
+
+/** Convert a note/bulletin File to a payload — PDFs go through as documents,
+ *  everything else is treated as a (downscaled) image. */
+async function fileToPayload(file: File): Promise<ImagePayload> {
+  return file.type === "application/pdf" ? pdfToBase64(file) : imageToBase64(file);
+}
+
 function fileName(
   parts: { title?: string; occasion?: string; date?: string; createdAt?: number },
   lang: Lang,
@@ -539,7 +565,11 @@ function Sermorizer() {
 
   function addImages(kind: "note" | "bulletin", list: FileList | null) {
     if (!list) return;
-    const picked = Array.from(list).filter((f) => f.type.startsWith("image/"));
+    // Notes may be photos or a PDF scan; the bulletin stays photos-only.
+    const allowed = (f: File) =>
+      f.type.startsWith("image/") ||
+      (kind === "note" && f.type === "application/pdf");
+    const picked = Array.from(list).filter(allowed);
     if (kind === "note") setNoteFiles((p) => [...p, ...picked]);
     else setBulletinFiles((p) => [...p, ...picked]);
   }
@@ -586,7 +616,7 @@ function Sermorizer() {
     revealPreview();
 
     try {
-      const noteImages = await Promise.all(noteFiles.map(imageToBase64));
+      const noteImages = await Promise.all(noteFiles.map(fileToPayload));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
 
       // Long sermons are split into parts that each fit the 300s server limit,
@@ -973,15 +1003,16 @@ function Sermorizer() {
 
           <h2>2. Handwritten note</h2>
           <p className="hint">
-            Photo(s) of the notes you wrote during the service (JPG/PNG). They
-            are used to highlight the points that mattered most to you.
+            Photo(s) or a PDF of the notes you wrote during the service
+            (JPG/PNG/PDF). They are used to highlight the points that mattered
+            most to you.
           </p>
           <label className="drop">
-            <strong>+ Add note image(s)</strong>
-            <span>You can select multiple</span>
+            <strong>+ Add note image(s) or PDF</strong>
+            <span>Photos or a PDF — you can select multiple</span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf,.pdf"
               multiple
               hidden
               onChange={(e) => {

@@ -23,10 +23,21 @@ export type GenerationInput = {
   bulletinImages?: ImagePayload[];
 };
 
-/* A loose content-block shape — the Anthropic SDK accepts this structurally. */
+/* A loose content-block shape — the Anthropic SDK accepts this structurally.
+   Images go in `image` blocks; PDFs go in `document` blocks (Claude reads PDF
+   pages — including handwriting — natively). */
 type ContentBlock =
   | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+  | { type: "document"; source: { type: "base64"; media_type: string; data: string } };
+
+/** Emit the right block for a media payload: a `document` for PDFs, else `image`. */
+function mediaBlock(p: ImagePayload): ContentBlock {
+  const source = { type: "base64" as const, media_type: p.media_type, data: p.data };
+  return p.media_type === "application/pdf"
+    ? { type: "document", source }
+    : { type: "image", source };
+}
 
 /* ------------------------------------------------------------------ */
 /* System prompts                                                     */
@@ -158,13 +169,10 @@ function buildInputBlocks(body: GenerationInput): ContentBlock[] {
   if (notes.length > 0) {
     content.push({
       type: "text",
-      text: `## Listener's handwritten note (${notes.length} image${notes.length > 1 ? "s" : ""})\nOCR / transcribe the Korean handwriting in the image(s) below. Treat these notes as high-priority signal for which points mattered most to the listener, and elevate those points in the document.`,
+      text: `## Listener's handwritten note (${notes.length} file${notes.length > 1 ? "s" : ""})\nOCR / transcribe the Korean handwriting in the image(s) or PDF(s) below. Treat these notes as high-priority signal for which points mattered most to the listener, and elevate those points in the document.`,
     });
     for (const im of notes) {
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: im.media_type, data: im.data },
-      });
+      content.push(mediaBlock(im));
     }
   } else {
     content.push({
@@ -180,10 +188,7 @@ function buildInputBlocks(body: GenerationInput): ContentBlock[] {
       text: `## Printed order of service / 주보 (${bulletin.length} image${bulletin.length > 1 ? "s" : ""})\nUse the image(s) below ONLY to read any missing sermon metadata (title, preacher, scripture, date). Do NOT reproduce the order of service, do NOT build a table, and do NOT embed the photo — none of it should appear in the document.`,
     });
     for (const im of bulletin) {
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: im.media_type, data: im.data },
-      });
+      content.push(mediaBlock(im));
     }
   }
 
