@@ -1260,9 +1260,13 @@ function Sermorizer() {
 
       {history.length > 0 && (() => {
         // Bucket the rows into "this month" and "all-time" totals so the
-        // user can see what they're spending without doing the math.
-        const tracked = history.filter((e) => e.usage && Object.keys(e.usage).length > 0);
-        if (tracked.length === 0) return null;
+        // user can see what they're spending without doing the math. We show
+        // the panel even when nothing is tracked yet (older summaries, or
+        // brand-new installs) — totals are $0 and rows show "—" until a new
+        // sermon populates them.
+        const hasUsage = (e: Summary) =>
+          Boolean(e.usage && Object.keys(e.usage).length > 0);
+        const tracked = history.filter(hasUsage);
         const now = new Date();
         const ym = (t: number) => {
           const d = new Date(t);
@@ -1284,8 +1288,9 @@ function Sermorizer() {
             </summary>
             <p className="hist-note">
               Actual Anthropic spend per summary, totaled from token usage.
-              Older summaries (before this update) don&apos;t have tokens
-              recorded and are shown as “—”.
+              {tracked.length === 0
+                ? " Tracking just started — your next summary will populate this."
+                : " Summaries from before tracking started are shown as “—”."}
             </p>
             <div className="cost-totals">
               <div>
@@ -1293,13 +1298,15 @@ function Sermorizer() {
                 <span className="cost-amount">{formatCost(totalMonth)}</span>
               </div>
               <div>
-                <span className="cost-label">All time ({tracked.length})</span>
+                <span className="cost-label">
+                  All time {tracked.length > 0 ? `(${tracked.length})` : ""}
+                </span>
                 <span className="cost-amount">{formatCost(totalAll)}</span>
               </div>
             </div>
             <ul className="cost-list">
               {history.map((e) => {
-                const c = e.usage ? usageToCost(e.usage) : null;
+                const c = hasUsage(e) ? usageToCost(e.usage) : null;
                 return (
                   <li key={e.id}>
                     <div className="cost-row">
