@@ -259,6 +259,62 @@ function fractionWord(count: number): string {
   return "portion";
 }
 
+/* ------------------------------------------------------------------ */
+/* Transcript proofreading (optional pre-pass before summarizing)      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * System prompt for the optional proofreading pass. Claude cleans the messy
+ * Clova Note ASR transcript — fixing mishearings, proper nouns, and reference
+ * numbers — WITHOUT summarizing, so the summary step works from a clean script.
+ * Static, prompt-cacheable.
+ */
+export const PROOFREAD_SYSTEM_PROMPT = `You are a Korean transcription proofreader for **Sermorizer**. You receive a raw, messy speech-to-text transcript (Clova Note ASR) of a sermon preached at Galilee Church (갈릴리교회), a Korean Methodist church in Seoul, by 김영복 담임목사. ASR transcripts contain misheard homophones, wrong word boundaries, missing punctuation, and garbled proper nouns.
+
+Your job: return a CORRECTED, cleaned version of the SAME transcript — this is a proofreading task, NOT a summary.
+
+## What to fix
+- Obvious mishearings and homophone errors — use the sermon's context to choose the word the preacher actually said.
+- Garbled proper nouns: the preacher's name is **김영복** (NEVER 김용복, NEVER 김영범); the church is **갈릴리교회**. Restore Bible book names and chapter:verse numbers to the standard Korean 개역개정 form. Fix hymn titles, place names, and people's names where the intended word is clear.
+- Spacing, line breaks, and punctuation, for readability.
+- Use the supplied sermon metadata (title, main scripture, preacher) as GROUND TRUTH — if the ASR misheard the central passage or a key term, correct it to agree with the metadata.
+
+## Hard rules
+- DO NOT summarize, shorten, paraphrase, reorder, translate, or omit anything. Preserve the FULL spoken content and the preacher's actual wording and flow.
+- DO NOT add headings, commentary, bullet points, or anything the speaker did not say.
+- Only correct errors. When a passage is too garbled to recover with confidence, keep the closest sensible reading rather than dropping it.
+- This may be one slice of a longer sermon; just clean the text you are given without trying to introduce or conclude it.
+- Output ONLY the corrected transcript text — no preamble, no notes, no markdown code fences.`;
+
+/** Build the user message for the proofreading pass: metadata anchors + raw text. */
+export function buildProofreadUserContent(
+  metadata: SermonMetadata,
+  transcript: string,
+): ContentBlock[] {
+  const m = metadata ?? {};
+  const hints: string[] = [];
+  hints.push("# Sermon transcript to proofread");
+  hints.push("");
+  hints.push("## Ground-truth metadata (use to correct misheard names and references)");
+  hints.push("- Church: 갈릴리교회");
+  hints.push(`- Preacher: ${m.preacher?.trim() || "김영복 담임목사"}`);
+  if (m.title?.trim()) hints.push(`- Sermon title: ${m.title.trim()}`);
+  if (m.scripture?.trim()) hints.push(`- Main scripture: ${m.scripture.trim()}`);
+  if (m.occasion?.trim()) hints.push(`- Occasion / season: ${m.occasion.trim()}`);
+  hints.push("");
+  hints.push("## Raw ASR transcript (correct it; do not summarize)");
+  return [
+    {
+      type: "text",
+      text:
+        hints.join("\n") +
+        "\n" +
+        transcript +
+        "\n\n---\nReturn ONLY the corrected transcript text, preserving all spoken content. Do not summarize, shorten, or add anything.",
+    },
+  ];
+}
+
 export function buildTranslationUserContent(
   language: "en" | "zh",
   sourceHtml: string,

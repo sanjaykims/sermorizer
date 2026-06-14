@@ -226,8 +226,11 @@ function ElapsedTimer() {
 /* ---- Split generation: chunk a long transcript into multiple parts ---- */
 
 // Above this transcript size, one generation risks exceeding the 300s server
-// limit, so we split into parts of roughly this many characters each.
+// limit, so we split into parts of roughly this many characters each. When the
+// proofreading pre-pass is on, each job does two Claude passes, so we split
+// sooner to keep every part within the time budget.
 const SPLIT_TRANSCRIPT_CHARS = 16000;
+const SPLIT_TRANSCRIPT_CHARS_PROOFREAD = 11000;
 const STEP_TIMEOUT_MS = 330_000;
 
 function splitTranscript(text: string, n: number): string[] {
@@ -351,6 +354,9 @@ function Sermorizer() {
   const [transcript, setTranscript] = useState<{ name: string; text: string } | null>(
     null,
   );
+  // Have Claude proofread the Clova Note transcript before summarizing. On by
+  // default; turning it off is faster/cheaper when the transcript is already clean.
+  const [proofread, setProofread] = useState<boolean>(true);
 
   const [status, setStatus] = useState<Status>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -620,14 +626,20 @@ function Sermorizer() {
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
 
       // Long sermons are split into parts that each fit the 300s server limit,
-      // then stitched into one continuous file.
-      const nParts = Math.ceil(transcript.text.length / SPLIT_TRANSCRIPT_CHARS);
+      // then stitched into one continuous file. The proofreading pass adds a
+      // second Claude pass per job, so we split sooner when it's on.
+      const splitChars = proofread
+        ? SPLIT_TRANSCRIPT_CHARS_PROOFREAD
+        : SPLIT_TRANSCRIPT_CHARS;
+      const nParts = Math.ceil(transcript.text.length / splitChars);
       if (nParts > 1) {
         await runSplitGeneration(transcript.text, nParts, noteImages, bulletinImages);
         return;
       }
 
-      setStatusMsg("Starting generation…");
+      setStatusMsg(
+        proofread ? "Proofreading the transcript, then writing…" : "Starting generation…",
+      );
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -638,6 +650,7 @@ function Sermorizer() {
           transcript: transcript.text,
           noteImages,
           bulletinImages,
+          proofread,
         }),
       });
       if (!res.ok) {
@@ -654,7 +667,10 @@ function Sermorizer() {
       setCurrentId(id);
       currentIdRef.current = id;
       setStatusMsg(
-        "Claude is writing the summary on the server — you can lock your phone or switch apps; it keeps working. You'll be alerted when it's ready.",
+        (proofread
+          ? "Claude is proofreading the transcript, then writing the summary, on the server"
+          : "Claude is writing the summary on the server") +
+          " — you can lock your phone or switch apps; it keeps working. You'll be alerted when it's ready.",
       );
       startPolling({ id, kind: "generate" });
     } catch (e) {
@@ -682,7 +698,7 @@ function Sermorizer() {
 
     for (let k = 0; k < n; k++) {
       setStatusMsg(
-        `Long sermon — writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
+        `Long sermon — ${proofread ? "proofreading + " : ""}writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
       );
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -697,6 +713,7 @@ function Sermorizer() {
           transcript: slices[k],
           noteImages,
           bulletinImages: k === 0 ? bulletinImages : [],
+          proofread,
         }),
       });
       if (!res.ok) {
@@ -1105,6 +1122,23 @@ function Sermorizer() {
           )}
 
           <hr className="section-divider" />
+
+          <label className="proofread-toggle">
+            <input
+              type="checkbox"
+              checked={proofread}
+              disabled={busy}
+              onChange={(e) => setProofread(e.target.checked)}
+            />
+            <span>
+              <strong>Proofread the transcript first</strong>
+              <small>
+                Claude cleans up the Clova Note transcript — fixing misheard
+                words, the pastor&apos;s name, and Bible references — before
+                writing the summary. More accurate; takes a bit longer.
+              </small>
+            </span>
+          </label>
 
           <button
             type="button"

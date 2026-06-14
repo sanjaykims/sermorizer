@@ -807,3 +807,37 @@ select:focus {
   color: #6b5b4a;
   font-size: 0.8rem;
 }
+
+/* ---------- Proofread toggle ---------- */
+.proofread-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid #e6dfd2;
+  border-radius: 10px;
+  background: #fdfaf3;
+  cursor: pointer;
+}
+.proofread-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  accent-color: var(--accent);
+}
+.proofread-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.proofread-toggle strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+.proofread-toggle small {
+  color: #8c7d6b;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}

@@ -4,9 +4,11 @@ import {
   GENERATION_SYSTEM_PROMPT,
   TRANSLATION_SYSTEM_PROMPT,
   PART_SYSTEM_PROMPT,
+  PROOFREAD_SYSTEM_PROMPT,
   buildGenerationUserContent,
   buildTranslationUserContent,
   buildPartUserContent,
+  buildProofreadUserContent,
   type SermonMetadata,
   type ImagePayload,
 } from "@/lib/prompt";
@@ -42,6 +44,8 @@ type RequestBody = {
   sourceHtml?: string;
   partIndex?: number;
   partCount?: number;
+  /** When true, Claude proofreads the transcript before summarizing. */
+  proofread?: boolean;
 };
 
 type UserContent = ReturnType<typeof buildGenerationUserContent>;
@@ -61,12 +65,16 @@ function stripFences(s: string): string {
  * only to assemble the full message without hitting the SDK's non-stream
  * timeout guard — nothing is streamed to a client here.
  */
-async function runAnthropic(system: string, content: UserContent): Promise<string> {
+async function runAnthropic(
+  system: string,
+  content: UserContent,
+  opts?: { maxTokens?: number; effort?: "low" | "medium" | "high" },
+): Promise<string> {
   const client = new Anthropic();
   const params = {
     model: MODEL,
-    max_tokens: 24000,
-    output_config: { effort: "medium" as const },
+    max_tokens: opts?.maxTokens ?? 24000,
+    output_config: { effort: opts?.effort ?? "medium" },
     system: [
       {
         type: "text" as const,
@@ -85,6 +93,31 @@ async function runAnthropic(system: string, content: UserContent): Promise<strin
     .map((b) => b.text)
     .join("");
   return stripFences(text);
+}
+
+/**
+ * Optional proofreading pass: Claude cleans the messy Clova Note ASR transcript
+ * (mishearings, the pastor's name, Bible references) before the summary is
+ * written, so the summary works from a faithful script. Runs at low effort to
+ * keep cost down. Best-effort — if it fails or returns a suspiciously short
+ * result (a sign it summarized instead of proofreading), we fall back to the
+ * original transcript so a proofreading hiccup never sinks the whole job.
+ */
+async function cleanTranscript(
+  metadata: SermonMetadata,
+  transcript: string,
+): Promise<string> {
+  try {
+    const content = buildProofreadUserContent(metadata, transcript);
+    const cleaned = await runAnthropic(PROOFREAD_SYSTEM_PROMPT, content, {
+      maxTokens: 32000,
+      effort: "low",
+    });
+    if (!cleaned || cleaned.length < transcript.length * 0.5) return transcript;
+    return cleaned;
+  } catch {
+    return transcript;
+  }
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -195,11 +228,19 @@ export async function POST(req: Request): Promise<Response> {
       }
       if (!id) throw new Error("A part after the first requires the summary id.");
       const rowId = id;
-
-      const content = buildPartUserContent({ ...body, partIndex, partCount });
+      const rawSlice = body.transcript;
+      const proofread = body.proofread !== false;
 
       after(async () => {
         try {
+          // Optional: proofread this slice before summarizing it.
+          const slice = proofread ? await cleanTranscript(m, rawSlice) : rawSlice;
+          const content = buildPartUserContent({
+            ...body,
+            transcript: slice,
+            partIndex,
+            partCount,
+          });
           const html = await runAnthropic(PART_SYSTEM_PROMPT, content);
           if (!html.toLowerCase().includes("</html>")) {
             throw new Error("A part stopped early — please try again.");
@@ -234,7 +275,8 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    const content = buildGenerationUserContent(body);
+    const rawTranscript = body.transcript;
+    const proofread = body.proofread !== false;
 
     // Create the pending row first so the client gets an id to poll immediately.
     const pending = await insertSummaryServer({
@@ -247,6 +289,11 @@ export async function POST(req: Request): Promise<Response> {
 
     after(async () => {
       try {
+        // Optional: proofread the transcript before summarizing.
+        const transcript = proofread
+          ? await cleanTranscript(m, rawTranscript)
+          : rawTranscript;
+        const content = buildGenerationUserContent({ ...body, transcript });
         const raw = await runAnthropic(GENERATION_SYSTEM_PROMPT, content);
         if (!raw.toLowerCase().includes("</html>")) {
           throw new Error("Generation stopped early — please try again.");
