@@ -878,3 +878,70 @@ select:focus {
   font-size: 0.8rem;
   line-height: 1.4;
 }
+
+/* ---------- Cost panel ---------- */
+.panel.costs > summary {
+  font-weight: 600;
+  color: var(--accent);
+}
+.cost-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+.cost-totals > div {
+  flex: 1 1 calc(50% - 12px);
+  background: #fdfaf3;
+  border: 1px solid #e6dfd2;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cost-label {
+  font-size: 0.78rem;
+  color: #8c7d6b;
+}
+.cost-amount {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.cost-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.cost-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.cost-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.cost-title {
+  flex: 1;
+  font-size: 0.92rem;
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cost-amt {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+}
+.cost-sub {
+  margin-top: 2px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

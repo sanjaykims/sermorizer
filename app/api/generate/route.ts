@@ -19,7 +19,9 @@ import {
   mergePartServer,
   mergeProofreadPartServer,
   mergeSummaryDocServer,
+  addUsageServer,
 } from "@/lib/summaries-server";
+import type { SummaryUsage } from "@/lib/types";
 import { sendPushToAll } from "@/lib/push";
 import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
@@ -70,11 +72,13 @@ function stripFences(s: string): string {
  * only to assemble the full message without hitting the SDK's non-stream
  * timeout guard — nothing is streamed to a client here.
  */
+type RunResult = { text: string; usage: SummaryUsage };
+
 async function runAnthropic(
   system: string,
   content: UserContent,
   opts?: { maxTokens?: number; effort?: "low" | "medium" | "high"; model?: string },
-): Promise<string> {
+): Promise<RunResult> {
   const client = new Anthropic();
   const params = {
     model: opts?.model ?? MODEL,
@@ -97,7 +101,21 @@ async function runAnthropic(
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)
     .join("");
-  return stripFences(text);
+  const u = msg.usage as {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
+  return {
+    text: stripFences(text),
+    usage: {
+      input: u?.input_tokens ?? 0,
+      output: u?.output_tokens ?? 0,
+      cache_create: u?.cache_creation_input_tokens ?? 0,
+      cache_read: u?.cache_read_input_tokens ?? 0,
+    },
+  };
 }
 
 /**
@@ -111,17 +129,19 @@ async function runAnthropic(
 async function cleanTranscript(
   metadata: SermonMetadata,
   transcript: string,
-): Promise<string> {
+): Promise<{ text: string; usage: SummaryUsage }> {
   try {
     const content = buildProofreadUserContent(metadata, transcript);
-    const cleaned = await runAnthropic(PROOFREAD_SYSTEM_PROMPT, content, {
+    const { text, usage } = await runAnthropic(PROOFREAD_SYSTEM_PROMPT, content, {
       maxTokens: 32000,
       effort: "low",
     });
-    if (!cleaned || cleaned.length < transcript.length * 0.5) return transcript;
-    return cleaned;
+    if (!text || text.length < transcript.length * 0.5) {
+      return { text: transcript, usage };
+    }
+    return { text, usage };
   } catch {
-    return transcript;
+    return { text: transcript, usage: {} };
   }
 }
 
@@ -186,10 +206,11 @@ export async function POST(req: Request): Promise<Response> {
       // Detached background work — continues even if the client disconnects.
       after(async () => {
         try {
-          const raw = await runAnthropic(
+          const { text: raw, usage } = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
           );
+          await addUsageServer(id, usage);
           if (!raw.toLowerCase().includes("</html>")) {
             throw new Error("Translation stopped early — please try again.");
           }
@@ -250,7 +271,8 @@ export async function POST(req: Request): Promise<Response> {
         try {
           // cleanTranscript is best-effort; on failure it returns `slice` so
           // we always end up storing usable text for this index.
-          const cleaned = await cleanTranscript(m, slice);
+          const { text: cleaned, usage } = await cleanTranscript(m, slice);
+          await addUsageServer(rowId, usage);
           await mergeProofreadPartServer(rowId, String(partIndex), cleaned);
         } catch {
           // Fall back to the raw slice rather than fail the whole job — the
@@ -308,7 +330,8 @@ export async function POST(req: Request): Promise<Response> {
             partIndex,
             partCount,
           });
-          const html = await runAnthropic(PART_SYSTEM_PROMPT, content);
+          const { text: html, usage } = await runAnthropic(PART_SYSTEM_PROMPT, content);
+          await addUsageServer(rowId, usage);
           if (!html.toLowerCase().includes("</html>")) {
             throw new Error("A part stopped early — please try again.");
           }
@@ -391,11 +414,15 @@ export async function POST(req: Request): Promise<Response> {
     after(async () => {
       try {
         // Optional: proofread the transcript before summarizing.
-        const transcript = proofread
-          ? await cleanTranscript(m, rawTranscript)
-          : rawTranscript;
+        let transcript = rawTranscript;
+        if (proofread) {
+          const cleaned = await cleanTranscript(m, rawTranscript);
+          transcript = cleaned.text;
+          await addUsageServer(pending.id, cleaned.usage);
+        }
         const content = buildGenerationUserContent({ ...body, transcript });
-        const raw = await runAnthropic(GENERATION_SYSTEM_PROMPT, content);
+        const { text: raw, usage } = await runAnthropic(GENERATION_SYSTEM_PROMPT, content);
+        await addUsageServer(pending.id, usage);
         if (!raw.toLowerCase().includes("</html>")) {
           throw new Error("Generation stopped early — please try again.");
         }

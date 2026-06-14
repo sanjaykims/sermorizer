@@ -3,6 +3,15 @@
 export type Lang = "ko" | "en" | "zh";
 export type JobStatus = "generating" | "translating" | "done" | "error";
 
+/** Cumulative Anthropic token usage for one summary across every call we
+ *  made for it (proofread + parts + translations). */
+export type SummaryUsage = {
+  input?: number;
+  output?: number;
+  cache_create?: number;
+  cache_read?: number;
+};
+
 export type Summary = {
   id: string;
   title: string;
@@ -17,4 +26,6 @@ export type Summary = {
   /** For split generation w/ proofreading: each slice's cleaned transcript,
    *  keyed by part index. Populated by the proofread pre-phase. */
   proofreadParts?: Record<string, string>;
+  /** Accumulated token usage across all Claude calls for this summary. */
+  usage?: SummaryUsage;
 };

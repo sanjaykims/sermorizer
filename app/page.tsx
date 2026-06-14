@@ -13,6 +13,7 @@ import {
 import { ENHANCE_LAYOUT_CSS } from "@/lib/enhance";
 import { slug, escapeHtml, downloadBlob, extractHtmlTitle } from "@/lib/util";
 import { VAPID_PUBLIC_KEY } from "@/lib/push-key";
+import { usageToCost, formatCost } from "@/lib/pricing";
 import dynamic from "next/dynamic";
 import AuthGate from "./AuthGate";
 
@@ -1256,6 +1257,76 @@ function Sermorizer() {
           </ul>
         </details>
       )}
+
+      {history.length > 0 && (() => {
+        // Bucket the rows into "this month" and "all-time" totals so the
+        // user can see what they're spending without doing the math.
+        const tracked = history.filter((e) => e.usage && Object.keys(e.usage).length > 0);
+        if (tracked.length === 0) return null;
+        const now = new Date();
+        const ym = (t: number) => {
+          const d = new Date(t);
+          return d.getFullYear() * 12 + d.getMonth();
+        };
+        const thisYm = ym(now.getTime());
+        const totalAll = tracked.reduce((s, e) => s + usageToCost(e.usage), 0);
+        const totalMonth = tracked
+          .filter((e) => ym(e.createdAt) === thisYm)
+          .reduce((s, e) => s + usageToCost(e.usage), 0);
+        const monthLabel = now.toLocaleString(undefined, {
+          month: "long",
+          year: "numeric",
+        });
+        return (
+          <details className="panel costs">
+            <summary>
+              💰 Cost · {formatCost(totalMonth)} this month
+            </summary>
+            <p className="hist-note">
+              Actual Anthropic spend per summary, totaled from token usage.
+              Older summaries (before this update) don&apos;t have tokens
+              recorded and are shown as “—”.
+            </p>
+            <div className="cost-totals">
+              <div>
+                <span className="cost-label">{monthLabel}</span>
+                <span className="cost-amount">{formatCost(totalMonth)}</span>
+              </div>
+              <div>
+                <span className="cost-label">All time ({tracked.length})</span>
+                <span className="cost-amount">{formatCost(totalAll)}</span>
+              </div>
+            </div>
+            <ul className="cost-list">
+              {history.map((e) => {
+                const c = e.usage ? usageToCost(e.usage) : null;
+                return (
+                  <li key={e.id}>
+                    <div className="cost-row">
+                      <span className="cost-title">{e.title}</span>
+                      <span className="cost-amt">
+                        {c === null ? "—" : formatCost(c)}
+                      </span>
+                    </div>
+                    <div className="cost-sub">
+                      {formatEntryDate(e)}
+                      {e.usage?.input || e.usage?.output ? (
+                        <>
+                          {" · "}
+                          {((e.usage?.input ?? 0) + (e.usage?.cache_create ?? 0) + (e.usage?.cache_read ?? 0)).toLocaleString()}
+                          {" in / "}
+                          {(e.usage?.output ?? 0).toLocaleString()}
+                          {" out"}
+                        </>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
+        );
+      })()}
 
       {history.length > 0 && <BookPanel summaries={history} />}
 

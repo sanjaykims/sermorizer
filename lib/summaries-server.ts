@@ -3,7 +3,7 @@
    routed through an authenticated API route. */
 
 import { getSupabaseAdmin, withSupabaseRetry } from "./supabase-server";
-import type { JobStatus, Lang, Summary } from "./types";
+import type { JobStatus, Lang, Summary, SummaryUsage } from "./types";
 
 type Row = {
   id: string;
@@ -15,6 +15,7 @@ type Row = {
   error: string | null;
   parts: Record<string, string> | null;
   proofread_parts: Record<string, string> | null;
+  usage: SummaryUsage | null;
   created_at: string | null;
 };
 
@@ -30,6 +31,7 @@ function toSummary(r: Row): Summary {
     error: r.error ?? undefined,
     parts: r.parts ?? undefined,
     proofreadParts: r.proofread_parts ?? undefined,
+    usage: r.usage ?? undefined,
   };
 }
 
@@ -134,6 +136,28 @@ export async function mergeProofreadPartServer(
 /** Atomically merge one language's HTML into the row's `docs` map and mark it
  *  done. Avoids the read-modify-write race when EN and ZH translations of the
  *  same summary finish concurrently. */
+/** Atomically accumulate one Anthropic call's token usage onto the row.
+ *  Safe under the parallel proofread fan-out — the SQL function does an
+ *  additive update so no two writers can clobber each other. Never throws:
+ *  usage tracking must not be allowed to fail a generation. */
+export async function addUsageServer(id: string, u: SummaryUsage): Promise<void> {
+  try {
+    await withSupabaseRetry(async () => {
+      const supa = getSupabaseAdmin();
+      const { error } = await supa.rpc("add_summary_usage", {
+        p_id: id,
+        p_input: Math.max(0, u.input ?? 0),
+        p_output: Math.max(0, u.output ?? 0),
+        p_cache_create: Math.max(0, u.cache_create ?? 0),
+        p_cache_read: Math.max(0, u.cache_read ?? 0),
+      });
+      if (error) throw new Error(error.message);
+    });
+  } catch {
+    /* usage telemetry is best-effort */
+  }
+}
+
 export async function mergeSummaryDocServer(
   id: string,
   lang: Lang,
