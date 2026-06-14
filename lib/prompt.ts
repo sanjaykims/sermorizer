@@ -167,9 +167,19 @@ function buildInputBlocks(body: GenerationInput): ContentBlock[] {
 
   const notes = body.noteImages ?? [];
   if (notes.length > 0) {
+    const multi = notes.length > 1;
     content.push({
       type: "text",
-      text: `## Listener's handwritten note (${notes.length} file${notes.length > 1 ? "s" : ""})\nOCR / transcribe the Korean handwriting in the image(s) or PDF(s) below. Treat these notes as high-priority signal for which points mattered most to the listener, and elevate those points in the document.`,
+      text:
+        `## Listener's handwritten note (${notes.length} file${multi ? "s" : ""})\n` +
+        `OCR / transcribe the Korean handwriting in the image(s) or PDF(s) below. Treat these notes as high-priority signal for which points mattered most to the listener, and elevate those points in the document.\n` +
+        (multi
+          ? `\n**Page ordering — IMPORTANT.** When more than one image is provided, each image is a single handwritten page, and the listener wrote a **page number at the bottom of each page** (e.g. "1", "2", "3" or "1/4", "2/4"). The images may have been uploaded in any order. Before you read the notes:\n` +
+            `1. Look at the bottom of every page and identify its page number.\n` +
+            `2. Sort the pages by that number so you read them in the listener's intended order — earliest page first.\n` +
+            `3. Ignore the upload order; trust the page number written on each page.\n` +
+            `If a page has no visible number, place it where the handwriting flow tells you it belongs (continuation of the previous page's last sentence, etc.). Reconstruct the notes as one continuous train of thought before you cross-reference them with the transcript.`
+          : ""),
     });
     for (const im of notes) {
       content.push(mediaBlock(im));
