@@ -545,6 +545,24 @@ select:focus {
   font-size: 0.8rem;
 }
 
+.hist-tr {
+  border: 1px dashed var(--accent-soft);
+  background: transparent;
+  color: var(--accent);
+  border-radius: 7px;
+  padding: 10px 13px;
+  min-height: 44px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hist-tr:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .hist-del {
   margin-left: auto;
   border: none;

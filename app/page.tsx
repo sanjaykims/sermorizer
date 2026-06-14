@@ -375,6 +375,9 @@ function Sermorizer() {
   const [activeLang, setActiveLang] = useState<Lang>("ko");
   const [history, setHistory] = useState<Summary[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  // List-row translations: `${entryId}:${lang}` keys currently in flight.
+  const [entryTranslating, setEntryTranslating] = useState<Set<string>>(new Set());
+  const entryTranslateStartsRef = useRef<Map<string, number>>(new Map());
 
   const busy = status === "generating" || status === "translating";
   const previewRef = useRef<HTMLDivElement>(null);
@@ -574,6 +577,69 @@ function Sermorizer() {
     return () => document.removeEventListener("visibilitychange", onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Poll any list-row translations the user kicked off until each one is
+  // done, fails, or trips the per-job timeout. Runs alongside the main
+  // jobRef pipeline so the preview panel keeps working independently.
+  useEffect(() => {
+    if (entryTranslating.size === 0) return;
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      if (cancelled) return;
+      for (const key of Array.from(entryTranslating)) {
+        const [id, langStr] = key.split(":");
+        const lang = langStr as Lang;
+        const started = entryTranslateStartsRef.current.get(key) ?? Date.now();
+        if (Date.now() - started > STEP_TIMEOUT_MS) {
+          entryTranslateStartsRef.current.delete(key);
+          setEntryTranslating((prev) => {
+            const n = new Set(prev);
+            n.delete(key);
+            return n;
+          });
+          announce(
+            `${lang === "en" ? "English" : "Chinese"} translation took too long — please try again.`,
+            false,
+          );
+          continue;
+        }
+        try {
+          const row = await cloudGet(id);
+          if (!row) continue;
+          if (row.docs?.[lang]) {
+            entryTranslateStartsRef.current.delete(key);
+            setEntryTranslating((prev) => {
+              const n = new Set(prev);
+              n.delete(key);
+              return n;
+            });
+            setHistory((prev) => upsert(prev, row));
+            announce(
+              `Your ${lang === "en" ? "English" : "Chinese"} translation is ready.`,
+              true,
+            );
+          } else if (row.status === "error") {
+            entryTranslateStartsRef.current.delete(key);
+            setEntryTranslating((prev) => {
+              const n = new Set(prev);
+              n.delete(key);
+              return n;
+            });
+            announce(
+              `${lang === "en" ? "English" : "Chinese"} translation didn't finish — please try again.`,
+              false,
+            );
+          }
+        } catch {
+          /* transient network error — keep polling */
+        }
+      }
+    }, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [entryTranslating]);
 
 
   function setField(key: keyof Metadata, value: string) {
@@ -894,9 +960,75 @@ function Sermorizer() {
     );
   }
 
+  /** Kick off a translation of a PAST summary in the history list. The Korean
+   *  HTML is the source of truth; the new language is appended to the row.
+   *  Runs alongside any active job — the user can keep working with what's on
+   *  the preview panel. Multiple list-row translations can be in flight at
+   *  once across DIFFERENT entries; we serialize per-entry to avoid the
+   *  read-merge-write race when EN and ZH would both write to the same row. */
+  async function translateEntry(entry: Summary, lang: "en" | "zh") {
+    const key = `${entry.id}:${lang}`;
+    if (entryTranslating.has(key)) return;
+    if (entry.docs?.[lang]) return;
+
+    let ko = entry.docs?.ko;
+    if (!ko) {
+      try {
+        const r = await cloudGet(entry.id);
+        ko = r?.docs?.ko;
+      } catch {
+        /* leave undefined */
+      }
+    }
+    if (!ko) {
+      setStatusMsg(
+        "This summary has no Korean version to translate from — please re-generate it first.",
+      );
+      return;
+    }
+
+    primeAlerts();
+    entryTranslateStartsRef.current.set(key, Date.now());
+    setEntryTranslating((prev) => new Set(prev).add(key));
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "translate",
+          id: entry.id,
+          language: lang,
+          sourceHtml: ko,
+        }),
+      });
+      if (!res.ok) throw new Error(await readErr(res));
+      await res.json();
+    } catch (e) {
+      entryTranslateStartsRef.current.delete(key);
+      setEntryTranslating((prev) => {
+        const n = new Set(prev);
+        n.delete(key);
+        return n;
+      });
+      announce(
+        e instanceof Error
+          ? e.message
+          : "Translation didn't start — please try again.",
+        false,
+      );
+    }
+  }
+
   function deleteEntry(id: string) {
     setHistory((prev) => prev.filter((e) => e.id !== id));
     if (cloudEnabled()) cloudDelete(id).catch(() => {});
+    // Clear any list-row translations still tracked for this id.
+    setEntryTranslating((prev) => {
+      const n = new Set<string>();
+      for (const k of prev) if (!k.startsWith(`${id}:`)) n.add(k);
+      return n;
+    });
     if (currentId === id) {
       stopPolling();
       setCurrentId(null);
@@ -979,6 +1111,32 @@ function Sermorizer() {
                     ) : (
                       <span className="hist-tag">no file</span>
                     )}
+                    {/* Translate buttons for languages this row doesn't yet
+                        have — only when a Korean source exists. We serialize
+                        per-entry (disable the other target while one is in
+                        flight) so concurrent docs writes can't race. */}
+                    {e.docs?.ko && !inProgress &&
+                      (["en", "zh"] as const).map((l) => {
+                        if (e.docs?.[l]) return null;
+                        const k = `${e.id}:${l}`;
+                        const pending = entryTranslating.has(k);
+                        const otherPending = entryTranslating.has(
+                          `${e.id}:${l === "en" ? "zh" : "en"}`,
+                        );
+                        return (
+                          <button
+                            key={`t-${l}`}
+                            type="button"
+                            className="hist-tr"
+                            disabled={pending || otherPending}
+                            onClick={() => translateEntry(e, l)}
+                          >
+                            {pending
+                              ? `Translating ${l.toUpperCase()}…`
+                              : `+ ${l.toUpperCase()}`}
+                          </button>
+                        );
+                      })}
                     <button
                       type="button"
                       className="hist-del"
