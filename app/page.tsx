@@ -365,9 +365,10 @@ function Sermorizer() {
   const [transcript, setTranscript] = useState<{ name: string; text: string } | null>(
     null,
   );
-  // Have Claude proofread the Clova Note transcript before summarizing. On by
-  // default; turning it off is faster/cheaper when the transcript is already clean.
-  const [proofread, setProofread] = useState<boolean>(true);
+  // Have Claude proofread the Clova Note transcript before summarizing. Off by
+  // default — the Clova review + the summary step's own correction already
+  // handle most ASR errors; turn it on for an unusually rough transcript.
+  const [proofread, setProofread] = useState<boolean>(false);
 
   const [status, setStatus] = useState<Status>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -1355,12 +1356,12 @@ function Sermorizer() {
             <span>
               <strong>Proofread the transcript first</strong>
               <small>
-                Claude cleans up the Clova Note transcript — fixing misheard
-                words, the pastor&apos;s name, and Bible references — before
-                writing the summary. More accurate; takes a bit longer.
-                For very long sermons the proofreading runs in parallel
-                across parts, so the extra wait is roughly the same as one
-                part&apos;s worth.
+                Optional. Claude cleans up the Clova Note transcript — fixing
+                misheard words, the pastor&apos;s name, and Bible references —
+                before writing the summary. Turn it on for an unusually rough
+                transcript; it roughly doubles the cost and adds some time. For
+                very long sermons the proofreading runs in parallel across
+                parts, so the extra wait is about one part&apos;s worth.
               </small>
             </span>
           </label>
