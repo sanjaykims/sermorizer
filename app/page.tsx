@@ -1261,6 +1261,8 @@ function Sermorizer() {
               type="text"
               value={meta.title}
               placeholder="The title of the sermon"
+              autoCapitalize="none"
+              spellCheck={false}
               onChange={(e) => setField("title", e.target.value)}
             />
           </div>
@@ -1270,6 +1272,8 @@ function Sermorizer() {
               <input
                 type="text"
                 value={meta.preacher}
+                autoCapitalize="none"
+                spellCheck={false}
                 onChange={(e) => setField("preacher", e.target.value)}
               />
             </div>
@@ -1278,7 +1282,9 @@ function Sermorizer() {
               <input
                 type="text"
                 value={meta.scripture}
-                placeholder="e.g. Exodus 20:12"
+                placeholder="e.g. 출애굽기 20:12"
+                autoCapitalize="none"
+                spellCheck={false}
                 onChange={(e) => setField("scripture", e.target.value)}
               />
             </div>
@@ -1291,7 +1297,8 @@ function Sermorizer() {
               <input
                 type="text"
                 value={meta.date}
-                placeholder="2026-05-17"
+                placeholder="2026-05-17 (또는 2026.05.17)"
+                inputMode="numeric"
                 onChange={(e) => setField("date", e.target.value)}
               />
             </div>
@@ -1314,6 +1321,8 @@ function Sermorizer() {
               type="text"
               value={meta.occasion}
               placeholder="e.g. Teachers' Sunday, Lent, Easter"
+              autoCapitalize="none"
+              spellCheck={false}
               onChange={(e) => setField("occasion", e.target.value)}
             />
           </div>
