@@ -651,6 +651,20 @@ function Sermorizer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // If notification permission is already granted, register for web-push as
+  // soon as the app opens — subscribing doesn't need a user gesture once
+  // permission is granted, so the phone is ready for completion alerts
+  // without first tapping Generate.
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    ) {
+      void registerPush();
+    }
+  }, []);
+
   // Poll any list-row translations the user kicked off until each one is
   // done, fails, or trips the per-job timeout. Runs alongside the main
   // jobRef pipeline so the preview panel keeps working independently.
