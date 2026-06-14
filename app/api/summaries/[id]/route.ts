@@ -46,12 +46,68 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
   }
 }
 
+// Per-language HTML cap — generous for a sermon document, but bounds a
+// malicious or buggy client from writing multi-MB blobs.
+const MAX_DOC_HTML = 1_500_000;
+const ALLOWED_STATUS: ReadonlySet<string> = new Set([
+  "generating",
+  "translating",
+  "done",
+  "error",
+]);
+
 export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
   const guard = await gate();
   if (guard) return guard;
   try {
     const { id } = await ctx.params;
-    const patch = (await req.json()) as PatchBody;
+    const raw = (await req.json()) as Record<string, unknown>;
+
+    // Whitelist fields and validate shapes/sizes — never pass the body straight
+    // through to the DB.
+    const patch: PatchBody = {};
+    if (typeof raw.title === "string") patch.title = raw.title.slice(0, 500);
+    if (typeof raw.status === "string" && ALLOWED_STATUS.has(raw.status)) {
+      patch.status = raw.status as JobStatus;
+    }
+    if (raw.error === null || typeof raw.error === "string") {
+      patch.error = raw.error === null ? null : (raw.error as string).slice(0, 2000);
+    }
+    if (raw.docs && typeof raw.docs === "object") {
+      const docs: Partial<Record<Lang, string>> = {};
+      for (const lang of ["ko", "en", "zh"] as Lang[]) {
+        const v = (raw.docs as Record<string, unknown>)[lang];
+        if (typeof v === "string") {
+          if (v.length > MAX_DOC_HTML) {
+            return Response.json(
+              { error: `The ${lang} document is too large.` },
+              { status: 413 },
+            );
+          }
+          docs[lang] = v;
+        }
+      }
+      patch.docs = docs;
+    }
+    if (raw.parts && typeof raw.parts === "object") {
+      const parts: Record<string, string> = {};
+      let total = 0;
+      for (const [k, v] of Object.entries(raw.parts as Record<string, unknown>)) {
+        if (typeof v === "string") {
+          total += v.length;
+          parts[k] = v;
+        }
+      }
+      if (total > MAX_DOC_HTML * 4) {
+        return Response.json({ error: "Parts payload is too large." }, { status: 413 });
+      }
+      patch.parts = parts;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return Response.json({ error: "No valid fields to update." }, { status: 400 });
+    }
+
     await updateSummaryServer(id, patch);
     return Response.json({ ok: true });
   } catch (e) {

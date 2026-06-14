@@ -33,12 +33,16 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Stop Samsung Chrome pull-to-refresh from reloading mid-job. */
+  overscroll-behavior-y: contain;
 }
 
 .wrap {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 32px 20px 80px;
+  /* Respect notches/punch-holes and the bottom nav bar in standalone PWA. */
+  padding: max(32px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(80px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
 .app-header {
@@ -521,6 +525,16 @@ select:focus {
 
 .hist-actions {
   display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Download + translate buttons wrap among themselves; the delete ✕ stays
+   pinned at the end so it can't slide under another button on a narrow phone. */
+.hist-btns {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
@@ -564,12 +578,14 @@ select:focus {
 }
 
 .hist-del {
-  margin-left: auto;
+  flex: 0 0 auto;
   border: none;
   background: transparent;
   color: var(--danger);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px 10px;
   -webkit-tap-highlight-color: transparent;
 }

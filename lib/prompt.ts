@@ -55,7 +55,7 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 ## Inputs you will receive (in the user message)
 1. Sermon metadata — title, preacher, scripture, optionally date / occasion / service type.
 2. A color-theme hint.
-3. The listener's handwritten note as image(s) — Korean handwriting. OCR/transcribe it yourself. It reveals which points the listener found most important.
+3. The listener's handwritten note as image(s) or PDF page(s) — Korean handwriting. OCR/transcribe it yourself. It reveals which points the listener found most important.
 4. Optionally, a photo of the printed order of service (주보).
 5. The recorded sermon transcript — a long, messy Clova Note ASR transcript (~60-80 minutes of speech, often 400-800+ lines). It contains misheard words. Interpret it charitably; never quote verbatim ASR noise; reconstruct what the preacher actually said.
 
@@ -85,6 +85,7 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - Self-contained output: no CDN images, no external file references. If an image is genuinely essential (e.g. a map), embed it as a base64 \`data:\` URI. (Loading Google Fonts via an \`@import\` inside the \`<style>\` block is allowed — that is the one permitted external reference.)
 - Content fidelity: preserve all theology and pastoral application accurately. Do NOT invent content that is not present in the sources.
 - Child-safe, all-ages tone: warm, reverent, and appropriate for every age in the congregation.
+- Preserve the preacher's frank treatment of sin, suffering, illness, loss, grief, and death. Reverent and age-appropriate does NOT mean softened, vague, or sanitized — keep the message's actual weight and conviction.
 
 ## Output document specification
 - A single self-contained \`.html\` file. \`<html lang="ko">\`. Include a mobile \`<meta name="viewport" content="width=device-width, initial-scale=1">\`.
@@ -104,7 +105,7 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - Zero external \`<img src>\` references — images are base64 \`data:\` URIs or absent.
 - The handwritten-note emphases are clearly elevated.
 - The document contains ONLY the sermon — no order of service, prayers, liturgy, hymns, announcements, or benediction.
-- The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end.
+- The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end. If you used \`<ol>\` or \`<ul>\` anywhere for the at-a-glance summary, replace it with the \`.sm-grid\` of \`.sm-item\` cards.
 - \`<html lang="ko">\` and the Korean fonts are in place.
 - Mobile layout works: ~760px max width, sticky TOC, readable tap targets, comfortable line-height.
 
@@ -174,7 +175,7 @@ function buildInputBlocks(body: GenerationInput): ContentBlock[] {
         `## Listener's handwritten note (${notes.length} file${multi ? "s" : ""})\n` +
         `OCR / transcribe the Korean handwriting in the image(s) or PDF(s) below. Treat these notes as high-priority signal for which points mattered most to the listener, and elevate those points in the document.\n` +
         (multi
-          ? `\n**Page ordering — IMPORTANT.** When more than one image is provided, each image is a single handwritten page, and the listener wrote a **page number at the bottom of each page** (e.g. "1", "2", "3" or "1/4", "2/4"). The images may have been uploaded in any order. Before you read the notes:\n` +
+          ? `\n**Page ordering — IMPORTANT.** When more than one image is provided, each image is a single handwritten page, and the listener usually wrote a **page number at the bottom of each page**. Look for it in any common form — Arabic ("1", "2", "1/4", "2/4"), circled (①, ②, ③), parenthesized ("(1)", "1)"), or Korean ("1쪽", "p.1", "첫째 장"). The images may have been uploaded in any order. Before you read the notes:\n` +
             `1. Look at the bottom of every page and identify its page number.\n` +
             `2. Sort the pages by that number so you read them in the listener's intended order — earliest page first.\n` +
             `3. Ignore the upload order; trust the page number written on each page.\n` +
@@ -233,6 +234,7 @@ Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Outp
 - Do NOT write the table of contents links or the "at a glance" summary — the app fills those in after stitching. You only provide the CSS for them (Part 1) and the sections themselves.
 - If this is **Part 1**: also produce the full page shell — \`<html lang="ko">\`, \`<head>\` with the \`<style>\` block and Google-Fonts \`@import\` (Gowun Batang + Noto Serif KR), a gradient \`.header\` with the title/preacher/scripture, a \`.key-verse\` block, an \`.info-card\`, an **empty** \`.toc\` element, then the \`<div id="sermon-body">\`, then a \`.footer\`. In the \`<style>\`, you MUST define: (a) the table of contents as a sticky, horizontally-scrollable **tab bar** — \`.toc{position:sticky;top:0;overflow-x:auto;white-space:nowrap;display:flex}\` plus tab-styled \`.toc a\`; and (b) the at-a-glance summary card styles — \`.summary\`, \`.sm-grid\`, \`.sm-item\`, a numbered \`.sm-num\` badge, and \`.sm-text\` — all in the theme colors. The app injects the \`.toc\` links and the \`.sm-item\` cards after stitching, so they just need to be styled. Build a cohesive liturgical color theme from the theme hint.
 - If this is **Part 2 or later**: still output a complete valid HTML document with the same \`<style>\` and structure, but its header/footer will be ignored — only its \`#sermon-body\` sections are used. Continue the sermon's flow; do NOT re-introduce the sermon or repeat earlier sections.
+- **CRITICAL (every part):** put ALL of this part's thematic \`<section>\`s INSIDE \`<div id="sermon-body"> … </div>\`. Any \`.header\`, \`.key-verse\`, \`.info-card\`, or \`.footer\` you include to make a valid document MUST be OUTSIDE \`#sermon-body\` — those are discarded. Never place a \`<section>\` outside \`#sermon-body\`, or it will be silently lost when the parts are stitched.
 
 ## Scope and rules (same as always)
 - **Sermon only.** Only the preached message — no order of service, prayers, liturgy, hymns, announcements, or benediction. Ignore any such material in the transcript slice.

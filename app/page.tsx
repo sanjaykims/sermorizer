@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { THEMES } from "@/lib/themes";
 import {
-  cloudEnabled,
   cloudList,
   cloudGet,
   cloudUpdate,
@@ -13,6 +12,7 @@ import {
 } from "@/lib/summaries";
 import { ENHANCE_LAYOUT_CSS } from "@/lib/enhance";
 import { slug, escapeHtml, downloadBlob, extractHtmlTitle } from "@/lib/util";
+import { VAPID_PUBLIC_KEY } from "@/lib/push-key";
 import dynamic from "next/dynamic";
 import AuthGate from "./AuthGate";
 
@@ -31,6 +31,8 @@ type Metadata = {
 };
 
 type ImagePayload = { media_type: string; data: string };
+
+const LANG_LABEL: Record<Lang, string> = { ko: "Korean", en: "English", zh: "中文" };
 
 const EMPTY_META: Metadata = {
   title: "",
@@ -131,6 +133,53 @@ function upsert(list: Summary[], row: Summary): Summary[] {
 const APP_TITLE = "Sermorizer — Sermon Summary Tool";
 let audioCtx: AudioContext | null = null;
 
+/** Decode a base64url VAPID key to the bytes the Push API expects. */
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const buffer = new ArrayBuffer(raw.length);
+  const out = new Uint8Array(buffer);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+/** Register the service worker and subscribe to web-push so the server can
+ *  notify the phone even when the app is closed. Best-effort: silently does
+ *  nothing if unsupported, denied, or push isn't configured server-side. */
+async function registerPush() {
+  try {
+    if (
+      typeof navigator === "undefined" ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window) ||
+      Notification.permission !== "granted"
+    ) {
+      return;
+    }
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const existing = await reg.pushManager.getSubscription();
+    const sub =
+      existing ??
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+      }));
+    const json = sub.toJSON() as {
+      endpoint?: string;
+      keys?: { p256dh?: string; auth?: string };
+    };
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ subscription: json }),
+    });
+  } catch {
+    /* push is optional — in-app alerts still fire */
+  }
+}
+
 /** Create/resume the audio context during a user gesture so a chime can play later. */
 function primeAlerts() {
   try {
@@ -147,7 +196,11 @@ function primeAlerts() {
   }
   try {
     if ("Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission();
+      void Notification.requestPermission().then((perm) => {
+        if (perm === "granted") void registerPush();
+      });
+    } else if ("Notification" in window && Notification.permission === "granted") {
+      void registerPush();
     }
   } catch {
     /* notifications unavailable */
@@ -158,6 +211,9 @@ function playChime(ok: boolean) {
   if (!audioCtx) return;
   try {
     const ctx = audioCtx;
+    // Android suspends the context when backgrounded; resume before scheduling
+    // or the chime silently never plays on return to the foreground.
+    if (ctx.state === "suspended") void ctx.resume();
     const now = ctx.currentTime;
     const notes = ok ? [880, 1174.66] : [392, 311.13];
     notes.forEach((freq, i) => {
@@ -192,7 +248,7 @@ function announce(message: string, ok: boolean) {
   if (typeof document !== "undefined" && document.visibilityState === "hidden") {
     try {
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Sermorizer", { body: message, icon: "/icon" });
+        new Notification("Sermorizer", { body: message, icon: "/icon-192" });
       }
     } catch {
       /* ignore */
@@ -558,6 +614,22 @@ function Sermorizer() {
           kind: pending.status === "translating" ? "translate" : "generate",
         });
       }
+      // Resume any OTHER in-flight list-row translations (the app was closed
+      // mid-translate). We don't know which language each was, so we watch the
+      // missing one(s); the polling effect also settles on status done/error.
+      const resumed = new Set<string>();
+      for (const e of list) {
+        if (e.id === pending?.id) continue;
+        if (e.status !== "translating") continue;
+        if (!e.docs?.ko) continue;
+        const missing = (["en", "zh"] as const).find((l) => !e.docs?.[l]);
+        if (missing) {
+          const key = `${e.id}:${missing}`;
+          resumed.add(key);
+          entryTranslateStartsRef.current.set(key, Date.now());
+        }
+      }
+      if (resumed.size) setEntryTranslating((prev) => new Set([...prev, ...resumed]));
     };
     void init();
     return () => {
@@ -607,25 +679,26 @@ function Sermorizer() {
         try {
           const row = await cloudGet(id);
           if (!row) continue;
-          if (row.docs?.[lang]) {
+          const clear = () => {
             entryTranslateStartsRef.current.delete(key);
             setEntryTranslating((prev) => {
               const n = new Set(prev);
               n.delete(key);
               return n;
             });
+          };
+          // Settle on the watched language arriving, OR the row reaching a
+          // terminal state (covers a resumed translation whose language we
+          // had to guess).
+          if (row.docs?.[lang] || row.status === "done") {
+            clear();
             setHistory((prev) => upsert(prev, row));
             announce(
               `Your ${lang === "en" ? "English" : "Chinese"} translation is ready.`,
               true,
             );
           } else if (row.status === "error") {
-            entryTranslateStartsRef.current.delete(key);
-            setEntryTranslating((prev) => {
-              const n = new Set(prev);
-              n.delete(key);
-              return n;
-            });
+            clear();
             announce(
               `${lang === "en" ? "English" : "Chinese"} translation didn't finish — please try again.`,
               false,
@@ -729,16 +802,7 @@ function Sermorizer() {
           proofread,
         }),
       });
-      if (!res.ok) {
-        let msg = `Request failed (HTTP ${res.status}).`;
-        try {
-          const j = await res.json();
-          if (j?.error) msg = j.error;
-        } catch {
-          /* keep default */
-        }
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(await readErr(res));
       const { id } = (await res.json()) as { id: string };
       setCurrentId(id);
       currentIdRef.current = id;
@@ -866,14 +930,40 @@ function Sermorizer() {
       await waitForRow(id, (r) => Boolean(r.parts?.[String(k)]));
     }
 
+    // The server stitches the parts the moment the last one lands (so a long
+    // sermon finishes even if the app was closed). Wait briefly for it; if the
+    // server didn't finalize, stitch on the client as a fallback.
     setStatusMsg("Assembling the parts into one document…");
-    const finalRow = await cloudGet(id!);
-    const combined = stitchParts(finalRow?.parts ?? {}, n);
-    if (!combined.toLowerCase().includes("</html>")) {
-      throw new Error("Could not assemble the parts. Please try again.");
+    let combined = "";
+    let finalRow: Summary | null = null;
+    try {
+      finalRow = await waitForRow(id!, (r) => Boolean(r.docs?.ko), 60_000);
+      combined = finalRow.docs?.ko ?? "";
+    } catch {
+      /* server didn't finalize in time — fall back to client stitch below */
     }
-    const title = meta.title.trim() || extractHtmlTitle(combined) || "Untitled sermon";
-    await cloudUpdate(id!, { docs: { ko: combined }, title, status: "done", error: null });
+    if (!combined) {
+      const row2 = await cloudGet(id!);
+      combined = stitchParts(row2?.parts ?? {}, n);
+      if (!combined.toLowerCase().includes("</html>")) {
+        throw new Error("Could not assemble the parts. Please try again.");
+      }
+      const title = meta.title.trim() || extractHtmlTitle(combined) || "Untitled sermon";
+      await cloudUpdate(id!, {
+        docs: { ko: combined },
+        title,
+        status: "done",
+        error: null,
+        parts: {},
+      });
+      finalRow = row2;
+    }
+
+    const finalTitle =
+      finalRow?.title?.trim() ||
+      meta.title.trim() ||
+      extractHtmlTitle(combined) ||
+      "Untitled sermon";
 
     setDocs({ ko: combined });
     setActiveLang("ko");
@@ -883,7 +973,7 @@ function Sermorizer() {
     setHistory((prev) =>
       upsert(prev, {
         id: id!,
-        title,
+        title: finalTitle,
         createdAt: finalRow?.createdAt ?? Date.now(),
         serviceDate: meta.date.trim() || undefined,
         occasion: meta.occasion.trim() || undefined,
@@ -919,16 +1009,7 @@ function Sermorizer() {
           sourceHtml: docs.ko,
         }),
       });
-      if (!res.ok) {
-        let msg = `Request failed (HTTP ${res.status}).`;
-        try {
-          const j = await res.json();
-          if (j?.error) msg = j.error;
-        } catch {
-          /* keep default */
-        }
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(await readErr(res));
       await res.json();
       setStatusMsg(
         "Translating on the server — you can switch away; it keeps working and will alert you when done.",
@@ -1022,8 +1103,16 @@ function Sermorizer() {
   }
 
   function deleteEntry(id: string) {
+    const entry = history.find((e) => e.id === id);
+    const label = entry?.title ? `“${entry.title}”` : "this summary";
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete ${label}? This permanently removes it and its translations.`)
+    ) {
+      return;
+    }
     setHistory((prev) => prev.filter((e) => e.id !== id));
-    if (cloudEnabled()) cloudDelete(id).catch(() => {});
+    cloudDelete(id).catch(() => {});
     // Clear any list-row translations still tracked for this id.
     setEntryTranslating((prev) => {
       const n = new Set<string>();
@@ -1092,52 +1181,52 @@ function Sermorizer() {
                     <span className="hist-date">{formatEntryDate(e)}</span>
                   </div>
                   <div className="hist-actions">
-                    {/* Show downloads whenever files exist — even if the row was
-                        mistakenly marked failed — so nothing usable is hidden. */}
-                    {langs.length > 0 ? (
-                      langs.map((l) => (
-                        <button
-                          key={l}
-                          type="button"
-                          className="hist-dl"
-                          onClick={() => downloadEntry(e, l)}
-                        >
-                          ⬇ {l.toUpperCase()}
-                        </button>
-                      ))
-                    ) : inProgress ? (
-                      <span className="hist-tag">generating…</span>
-                    ) : e.status === "error" ? (
-                      <span className="hist-tag">failed</span>
-                    ) : (
-                      <span className="hist-tag">no file</span>
-                    )}
-                    {/* Translate buttons for languages this row doesn't yet
-                        have — only when a Korean source exists. We serialize
-                        per-entry (disable the other target while one is in
-                        flight) so concurrent docs writes can't race. */}
-                    {e.docs?.ko && !inProgress &&
-                      (["en", "zh"] as const).map((l) => {
-                        if (e.docs?.[l]) return null;
-                        const k = `${e.id}:${l}`;
-                        const pending = entryTranslating.has(k);
-                        const otherPending = entryTranslating.has(
-                          `${e.id}:${l === "en" ? "zh" : "en"}`,
-                        );
-                        return (
+                    <div className="hist-btns">
+                      {/* Show downloads whenever files exist — even if the row was
+                          mistakenly marked failed — so nothing usable is hidden. */}
+                      {langs.length > 0 ? (
+                        langs.map((l) => (
                           <button
-                            key={`t-${l}`}
+                            key={l}
                             type="button"
-                            className="hist-tr"
-                            disabled={pending || otherPending}
-                            onClick={() => translateEntry(e, l)}
+                            className="hist-dl"
+                            onClick={() => downloadEntry(e, l)}
                           >
-                            {pending
-                              ? `Translating ${l.toUpperCase()}…`
-                              : `+ ${l.toUpperCase()}`}
+                            ⬇ {LANG_LABEL[l]}
                           </button>
-                        );
-                      })}
+                        ))
+                      ) : inProgress ? (
+                        <span className="hist-tag">generating…</span>
+                      ) : e.status === "error" ? (
+                        <span className="hist-tag">failed</span>
+                      ) : (
+                        <span className="hist-tag">no file</span>
+                      )}
+                      {/* Translate buttons for languages this row doesn't yet
+                          have — only when a Korean source exists. We serialize
+                          per-entry (disable the other target while one is in
+                          flight) so concurrent docs writes can't race. */}
+                      {e.docs?.ko && !inProgress &&
+                        (["en", "zh"] as const).map((l) => {
+                          if (e.docs?.[l]) return null;
+                          const k = `${e.id}:${l}`;
+                          const pending = entryTranslating.has(k);
+                          const otherPending = entryTranslating.has(
+                            `${e.id}:${l === "en" ? "zh" : "en"}`,
+                          );
+                          return (
+                            <button
+                              key={`t-${l}`}
+                              type="button"
+                              className="hist-tr"
+                              disabled={pending || otherPending}
+                              onClick={() => translateEntry(e, l)}
+                            >
+                              {pending ? "Translating…" : `+ ${LANG_LABEL[l]}`}
+                            </button>
+                          );
+                        })}
+                    </div>
                     <button
                       type="button"
                       className="hist-del"

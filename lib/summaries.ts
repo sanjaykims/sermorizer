@@ -3,41 +3,13 @@
    server-side service-role client. The session cookie travels automatically. */
 
 import type { JobStatus, Lang, Summary } from "./types";
+import { apiFetch } from "./api";
 
 export type { JobStatus, Lang, Summary };
 
-/** Always available — the browser uses the API, which is gated server-side. */
-export function cloudEnabled(): boolean {
-  return true;
-}
-
-async function api<T>(
-  path: string,
-  init?: { method?: string; body?: unknown },
-): Promise<T> {
-  const res = await fetch(path, {
-    method: init?.method ?? "GET",
-    headers: init?.body ? { "Content-Type": "application/json" } : undefined,
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-    credentials: "same-origin",
-  });
-  if (!res.ok) {
-    let msg = `Request failed (HTTP ${res.status}).`;
-    try {
-      const j = (await res.json()) as { error?: string };
-      if (j?.error) msg = j.error;
-    } catch {
-      /* keep default */
-    }
-    throw new Error(msg);
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
-
 export async function cloudList(): Promise<Summary[]> {
   try {
-    const { summaries } = await api<{ summaries: Summary[] }>("/api/summaries");
+    const { summaries } = await apiFetch<{ summaries: Summary[] }>("/api/summaries");
     return summaries;
   } catch {
     return [];
@@ -46,7 +18,7 @@ export async function cloudList(): Promise<Summary[]> {
 
 export async function cloudGet(id: string): Promise<Summary | null> {
   try {
-    const { summary } = await api<{ summary: Summary | null }>(
+    const { summary } = await apiFetch<{ summary: Summary | null }>(
       `/api/summaries/${encodeURIComponent(id)}`,
     );
     return summary;
@@ -65,14 +37,14 @@ export async function cloudUpdate(
     parts?: Record<string, string>;
   },
 ): Promise<void> {
-  await api<{ ok: true }>(`/api/summaries/${encodeURIComponent(id)}`, {
+  await apiFetch<{ ok: true }>(`/api/summaries/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: patch,
   });
 }
 
 export async function cloudDelete(id: string): Promise<void> {
-  await api<{ ok: true }>(`/api/summaries/${encodeURIComponent(id)}`, {
+  await apiFetch<{ ok: true }>(`/api/summaries/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }

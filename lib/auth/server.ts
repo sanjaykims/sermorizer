@@ -2,7 +2,7 @@
    cookies, and expose helpers for routes to gate requests. */
 
 import { cookies } from "next/headers";
-import { getSupabaseAdmin } from "../supabase-server";
+import { getSupabaseAdmin, withSupabaseRetry } from "../supabase-server";
 import { newSecret, newRandomId, signToken, verifyToken } from "./session";
 
 export const SESSION_COOKIE = "sermorizer_session";
@@ -22,52 +22,64 @@ export type AuthConfig = {
   updated_at: string;
 };
 
-/** Read (and lazily initialise) the singleton auth_config row. */
+/** Read (and lazily initialise) the singleton auth_config row. Wrapped in
+ *  withSupabaseRetry so a cold-start clock skew on the very first gated
+ *  request doesn't spuriously 500. */
 export async function getAuthConfig(): Promise<AuthConfig> {
-  const supa = getSupabaseAdmin();
-  const existing = await supa
-    .from("auth_config")
-    .select("*")
-    .eq("id", "singleton")
-    .maybeSingle();
-  if (existing.error) throw new Error(existing.error.message);
-  if (existing.data) {
-    // Backfill webauthn_user_id if a pre-migration row exists without it.
-    if (!existing.data.webauthn_user_id) {
-      const userId = newRandomId(16);
-      const upd = await supa
-        .from("auth_config")
-        .update({ webauthn_user_id: userId })
-        .eq("id", "singleton")
-        .select()
-        .single();
-      if (upd.error) throw new Error(upd.error.message);
-      return upd.data as AuthConfig;
+  return withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const existing = await supa
+      .from("auth_config")
+      .select("*")
+      .eq("id", "singleton")
+      .maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data) {
+      // Backfill webauthn_user_id if a pre-migration row lacks it. The
+      // conditional update (.is null) only writes when still empty, so two
+      // concurrent requests can't both win — we then re-read to return
+      // whichever value actually landed.
+      if (!existing.data.webauthn_user_id) {
+        const userId = newRandomId(16);
+        const upd = await supa
+          .from("auth_config")
+          .update({ webauthn_user_id: userId })
+          .eq("id", "singleton")
+          .is("webauthn_user_id", null);
+        if (upd.error) throw new Error(upd.error.message);
+        const re = await supa
+          .from("auth_config")
+          .select("*")
+          .eq("id", "singleton")
+          .single();
+        if (re.error) throw new Error(re.error.message);
+        return re.data as AuthConfig;
+      }
+      return existing.data as AuthConfig;
     }
-    return existing.data as AuthConfig;
-  }
-  const fresh = {
-    id: "singleton",
-    session_secret: newSecret(),
-    webauthn_user_id: newRandomId(16),
-  };
-  // Use upsert(ignoreDuplicates) so concurrent first-time requests don't
-  // collide on the singleton primary-key. If we lose the race the insert
-  // returns no row — fall back to selecting the winner's row.
-  const insert = await supa
-    .from("auth_config")
-    .upsert(fresh, { onConflict: "id", ignoreDuplicates: true })
-    .select()
-    .maybeSingle();
-  if (insert.error) throw new Error(insert.error.message);
-  if (insert.data) return insert.data as AuthConfig;
-  const after = await supa
-    .from("auth_config")
-    .select("*")
-    .eq("id", "singleton")
-    .single();
-  if (after.error) throw new Error(after.error.message);
-  return after.data as AuthConfig;
+    const fresh = {
+      id: "singleton",
+      session_secret: newSecret(),
+      webauthn_user_id: newRandomId(16),
+    };
+    // Use upsert(ignoreDuplicates) so concurrent first-time requests don't
+    // collide on the singleton primary-key. If we lose the race the insert
+    // returns no row — fall back to selecting the winner's row.
+    const insert = await supa
+      .from("auth_config")
+      .upsert(fresh, { onConflict: "id", ignoreDuplicates: true })
+      .select()
+      .maybeSingle();
+    if (insert.error) throw new Error(insert.error.message);
+    if (insert.data) return insert.data as AuthConfig;
+    const after = await supa
+      .from("auth_config")
+      .select("*")
+      .eq("id", "singleton")
+      .single();
+    if (after.error) throw new Error(after.error.message);
+    return after.data as AuthConfig;
+  });
 }
 
 /** Has the install been set up (at least a passcode configured)? */
@@ -113,7 +125,7 @@ export async function setSessionCookie(): Promise<void> {
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });
@@ -123,7 +135,7 @@ export async function clearSessionCookie(): Promise<void> {
   (await cookies()).set(SESSION_COOKIE, "", {
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: 0,
   });
@@ -139,7 +151,7 @@ export async function setChallengeCookie(payload: Omit<ChallengePayload, "kind">
   (await cookies()).set(CHALLENGE_COOKIE, token, {
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: CHALLENGE_TTL_SECONDS,
   });
@@ -156,7 +168,7 @@ export async function clearChallengeCookie(): Promise<void> {
   (await cookies()).set(CHALLENGE_COOKIE, "", {
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: 0,
   });

@@ -16,6 +16,7 @@ import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/browser";
+import { apiFetch as api } from "@/lib/api";
 
 type Status = {
   setup: boolean;
@@ -24,31 +25,6 @@ type Status = {
 };
 
 type Phase = "loading" | "config" | "setup" | "login" | "authed";
-
-async function api<T>(
-  path: string,
-  init?: { method?: string; body?: unknown },
-): Promise<T> {
-  const res = await fetch(path, {
-    method: init?.method ?? "GET",
-    headers: init?.body ? { "Content-Type": "application/json" } : undefined,
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-    credentials: "same-origin",
-  });
-  let payload: unknown = null;
-  try {
-    payload = await res.json();
-  } catch {
-    /* empty body */
-  }
-  if (!res.ok) {
-    const err =
-      (payload as { error?: string } | null)?.error ??
-      `Request failed (HTTP ${res.status}).`;
-    throw new Error(err);
-  }
-  return payload as T;
-}
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading");
@@ -89,11 +65,22 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="auth-shell">
         <div className="auth-card">
           <h1>Sermorizer</h1>
-          <p className="auth-sub">The server isn&apos;t set up yet.</p>
+          <p className="auth-sub">Couldn&apos;t reach the server.</p>
           <p className="auth-err">{error ?? "Status check failed."}</p>
+          <button
+            type="button"
+            className="auth-btn auth-btn-primary"
+            onClick={() => {
+              setPhase("loading");
+              void refreshStatus();
+            }}
+          >
+            Try again
+          </button>
           <p className="auth-hint">
-            Set <code>SUPABASE_SERVICE_ROLE_KEY</code> in the Vercel project
-            settings and redeploy, then reload this page.
+            If this keeps happening, set <code>SUPABASE_SERVICE_ROLE_KEY</code> in
+            the Vercel project settings and redeploy. A brief hiccup right after
+            a deploy usually clears on retry.
           </p>
         </div>
       </div>

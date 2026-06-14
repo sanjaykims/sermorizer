@@ -2,7 +2,7 @@
    the browser never holds any key with row write access — every read/write is
    routed through an authenticated API route. */
 
-import { getSupabaseAdmin } from "./supabase-server";
+import { getSupabaseAdmin, withSupabaseRetry } from "./supabase-server";
 import type { JobStatus, Lang, Summary } from "./types";
 
 type Row = {
@@ -34,25 +34,29 @@ function toSummary(r: Row): Summary {
 }
 
 export async function listSummariesServer(): Promise<Summary[]> {
-  const supa = getSupabaseAdmin();
-  const { data, error } = await supa
-    .from("summaries")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as Row[]).map(toSummary);
+  return withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { data, error } = await supa
+      .from("summaries")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Row[]).map(toSummary);
+  });
 }
 
 export async function getSummaryServer(id: string): Promise<Summary | null> {
-  const supa = getSupabaseAdmin();
-  const { data, error } = await supa
-    .from("summaries")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? toSummary(data as Row) : null;
+  return withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { data, error } = await supa
+      .from("summaries")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? toSummary(data as Row) : null;
+  });
 }
 
 export async function insertSummaryServer(input: {
@@ -62,20 +66,22 @@ export async function insertSummaryServer(input: {
   docs?: Partial<Record<Lang, string>>;
   status?: JobStatus;
 }): Promise<Summary> {
-  const supa = getSupabaseAdmin();
-  const { data, error } = await supa
-    .from("summaries")
-    .insert({
-      title: input.title,
-      service_date: input.serviceDate ?? null,
-      occasion: input.occasion ?? null,
-      docs: input.docs ?? {},
-      status: input.status ?? "done",
-    })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return toSummary(data as Row);
+  return withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { data, error } = await supa
+      .from("summaries")
+      .insert({
+        title: input.title,
+        service_date: input.serviceDate ?? null,
+        occasion: input.occasion ?? null,
+        docs: input.docs ?? {},
+        status: input.status ?? "done",
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return toSummary(data as Row);
+  });
 }
 
 export async function updateSummaryServer(
@@ -88,19 +94,23 @@ export async function updateSummaryServer(
     parts?: Record<string, string>;
   },
 ): Promise<void> {
-  const supa = getSupabaseAdmin();
-  const { error } = await supa.from("summaries").update(patch).eq("id", id);
-  if (error) throw new Error(error.message);
+  await withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { error } = await supa.from("summaries").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+  });
 }
 
 export async function mergePartServer(id: string, key: string, html: string): Promise<void> {
-  const supa = getSupabaseAdmin();
-  const { error } = await supa.rpc("merge_summary_part", {
-    p_id: id,
-    p_key: key,
-    p_html: html,
+  await withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { error } = await supa.rpc("merge_summary_part", {
+      p_id: id,
+      p_key: key,
+      p_html: html,
+    });
+    if (error) throw new Error(error.message);
   });
-  if (error) throw new Error(error.message);
 }
 
 /** Atomically merge one proofread-cleaned transcript slice into the row's
@@ -110,17 +120,40 @@ export async function mergeProofreadPartServer(
   key: string,
   text: string,
 ): Promise<void> {
-  const supa = getSupabaseAdmin();
-  const { error } = await supa.rpc("merge_proofread_part", {
-    p_id: id,
-    p_key: key,
-    p_text: text,
+  await withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { error } = await supa.rpc("merge_proofread_part", {
+      p_id: id,
+      p_key: key,
+      p_text: text,
+    });
+    if (error) throw new Error(error.message);
   });
-  if (error) throw new Error(error.message);
+}
+
+/** Atomically merge one language's HTML into the row's `docs` map and mark it
+ *  done. Avoids the read-modify-write race when EN and ZH translations of the
+ *  same summary finish concurrently. */
+export async function mergeSummaryDocServer(
+  id: string,
+  lang: Lang,
+  html: string,
+): Promise<void> {
+  await withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { error } = await supa.rpc("merge_summary_doc", {
+      p_id: id,
+      p_lang: lang,
+      p_html: html,
+    });
+    if (error) throw new Error(error.message);
+  });
 }
 
 export async function deleteSummaryServer(id: string): Promise<void> {
-  const supa = getSupabaseAdmin();
-  const { error } = await supa.from("summaries").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { error } = await supa.from("summaries").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  });
 }

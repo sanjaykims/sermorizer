@@ -18,9 +18,12 @@ import {
   getSummaryServer,
   mergePartServer,
   mergeProofreadPartServer,
+  mergeSummaryDocServer,
 } from "@/lib/summaries-server";
+import { sendPushToAll } from "@/lib/push";
 import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
+import { stitchPartsServer } from "@/lib/stitch";
 import { extractHtmlTitle } from "@/lib/util";
 import { requireSessionOrUnauthorized } from "@/lib/auth/server";
 import { supabaseAdminAvailable } from "@/lib/supabase-server";
@@ -191,9 +194,13 @@ export async function POST(req: Request): Promise<Response> {
             throw new Error("Translation stopped early — please try again.");
           }
           const html = ensureEnhanceCss(raw);
-          const row = await getSummaryServer(id);
-          const docs = { ...(row?.docs ?? {}), [lang]: html };
-          await updateSummaryServer(id, { docs, status: "done", error: null });
+          // Atomic merge — won't clobber a sibling-language translation that
+          // finishes around the same time.
+          await mergeSummaryDocServer(id, lang, html);
+          await sendPushToAll({
+            title: "Sermorizer",
+            body: `Your ${lang === "en" ? "English" : "Chinese"} translation is ready.`,
+          });
         } catch (e) {
           await updateSummaryServer(id, {
             status: "error",
@@ -307,6 +314,40 @@ export async function POST(req: Request): Promise<Response> {
           }
           // Atomic server-side merge — safe even if parts finish concurrently.
           await mergePartServer(rowId, String(partIndex), html);
+
+          // If this completed the set, finalize server-side: stitch into one
+          // document, set docs.ko + done, clear the now-unneeded parts, and
+          // push a completion alert. Doing this on the server (not the client)
+          // means a long sermon finishes even if the app was closed mid-job.
+          const row = await getSummaryServer(rowId);
+          const parts = row?.parts ?? {};
+          let complete = true;
+          for (let i = 0; i < partCount; i++) {
+            if (!parts[String(i)]) {
+              complete = false;
+              break;
+            }
+          }
+          if (complete && row && !row.docs?.ko) {
+            try {
+              const combined = stitchPartsServer(parts, partCount);
+              const title =
+                m.title?.trim() || extractHtmlTitle(combined) || "Untitled sermon";
+              await updateSummaryServer(rowId, {
+                docs: { ko: combined },
+                title,
+                status: "done",
+                error: null,
+                parts: {},
+              });
+              await sendPushToAll({
+                title: "Sermorizer",
+                body: "Your sermon summary is ready.",
+              });
+            } catch {
+              // Leave parts in place; the client can still stitch as a fallback.
+            }
+          }
         } catch (e) {
           await updateSummaryServer(rowId, {
             status: "error",
@@ -365,6 +406,10 @@ export async function POST(req: Request): Promise<Response> {
           title,
           status: "done",
           error: null,
+        });
+        await sendPushToAll({
+          title: "Sermorizer",
+          body: "Your sermon summary is ready.",
         });
       } catch (e) {
         await updateSummaryServer(pending.id, {
