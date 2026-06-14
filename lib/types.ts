@@ -14,4 +14,7 @@ export type Summary = {
   error?: string;
   /** For split generation: each part's raw HTML, keyed by part index. */
   parts?: Record<string, string>;
+  /** For split generation w/ proofreading: each slice's cleaned transcript,
+   *  keyed by part index. Populated by the proofread pre-phase. */
+  proofreadParts?: Record<string, string>;
 };

@@ -14,6 +14,7 @@ type Row = {
   status: JobStatus | null;
   error: string | null;
   parts: Record<string, string> | null;
+  proofread_parts: Record<string, string> | null;
   created_at: string | null;
 };
 
@@ -28,6 +29,7 @@ function toSummary(r: Row): Summary {
     status: r.status ?? "done",
     error: r.error ?? undefined,
     parts: r.parts ?? undefined,
+    proofreadParts: r.proofread_parts ?? undefined,
   };
 }
 
@@ -97,6 +99,22 @@ export async function mergePartServer(id: string, key: string, html: string): Pr
     p_id: id,
     p_key: key,
     p_html: html,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Atomically merge one proofread-cleaned transcript slice into the row's
+ *  `proofread_parts` map — pre-phase counterpart of mergePartServer. */
+export async function mergeProofreadPartServer(
+  id: string,
+  key: string,
+  text: string,
+): Promise<void> {
+  const supa = getSupabaseAdmin();
+  const { error } = await supa.rpc("merge_proofread_part", {
+    p_id: id,
+    p_key: key,
+    p_text: text,
   });
   if (error) throw new Error(error.message);
 }

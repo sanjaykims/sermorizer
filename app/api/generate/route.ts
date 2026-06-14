@@ -17,6 +17,7 @@ import {
   updateSummaryServer,
   getSummaryServer,
   mergePartServer,
+  mergeProofreadPartServer,
 } from "@/lib/summaries-server";
 import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
@@ -33,7 +34,7 @@ export const maxDuration = 300;
 const MODEL = "claude-opus-4-7";
 
 type RequestBody = {
-  mode?: "generate" | "translate" | "part";
+  mode?: "generate" | "translate" | "part" | "proofread";
   metadata?: SermonMetadata;
   theme?: string;
   transcript?: string;
@@ -201,6 +202,63 @@ export async function POST(req: Request): Promise<Response> {
       });
 
       return Response.json({ id });
+    }
+
+    // Long-sermon proofread pre-phase: one Opus pass on a single transcript
+    // slice, stored in proofread_parts[partIndex]. Single-pass per call keeps
+    // every job comfortably inside the 300s function limit, and the client
+    // fires N of these in parallel for speed.
+    if (body.mode === "proofread") {
+      const m = body.metadata ?? {};
+      const partIndex = body.partIndex ?? 0;
+      const partCount = body.partCount ?? 1;
+      if (!body.transcript || body.transcript.trim().length < 10) {
+        throw new Error("This proofread part is missing its transcript slice.");
+      }
+      if (partIndex < 0 || partCount < 1 || partIndex >= partCount) {
+        throw new Error("Invalid proofread part index.");
+      }
+
+      // The first proofread part creates the row; later proofread parts (and
+      // the subsequent `part` HTML phase) reference it.
+      let id = body.id;
+      if (partIndex === 0 && !id) {
+        const pending = await insertSummaryServer({
+          title: m.title?.trim() || "Generating…",
+          serviceDate: m.date?.trim() || undefined,
+          occasion: m.occasion?.trim() || undefined,
+          docs: {},
+          status: "generating",
+        });
+        id = pending.id;
+      }
+      if (!id) {
+        throw new Error("A proofread part after the first requires the summary id.");
+      }
+      const rowId = id;
+      const slice = body.transcript;
+
+      after(async () => {
+        try {
+          // cleanTranscript is best-effort; on failure it returns `slice` so
+          // we always end up storing usable text for this index.
+          const cleaned = await cleanTranscript(m, slice);
+          await mergeProofreadPartServer(rowId, String(partIndex), cleaned);
+        } catch {
+          // Fall back to the raw slice rather than fail the whole job — the
+          // HTML pass can still produce a summary from the uncorrected text.
+          try {
+            await mergeProofreadPartServer(rowId, String(partIndex), slice);
+          } catch (e) {
+            await updateSummaryServer(rowId, {
+              status: "error",
+              error: e instanceof Error ? e.message : "Proofreading failed.",
+            });
+          }
+        }
+      });
+
+      return Response.json({ id: rowId });
     }
 
     if (body.mode === "part") {

@@ -232,6 +232,18 @@ function ElapsedTimer() {
 const SPLIT_TRANSCRIPT_CHARS = 16000;
 const STEP_TIMEOUT_MS = 330_000;
 
+/** Read a non-2xx fetch Response and surface the server's `error` message if any. */
+async function readErr(res: Response): Promise<string> {
+  let msg = `Request failed (HTTP ${res.status}).`;
+  try {
+    const j = (await res.json()) as { error?: string };
+    if (j?.error) msg = j.error;
+  } catch {
+    /* keep default */
+  }
+  return msg;
+}
+
 function splitTranscript(text: string, n: number): string[] {
   const lines = text.split(/\r?\n/);
   const per = Math.ceil(lines.length / n);
@@ -692,7 +704,70 @@ function Sermorizer() {
     const slices = splitTranscript(text, requestedParts);
     const n = slices.length;
     let id: string | null = null;
+    let workingSlices = slices;
 
+    // Phase 1 (optional): proofread every slice in parallel, then read the
+    // cleaned text back from Supabase. Each server call is a single Opus
+    // pass on one slice — well within the 300s function limit. Parallelism
+    // keeps wall time at ~one slice's worth instead of N.
+    if (proofread) {
+      setStatusMsg(
+        `Long sermon — proofreading ${n} parts in parallel on the server…`,
+      );
+      // The first proofread call creates the row; later ones reference it.
+      // Kick off part 0 first so we have an id, then fan out the rest.
+      const firstRes = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "proofread",
+          id: null,
+          partIndex: 0,
+          partCount: n,
+          metadata: meta,
+          transcript: slices[0],
+        }),
+      });
+      if (!firstRes.ok) throw new Error(await readErr(firstRes));
+      const firstJson = (await firstRes.json()) as { id: string };
+      id = firstJson.id;
+      setCurrentId(id);
+      currentIdRef.current = id;
+
+      if (n > 1) {
+        const fanout = slices.slice(1).map((slice, idx) =>
+          fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: "proofread",
+              id,
+              partIndex: idx + 1,
+              partCount: n,
+              metadata: meta,
+              transcript: slice,
+            }),
+          }).then(async (r) => {
+            if (!r.ok) throw new Error(await readErr(r));
+            return r.json();
+          }),
+        );
+        await Promise.all(fanout);
+      }
+
+      // Wait until every cleaned slice is back; preserve the original on any
+      // slice that failed/timed out so we never lose content.
+      setStatusMsg(`Proofreading on the server (${n} parts)…`);
+      const ready = await waitForRow(id, (r) => {
+        const pp = r.proofreadParts ?? {};
+        return Object.keys(pp).length >= n;
+      });
+      const cleaned = ready.proofreadParts ?? {};
+      workingSlices = slices.map((s, k) => cleaned[String(k)] || s);
+    }
+
+    // Phase 2: per-part HTML generation, sequential as today. Each is a
+    // single Opus pass on a (possibly proofread) slice.
     for (let k = 0; k < n; k++) {
       setStatusMsg(
         `Long sermon — writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
@@ -707,27 +782,17 @@ function Sermorizer() {
           partCount: n,
           metadata: meta,
           theme,
-          transcript: slices[k],
+          transcript: workingSlices[k],
           noteImages,
           bulletinImages: k === 0 ? bulletinImages : [],
-          // Proofread is single-call-only; on the split path each part
-          // needs its full 300s budget for the HTML pass.
+          // Proofreading already ran in phase 1 (if enabled); never proofread again here.
           proofread: false,
         }),
       });
-      if (!res.ok) {
-        let msg = `Request failed (HTTP ${res.status}).`;
-        try {
-          const j = await res.json();
-          if (j?.error) msg = j.error;
-        } catch {
-          /* keep default */
-        }
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(await readErr(res));
       const j = (await res.json()) as { id: string };
       id = j.id;
-      if (k === 0) {
+      if (k === 0 && !currentIdRef.current) {
         setCurrentId(id);
         currentIdRef.current = id;
       }
@@ -1135,8 +1200,9 @@ function Sermorizer() {
                 Claude cleans up the Clova Note transcript — fixing misheard
                 words, the pastor&apos;s name, and Bible references — before
                 writing the summary. More accurate; takes a bit longer.
-                Automatically skipped for very long sermons (those that need
-                to be generated in parts) so each part finishes in time.
+                For very long sermons the proofreading runs in parallel
+                across parts, so the extra wait is roughly the same as one
+                part&apos;s worth.
               </small>
             </span>
           </label>
