@@ -945,3 +945,15 @@ select:focus {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Import existing summaries ---------- */
+.panel.import > summary {
+  font-weight: 600;
+  color: var(--accent);
+}
+.panel.import code {
+  background: #f3ecdc;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.8em;
+}

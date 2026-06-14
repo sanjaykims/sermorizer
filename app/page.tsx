@@ -437,6 +437,10 @@ function Sermorizer() {
   const [entryTranslating, setEntryTranslating] = useState<Set<string>>(new Set());
   const entryTranslateStartsRef = useRef<Map<string, number>>(new Map());
 
+  // Importing existing-summary HTML files into the app.
+  const [importing, setImporting] = useState<boolean>(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
   const busy = status === "generating" || status === "translating";
   const previewRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1117,6 +1121,71 @@ function Sermorizer() {
     }
   }
 
+  /** Read each HTML file as text and POST to /api/summaries/upload. The server
+   *  parses lang, date, occasion, and title; files sharing a date prefix merge
+   *  into one summary (KO + EN + ZH triple → one row with all three). */
+  async function onImportFiles(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    const files = Array.from(list).filter(
+      (f) => /\.html?$/i.test(f.name) || f.type.includes("html"),
+    );
+    if (files.length === 0) {
+      setImportMsg("Please choose .html files.");
+      return;
+    }
+    // 1.5 MB per file — matches the PATCH cap so an oversized one is caught
+    // here with a friendly message instead of a 413.
+    const MAX_FILE = 1_500_000;
+    const tooBig = files.find((f) => f.size > MAX_FILE);
+    if (tooBig) {
+      setImportMsg(
+        `${tooBig.name} is too large. Please keep each summary under 1.5 MB.`,
+      );
+      return;
+    }
+    setImporting(true);
+    setImportMsg(`Reading ${files.length} file${files.length > 1 ? "s" : ""}…`);
+    try {
+      const items = await Promise.all(
+        files.map(async (f) => ({ filename: f.name, html: await f.text() })),
+      );
+      setImportMsg("Importing…");
+      const res = await fetch("/api/summaries/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) throw new Error(await readErr(res));
+      const j = (await res.json()) as {
+        created: { id: string; title: string; langs: Lang[] }[];
+        skipped: string[];
+      };
+      // Refresh the history so the new rows show up.
+      try {
+        const fresh = await cloudList();
+        setHistory(fresh);
+      } catch {
+        /* ignore — they'll appear on next refresh */
+      }
+      const n = j.created.length;
+      const langTotal = j.created.reduce((s, c) => s + c.langs.length, 0);
+      const skipNote =
+        j.skipped.length > 0 ? ` (${j.skipped.length} skipped)` : "";
+      setImportMsg(
+        n === 0
+          ? `No summaries were imported${skipNote}.`
+          : `Imported ${n} summar${n === 1 ? "y" : "ies"} from ${langTotal} file${langTotal === 1 ? "" : "s"}${skipNote}.`,
+      );
+    } catch (e) {
+      setImportMsg(
+        e instanceof Error ? e.message : "Could not import — please try again.",
+      );
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function deleteEntry(id: string) {
     const entry = history.find((e) => e.id === id);
     const label = entry?.title ? `“${entry.title}”` : "this summary";
@@ -1257,6 +1326,41 @@ function Sermorizer() {
           </ul>
         </details>
       )}
+
+      <details className="panel import">
+        <summary>+ Import existing summaries</summary>
+        <p className="hist-note">
+          Already have sermon-summary HTML files from before Sermorizer? Drop
+          them in here and they&apos;ll appear in the list above — ready to
+          download, translate, or include in a book. The standard filename
+          (<code>YYYY-MM-DD-occasion-title.html</code>) is best, but any HTML
+          will do. Files for the same sermon with <code>-EN</code> /
+          <code>-中文版</code> are merged into one row.
+        </p>
+        <label className="drop">
+          <strong>+ Choose .html file(s)</strong>
+          <span>You can pick many at once</span>
+          <input
+            type="file"
+            accept=".html,.htm,text/html"
+            multiple
+            hidden
+            disabled={importing}
+            onChange={(e) => {
+              void onImportFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {importMsg && (
+          <div
+            className={`status ${importing ? "working" : "done"}`}
+            style={{ marginTop: 12 }}
+          >
+            {importMsg}
+          </div>
+        )}
+      </details>
 
       {history.length > 0 && (() => {
         // Bucket the rows into "this month" and "all-time" totals so the
