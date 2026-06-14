@@ -228,13 +228,14 @@ export async function POST(req: Request): Promise<Response> {
       }
       if (!id) throw new Error("A part after the first requires the summary id.");
       const rowId = id;
-      const rawSlice = body.transcript;
-      const proofread = body.proofread !== false;
+      const slice = body.transcript;
+      // NB: the optional proofread pass is single-call only. For long sermons
+      // (this `part` flow) doing two Opus passes per part can blow past the
+      // 300s function limit, so we skip it here and trust the listener's
+      // metadata + the per-section prompt to keep names/refs right.
 
       after(async () => {
         try {
-          // Optional: proofread this slice before summarizing it.
-          const slice = proofread ? await cleanTranscript(m, rawSlice) : rawSlice;
           const content = buildPartUserContent({
             ...body,
             transcript: slice,

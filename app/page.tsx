@@ -226,11 +226,10 @@ function ElapsedTimer() {
 /* ---- Split generation: chunk a long transcript into multiple parts ---- */
 
 // Above this transcript size, one generation risks exceeding the 300s server
-// limit, so we split into parts of roughly this many characters each. When the
-// proofreading pre-pass is on, each job does two Claude passes, so we split
-// sooner to keep every part within the time budget.
+// limit, so we split into parts of roughly this many characters each. (The
+// proofreading pre-pass runs on the single-call path only — on the split
+// path it's skipped so each part fits the time budget.)
 const SPLIT_TRANSCRIPT_CHARS = 16000;
-const SPLIT_TRANSCRIPT_CHARS_PROOFREAD = 11000;
 const STEP_TIMEOUT_MS = 330_000;
 
 function splitTranscript(text: string, n: number): string[] {
@@ -626,12 +625,10 @@ function Sermorizer() {
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
 
       // Long sermons are split into parts that each fit the 300s server limit,
-      // then stitched into one continuous file. The proofreading pass adds a
-      // second Claude pass per job, so we split sooner when it's on.
-      const splitChars = proofread
-        ? SPLIT_TRANSCRIPT_CHARS_PROOFREAD
-        : SPLIT_TRANSCRIPT_CHARS;
-      const nParts = Math.ceil(transcript.text.length / splitChars);
+      // then stitched into one continuous file. The proofreading pass runs on
+      // the single-call path only — too slow to fit alongside per-part HTML
+      // generation in 300s — so we skip it when we split.
+      const nParts = Math.ceil(transcript.text.length / SPLIT_TRANSCRIPT_CHARS);
       if (nParts > 1) {
         await runSplitGeneration(transcript.text, nParts, noteImages, bulletinImages);
         return;
@@ -698,7 +695,7 @@ function Sermorizer() {
 
     for (let k = 0; k < n; k++) {
       setStatusMsg(
-        `Long sermon — ${proofread ? "proofreading + " : ""}writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
+        `Long sermon — writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
       );
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -713,7 +710,9 @@ function Sermorizer() {
           transcript: slices[k],
           noteImages,
           bulletinImages: k === 0 ? bulletinImages : [],
-          proofread,
+          // Proofread is single-call-only; on the split path each part
+          // needs its full 300s budget for the HTML pass.
+          proofread: false,
         }),
       });
       if (!res.ok) {
@@ -1136,6 +1135,8 @@ function Sermorizer() {
                 Claude cleans up the Clova Note transcript — fixing misheard
                 words, the pastor&apos;s name, and Bible references — before
                 writing the summary. More accurate; takes a bit longer.
+                Automatically skipped for very long sermons (those that need
+                to be generated in parts) so each part finishes in time.
               </small>
             </span>
           </label>
