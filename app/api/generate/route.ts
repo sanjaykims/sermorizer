@@ -32,6 +32,9 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const MODEL = "claude-opus-4-7";
+// Translation runs on the latest, most capable Opus for the best structure-
+// preserving, idiomatic translations.
+const TRANSLATE_MODEL = "claude-opus-4-8";
 
 type RequestBody = {
   mode?: "generate" | "translate" | "part" | "proofread";
@@ -69,11 +72,11 @@ function stripFences(s: string): string {
 async function runAnthropic(
   system: string,
   content: UserContent,
-  opts?: { maxTokens?: number; effort?: "low" | "medium" | "high" },
+  opts?: { maxTokens?: number; effort?: "low" | "medium" | "high"; model?: string },
 ): Promise<string> {
   const client = new Anthropic();
   const params = {
-    model: MODEL,
+    model: opts?.model ?? MODEL,
     max_tokens: opts?.maxTokens ?? 24000,
     output_config: { effort: opts?.effort ?? "medium" },
     system: [
@@ -185,6 +188,7 @@ export async function POST(req: Request): Promise<Response> {
           const raw = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
+            { model: TRANSLATE_MODEL },
           );
           if (!raw.toLowerCase().includes("</html>")) {
             throw new Error("Translation stopped early — please try again.");
