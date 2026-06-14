@@ -141,7 +141,7 @@ Nothing here is mandatory — pick what's simplest — but a sensible default:
 - **Frontend:** a single-page app (plain HTML/JS or a light React build) with
   three input zones: a metadata form, an image dropzone for notes/bulletin,
   and a `.txt` upload for the transcript. A language selector (KO/EN/ZH).
-- **Generation:** call the Anthropic Messages API (`claude-opus-4-7` for best
+- **Generation:** call the Anthropic Messages API (`claude-opus-4-8` for best
   quality on this long synthesis task). Send the transcript as text, the note
   image(s) as base64 `image` blocks, metadata as text. Ask the model to return
   one complete HTML document.

@@ -1486,7 +1486,7 @@ function Sermorizer() {
 
       <p className="foot">
         Sermorizer · Sermon summary tool for Galilee Church · Powered by Claude
-        (claude-opus-4-7)
+        (claude-opus-4-8)
       </p>
     </div>
   );

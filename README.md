@@ -18,7 +18,7 @@ on demand, preserving the design.
 ## Stack
 
 - Next.js (App Router) + TypeScript
-- Anthropic Messages API — `claude-opus-4-7`, streamed
+- Anthropic Messages API — `claude-opus-4-8`, streamed
 - The note/bulletin images and the transcript are sent to the model; it returns
   one complete HTML document.
 

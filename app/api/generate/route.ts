@@ -31,10 +31,8 @@ export const runtime = "nodejs";
 // connected — locking the phone or switching apps won't interrupt it).
 export const maxDuration = 300;
 
-const MODEL = "claude-opus-4-7";
-// Translation runs on the latest, most capable Opus for the best structure-
-// preserving, idiomatic translations.
-const TRANSLATE_MODEL = "claude-opus-4-8";
+// The whole service runs on the latest, most capable Opus.
+const MODEL = "claude-opus-4-8";
 
 type RequestBody = {
   mode?: "generate" | "translate" | "part" | "proofread";
@@ -188,7 +186,6 @@ export async function POST(req: Request): Promise<Response> {
           const raw = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
-            { model: TRANSLATE_MODEL },
           );
           if (!raw.toLowerCase().includes("</html>")) {
             throw new Error("Translation stopped early — please try again.");
