@@ -14,6 +14,7 @@ import { requireSessionOrUnauthorized } from "@/lib/auth/server";
 import { supabaseAdminAvailable } from "@/lib/supabase-server";
 import { insertSummaryServer } from "@/lib/summaries-server";
 import { extractHtmlTitle } from "@/lib/util";
+import { detectLang, parseFilename, importGroupKey } from "@/lib/import-parse";
 import type { Lang } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -34,58 +35,6 @@ type Parsed = {
   title: string;
   groupKey: string;
 };
-
-/** Detect KO / EN / ZH from filename suffix first, then <html lang> as fallback. */
-function detectLang(filename: string, html: string): Lang {
-  const fn = filename.toLowerCase();
-  if (
-    fn.endsWith("-en.html") ||
-    fn.endsWith("-en.htm") ||
-    /[-_ ]english\b/i.test(fn)
-  ) {
-    return "en";
-  }
-  if (
-    filename.includes("中文") ||
-    fn.endsWith("-zh.html") ||
-    fn.endsWith("-zh.htm") ||
-    fn.endsWith("-zhs.html") ||
-    /[-_ ]chinese\b/i.test(fn)
-  ) {
-    return "zh";
-  }
-  // <html lang="…"> is also reliable when the filename is ambiguous.
-  const m = html.match(/<html[^>]*\blang=["']?([A-Za-z-]+)["']?/i);
-  if (m) {
-    const t = m[1].toLowerCase();
-    if (t.startsWith("en")) return "en";
-    if (t.startsWith("zh")) return "zh";
-    if (t.startsWith("ko")) return "ko";
-  }
-  return "ko";
-}
-
-/** Pull a YYYY-MM-DD date and the occasion segment from the standard filename
- *  pattern. Returns whatever it can find — both pieces are optional. */
-function parseFilename(filename: string): { date?: string; occasion?: string } {
-  const base = filename
-    .replace(/\.[Hh][Tt][Mm][Ll]?$/, "")
-    // Strip trailing language markers so the occasion segment isn't polluted.
-    .replace(/[-_]?中文(?:版)?$/i, "")
-    .replace(/[-_]?(?:EN|English|ZH|Chinese)$/i, "");
-
-  const dateMatch = base.match(/(\d{4}-\d{2}-\d{2})/);
-  const date = dateMatch?.[1];
-
-  // After the date and one separator, occasion is the next dash-separated word.
-  let occasion: string | undefined;
-  if (date) {
-    const rest = base.slice(base.indexOf(date) + date.length).replace(/^[-_]+/, "");
-    const occMatch = rest.match(/^([^-_]+)/);
-    if (occMatch && occMatch[1].length > 0) occasion = occMatch[1];
-  }
-  return { date, occasion };
-}
 
 /** Pull a friendly title out of the document — preferring <h1> over <title>. */
 function bestTitle(html: string, filename: string): string {
@@ -114,8 +63,8 @@ function parseItem(it: Item): Parsed | null {
   const lang = detectLang(filename, html);
   const title = bestTitle(html, filename);
   // Files that share a date prefix merge into one summary row. No date → its
-  // own group (use the filename as the unique key).
-  const groupKey = date ? `d:${date}` : `f:${filename}`;
+  // own group (keyed by filename).
+  const groupKey = importGroupKey(filename, date);
   return { filename, html, lang, date, occasion, title, groupKey };
 }
 

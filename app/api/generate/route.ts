@@ -36,8 +36,10 @@ export const runtime = "nodejs";
 // connected — locking the phone or switching apps won't interrupt it).
 export const maxDuration = 300;
 
-// The whole service runs on the latest, most capable Opus.
-const MODEL = "claude-opus-4-8";
+// The whole service runs on the latest, most capable Opus. Hard-coded default
+// (the deliberate quality choice), with an emergency override so a sudden model
+// retirement or rename can be patched via env without a redeploy.
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
 
 type RequestBody = {
   mode?: "generate" | "translate" | "part" | "proofread";
