@@ -137,10 +137,18 @@ async function cleanTranscript(
       effort: "low",
     });
     if (!text || text.length < transcript.length * 0.5) {
+      console.warn(
+        "[sermorizer] proofread fallback: cleaned output too short — using raw transcript",
+        { cleanedLen: text?.length ?? 0, rawLen: transcript.length },
+      );
       return { text: transcript, usage };
     }
     return { text, usage };
-  } catch {
+  } catch (e) {
+    console.error(
+      "[sermorizer] proofread threw — falling back to raw transcript:",
+      e instanceof Error ? e.message : e,
+    );
     return { text: transcript, usage: {} };
   }
 }
@@ -223,6 +231,11 @@ export async function POST(req: Request): Promise<Response> {
             body: `Your ${lang === "en" ? "English" : "Chinese"} translation is ready.`,
           });
         } catch (e) {
+          console.error("[sermorizer] translate failed", {
+            id,
+            lang,
+            err: e instanceof Error ? e.message : String(e),
+          });
           await updateSummaryServer(id, {
             status: "error",
             error: e instanceof Error ? e.message : "Translation failed.",
@@ -280,6 +293,11 @@ export async function POST(req: Request): Promise<Response> {
           try {
             await mergeProofreadPartServer(rowId, String(partIndex), slice);
           } catch (e) {
+            console.error("[sermorizer] proofread part fallback also failed", {
+              id: rowId,
+              partIndex,
+              err: e instanceof Error ? e.message : String(e),
+            });
             await updateSummaryServer(rowId, {
               status: "error",
               error: e instanceof Error ? e.message : "Proofreading failed.",
@@ -372,6 +390,12 @@ export async function POST(req: Request): Promise<Response> {
             }
           }
         } catch (e) {
+          console.error("[sermorizer] part failed", {
+            id: rowId,
+            partIndex,
+            partCount,
+            err: e instanceof Error ? e.message : String(e),
+          });
           await updateSummaryServer(rowId, {
             status: "error",
             error: e instanceof Error ? e.message : "A part failed to generate.",
@@ -439,6 +463,10 @@ export async function POST(req: Request): Promise<Response> {
           body: "Your sermon summary is ready.",
         });
       } catch (e) {
+        console.error("[sermorizer] generate failed", {
+          id: pending.id,
+          err: e instanceof Error ? e.message : String(e),
+        });
         await updateSummaryServer(pending.id, {
           status: "error",
           error: e instanceof Error ? e.message : "Generation failed.",

@@ -38,18 +38,30 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/";
+  // Defence-in-depth: only ever navigate to our own origin. Today the server
+  // sends safe relative paths, but a future change (or a forged push payload)
+  // shouldn't be able to redirect the user off-site via a notification click.
+  const raw = (event.notification.data && event.notification.data.url) || "/";
+  let target = "/";
+  try {
+    const parsed = new URL(raw, self.location.origin);
+    if (parsed.origin === self.location.origin) {
+      target = parsed.pathname + parsed.search + parsed.hash;
+    }
+  } catch {
+    /* fall through to "/" */
+  }
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((list) => {
         for (const client of list) {
           if ("focus" in client) {
-            client.navigate(url).catch(() => {});
+            client.navigate(target).catch(() => {});
             return client.focus();
           }
         }
-        return self.clients.openWindow(url);
+        return self.clients.openWindow(target);
       }),
   );
 });

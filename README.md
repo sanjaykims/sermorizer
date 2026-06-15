@@ -26,7 +26,7 @@ on demand, preserving the design.
 
 ```bash
 npm install
-cp .env.example .env.local      # then put your real ANTHROPIC_API_KEY in it
+cp .env.example .env.local      # fill in at minimum ANTHROPIC_API_KEY + SUPABASE_SERVICE_ROLE_KEY
 npm run dev
 ```
 
@@ -34,15 +34,39 @@ Open http://localhost:3000.
 
 ## Environment
 
-| Variable            | Required | Purpose                                              |
-| ------------------- | -------- | ---------------------------------------------------- |
-| `ANTHROPIC_API_KEY` | yes      | Server-side Claude API key. Never exposed to browser. |
+| Variable                       | Required           | Purpose                                                                 |
+| ------------------------------ | ------------------ | ----------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`            | yes                | Server-side Claude API key. Never exposed to browser.                   |
+| `SUPABASE_SERVICE_ROLE_KEY`    | yes                | Server-side Supabase admin key. All DB access is brokered through API routes. |
+| `NEXT_PUBLIC_SUPABASE_URL`     | for forks / dev    | Override the baked-in Sermorizer Supabase project URL.                  |
+| `VAPID_PRIVATE_KEY`            | for push           | Web Push private key. Without it, push is a graceful no-op (in-app chime still fires). |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | if you rotate keys | Override the baked-in VAPID public key. Generate a pair via `node -e "console.log(require('web-push').generateVAPIDKeys())"`. |
+| `VAPID_SUBJECT`                | for push           | Contact `mailto:` URL associated with the VAPID keys.                   |
+
+### Supabase schema
+
+The app expects the Sermorizer schema applied via the migrations in this repo's
+history. Tables: `summaries`, `auth_config`, `passkeys`, `push_subscriptions`,
+`auth_attempts`. RPCs: `merge_summary_part`, `merge_proofread_part`,
+`merge_summary_doc`, `add_summary_usage`, `bump_auth_attempt`,
+`clear_auth_attempt`. RLS is on for every table; access is brokered exclusively
+by the service-role server.
+
+## Scripts
+
+```bash
+npm run dev        # local dev server
+npm run build      # production build
+npm run start      # serve the production build
+npm run lint       # flat-config ESLint over the whole tree
+npm run typecheck  # tsc --noEmit
+```
 
 ## Deploy (Vercel)
 
-Push the repo, import it into Vercel, and set `ANTHROPIC_API_KEY` in the
-project's Environment Variables. The generation route is configured with a
-300-second `maxDuration` because synthesizing a long transcript takes time.
+Push the repo, import it into Vercel, and set the Environment Variables in the
+table above. The generation route is configured with a 300-second `maxDuration`
+because synthesizing a long transcript takes time.
 
 ## How it works
 

@@ -184,7 +184,28 @@ structure-preserving translation with the font/lang swaps above.
 
 ## Implementation notes (this repo)
 
-- Next.js (App Router) + TypeScript. Single-page UI at `app/page.tsx`.
+## Trust model (single-user)
+
+Sermorizer is a private, single-user app — exactly one person (the Galilee
+Church layperson) ever authenticates. That shapes several intentional choices
+that would be wrong for a multi-tenant SaaS:
+
+- **Stored HTML is trusted only because the only writer is the authenticated
+  owner.** Generated documents come straight from Claude; imported documents
+  come from the owner's local folder. Neither is sanitized server-side. The
+  preview iframe uses `sandbox=""` (no scripts, no same-origin) so even a
+  malicious document can't run code in the app's origin.
+- **Web Push fans out to every enrolled device** — that's the desired behavior
+  (phone + tablet both ring). If this app ever became multi-user, the
+  `push_subscriptions` table would need an `owner_id` column and the fan-out
+  would need to filter on it (see `lib/push.ts`).
+- **The Supabase project URL is hard-coded** as a single-tenant default;
+  forks override `NEXT_PUBLIC_SUPABASE_URL`.
+- **Passcode recovery is manual.** If the only owner forgets the passcode and
+  has lost every enrolled passkey, the only recovery is direct DB access:
+  `update public.auth_config set passcode_hash = null, passcode_salt = null
+  where id = 'singleton';` then complete first-run setup again.
+
 - Generation endpoint: `app/api/generate/route.ts` — streams the HTML back.
   Handles both `mode: "generate"` (Korean) and `mode: "translate"` (EN/ZH).
 - Prompts live in `lib/prompt.ts`; liturgical themes in `lib/themes.ts`.

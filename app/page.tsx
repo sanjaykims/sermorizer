@@ -1744,7 +1744,11 @@ function Sermorizer() {
               className="preview-frame"
               title="sermon preview"
               srcDoc={previewHtml}
-              sandbox="allow-same-origin"
+              // sandbox="" is the strictest setting: no scripts, no same-origin,
+              // no forms, no top-nav. The preview shows static HTML; any of the
+              // disallowed capabilities would only be a foothold for an
+              // attacker if the stored HTML were ever malicious.
+              sandbox=""
             />
           ) : (
             <div className="placeholder">

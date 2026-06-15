@@ -153,8 +153,11 @@ export async function addUsageServer(id: string, u: SummaryUsage): Promise<void>
       });
       if (error) throw new Error(error.message);
     });
-  } catch {
-    /* usage telemetry is best-effort */
+  } catch (e) {
+    console.warn("[sermorizer] usage tracking failed", {
+      id,
+      err: e instanceof Error ? e.message : String(e),
+    });
   }
 }
 

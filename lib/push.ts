@@ -46,7 +46,12 @@ export async function deletePushSubscription(endpoint: string): Promise<void> {
 }
 
 /** Best-effort push to every stored subscription. Prunes dead endpoints
- *  (410/404). Never throws — a push failure must not fail the job. */
+ *  (410/404). Never throws — a push failure must not fail the job.
+ *
+ *  Single-user app: every enrolled device of the *one* owner gets every
+ *  completion alert (so a sermon generated on the phone also lights up the
+ *  tablet, etc.). If Sermorizer ever becomes multi-user, push_subscriptions
+ *  will need an owner_id column and this fan-out must filter on it. */
 export async function sendPushToAll(payload: {
   title: string;
   body: string;
@@ -73,11 +78,21 @@ export async function sendPushToAll(payload: {
           const code = (e as { statusCode?: number }).statusCode;
           if (code === 404 || code === 410) {
             await supa.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+            console.warn("[sermorizer] pruned dead push subscription", {
+              code,
+            });
+          } else {
+            console.error("[sermorizer] push delivery failed", {
+              code,
+              err: e instanceof Error ? e.message : String(e),
+            });
           }
         }
       }),
     );
-  } catch {
-    /* push is best-effort */
+  } catch (e) {
+    console.error("[sermorizer] sendPushToAll threw", {
+      err: e instanceof Error ? e.message : String(e),
+    });
   }
 }

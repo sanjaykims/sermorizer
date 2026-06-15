@@ -2,38 +2,41 @@
 
 import { getAuthConfig, setSessionCookie } from "@/lib/auth/server";
 import { verifyPasscode } from "@/lib/auth/crypto";
-import { supabaseAdminAvailable } from "@/lib/supabase-server";
+import {
+  getSupabaseAdmin,
+  supabaseAdminAvailable,
+  withSupabaseRetry,
+} from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
-// Lightweight in-memory brute-force throttle. Per warm Lambda instance, so it's
-// not a hard guarantee on serverless, but it adds real friction to a guessing
-// loop on top of scrypt's slowness. Keyed by client IP.
-const WINDOW_MS = 15 * 60 * 1000;
+// Cross-instance brute-force throttle. The bump_auth_attempt SQL function
+// keeps a per-IP counter in Supabase so an attacker can't bypass an
+// in-memory limit by hitting a cold Lambda or different Vercel region.
 const MAX_FAILS = 10;
-const attempts = new Map<string, { count: number; first: number }>();
 
 function clientIp(req: Request): string {
   const xff = req.headers.get("x-forwarded-for");
   return (xff ? xff.split(",")[0] : "").trim() || "unknown";
 }
 
-function tooMany(ip: string): boolean {
-  const a = attempts.get(ip);
-  if (!a) return false;
-  if (Date.now() - a.first > WINDOW_MS) {
-    attempts.delete(ip);
-    return false;
-  }
-  return a.count >= MAX_FAILS;
+async function bumpAttempt(ip: string): Promise<number> {
+  return withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { data, error } = await supa.rpc("bump_auth_attempt", { p_ip: ip });
+    if (error) throw new Error(error.message);
+    return typeof data === "number" ? data : 0;
+  });
 }
 
-function recordFail(ip: string): void {
-  const a = attempts.get(ip);
-  if (!a || Date.now() - a.first > WINDOW_MS) {
-    attempts.set(ip, { count: 1, first: Date.now() });
-  } else {
-    a.count += 1;
+async function clearAttempt(ip: string): Promise<void> {
+  try {
+    await withSupabaseRetry(async () => {
+      const supa = getSupabaseAdmin();
+      await supa.rpc("clear_auth_attempt", { p_ip: ip });
+    });
+  } catch {
+    /* clearing is best-effort */
   }
 }
 
@@ -45,12 +48,7 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
   const ip = clientIp(req);
-  if (tooMany(ip)) {
-    return Response.json(
-      { error: "Too many attempts. Please wait a few minutes and try again." },
-      { status: 429 },
-    );
-  }
+
   let body: { passcode?: string };
   try {
     body = (await req.json()) as { passcode?: string };
@@ -71,10 +69,23 @@ export async function POST(req: Request): Promise<Response> {
     }
     const ok = await verifyPasscode(passcode, cfg.passcode_hash, cfg.passcode_salt);
     if (!ok) {
-      recordFail(ip);
+      // Bump *after* the scrypt verify so the timing channel is identical for
+      // every wrong passcode, and the lockout only counts real failures.
+      let count = 0;
+      try {
+        count = await bumpAttempt(ip);
+      } catch {
+        /* if the DB throttle is unavailable, fall through to a plain 401 */
+      }
+      if (count >= MAX_FAILS) {
+        return Response.json(
+          { error: "Too many attempts. Please wait a few minutes and try again." },
+          { status: 429 },
+        );
+      }
       return Response.json({ error: "That passcode didn't match." }, { status: 401 });
     }
-    attempts.delete(ip);
+    await clearAttempt(ip);
     await setSessionCookie();
     return Response.json({ ok: true });
   } catch (e) {

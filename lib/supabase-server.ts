@@ -5,6 +5,11 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+// Intentional single-tenant default: this is the Sermorizer Supabase project
+// the production deployment targets. Forks/local installs should override with
+// NEXT_PUBLIC_SUPABASE_URL — combined with SUPABASE_SERVICE_ROLE_KEY (which is
+// strictly required), a wrong URL would just fail authentication immediately
+// rather than silently writing to the wrong DB.
 const URL_DEFAULT = "https://aeygqjuhqjvlhjrslbxd.supabase.co";
 
 let cached: SupabaseClient | null = null;
