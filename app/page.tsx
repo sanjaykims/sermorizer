@@ -1237,9 +1237,10 @@ function Sermorizer() {
   return (
     <div className="wrap">
       <header className="app-header">
-        <h1>Sermorizer</h1>
-        <p>
-          Turn a week of sermon materials into one beautiful mobile summary —
+        <h1 className="wordmark">Sermorizer</h1>
+        <hr className="rule" />
+        <p className="tagline">
+          Turn a week of sermon materials into one beautiful mobile summary ·
           Galilee Church
         </p>
       </header>

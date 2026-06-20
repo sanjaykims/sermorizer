@@ -93,7 +93,17 @@ body {
   letter-spacing: -0.012em;
 }
 
-.app-header p {
+.app-header .rule {
+  display: block;
+  width: 64px;
+  height: 1px;
+  border: 0;
+  background: var(--rule);
+  margin: 10px auto 8px;
+}
+
+.app-header p,
+.app-header .tagline {
   margin: 0;
   font-family: var(--font-display);
   font-style: italic;
