@@ -543,6 +543,41 @@ select:focus {
   margin-top: 36px;
 }
 
+/* ---- Secondary panels + inline icons (Phase 2E) ---- */
+/* The input + preview panels keep the paper-card fill and soft shadow; the
+   collapsible utility panels (history, cost, import, book) drop to a flat
+   hairline so the page has a clear primary/secondary hierarchy. */
+.panel-secondary {
+  background: transparent;
+  box-shadow: none;
+  border-color: var(--rule);
+}
+
+.panel-secondary > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  letter-spacing: 0.005em;
+}
+
+/* Inline icon glyphs replacing the old emoji. */
+.ico {
+  flex: 0 0 auto;
+}
+.hist-dl,
+.hist-tr,
+.preview-bar .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hist-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Saved summaries (history) */
 .history {
   padding: 0;
@@ -603,17 +638,22 @@ select:focus {
 
 .hist-title {
   max-width: 100%;
+  font-family: var(--font-display);
   color: var(--ink);
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .hist-date {
-  color: var(--muted);
-  font-size: 0.78rem;
+  font-family: var(--font-ui);
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .hist-actions {
@@ -634,15 +674,16 @@ select:focus {
 }
 
 .hist-dl {
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--accent);
-  border-radius: 7px;
-  padding: 10px 13px;
+  border: 1px solid var(--rule);
+  background: #fefbf2;
+  color: var(--brand);
+  border-radius: 6px;
+  padding: 9px 12px;
   min-height: 44px;
-  font-family: inherit;
-  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -653,14 +694,14 @@ select:focus {
 }
 
 .hist-tr {
-  border: 1px dashed var(--accent-soft);
+  border: 1px dashed var(--brand-soft);
   background: transparent;
-  color: var(--accent);
-  border-radius: 7px;
-  padding: 10px 13px;
+  color: var(--brand);
+  border-radius: 6px;
+  padding: 9px 12px;
   min-height: 44px;
-  font-family: inherit;
-  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -790,41 +831,75 @@ select:focus {
   align-items: center;
   justify-content: center;
   padding: 32px 18px;
-  background: linear-gradient(160deg, #faf6f0 0%, #efe6d8 100%);
+  background:
+    radial-gradient(circle at 50% -8%, #f9f1dc 0%, transparent 60%),
+    linear-gradient(180deg, #f1e7d2 0%, #e6dab8 100%);
 }
 .auth-card {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   max-width: 380px;
-  background: #fff;
-  border: 1px solid #e6dfd2;
-  border-radius: 14px;
-  padding: 28px 24px;
-  box-shadow: 0 14px 40px rgba(124, 74, 50, 0.12);
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 32px 26px 28px;
+  box-shadow:
+    0 24px 60px -16px rgba(76, 46, 28, 0.28),
+    0 4px 12px -4px rgba(76, 46, 28, 0.14);
+}
+/* gilt accent rule across the top edge — Anglican prayer-book detail */
+.auth-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--gilt) 20%,
+    var(--gilt) 80%,
+    transparent
+  );
 }
 .auth-card h1 {
   margin: 0 0 4px;
-  color: var(--accent);
-  font-size: 1.6rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-deep);
+  font-size: 1.55rem;
+  letter-spacing: -0.01em;
+  text-align: center;
 }
 .auth-card .auth-sub {
-  margin: 0 0 18px;
-  color: #6b5b4a;
+  margin: 0 0 22px;
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink-soft);
   font-size: 0.95rem;
+  text-align: center;
 }
 .auth-label {
   display: block;
-  font-size: 0.82rem;
-  color: #6b5b4a;
-  margin: 12px 0 6px;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 14px 0 6px;
 }
 .auth-input {
   display: block;
   width: 100%;
+  font-family: var(--font-body);
   font-size: 1rem;
   padding: 12px 14px;
-  border: 1px solid #d8cdb8;
-  border-radius: 10px;
-  background: #fdfbf6;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fdfaf0;
   color: var(--ink);
 }
 .auth-input:focus {
@@ -832,13 +907,18 @@ select:focus {
   border-color: var(--accent-soft);
 }
 .auth-btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  margin-top: 16px;
+  margin-top: 14px;
   padding: 14px 18px;
-  font-size: 1rem;
+  font-family: var(--font-ui);
+  font-size: 0.97rem;
   font-weight: 600;
-  border-radius: 10px;
+  letter-spacing: 0.005em;
+  border-radius: 9px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: opacity 0.15s ease;
@@ -848,13 +928,15 @@ select:focus {
   cursor: not-allowed;
 }
 .auth-btn-primary {
-  background: var(--accent);
+  background: var(--brand);
   color: var(--accent-ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 0 var(--brand-deep);
 }
 .auth-btn-ghost {
-  background: #fff;
-  color: var(--accent);
-  border-color: var(--accent-soft);
+  background: #fefbf2;
+  color: var(--brand);
+  border-color: var(--rule);
 }
 .auth-err {
   margin: 12px 0 0;
@@ -877,8 +959,10 @@ select:focus {
   position: relative;
   text-align: center;
   margin: 18px 0 6px;
-  color: #a89884;
-  font-size: 0.78rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
 }
 .auth-divider::before,
 .auth-divider::after {
@@ -887,7 +971,7 @@ select:focus {
   top: 50%;
   width: calc(50% - 24px);
   height: 1px;
-  background: #e6dfd2;
+  background: var(--rule);
 }
 .auth-divider::before {
   left: 0;
@@ -910,8 +994,12 @@ select:focus {
   color: #6b5b4a;
 }
 .session-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand);
 }
 .session-spacer {
   flex: 1;

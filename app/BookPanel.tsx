@@ -124,7 +124,7 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
   if (available.length === 0) return null;
 
   return (
-    <details className="panel book">
+    <details className="panel book panel-secondary">
       <summary>Make a book (PDF)</summary>
       <p className="hist-note">
         Compile selected summaries into one print-ready book (6×9″, color). Open
