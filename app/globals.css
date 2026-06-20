@@ -60,10 +60,11 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background: var(--ground);
   color: var(--ink);
-  font-family: var(--font);
-  line-height: 1.55;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Stop Samsung Chrome pull-to-refresh from reloading mid-job. */
@@ -84,18 +85,20 @@ body {
 }
 
 .app-header h1 {
-  font-family: var(--font);
-  font-size: 2.1rem;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
   font-weight: 700;
   margin: 0 0 6px;
-  color: var(--accent);
-  letter-spacing: -0.02em;
+  color: var(--brand-deep);
+  letter-spacing: -0.012em;
 }
 
 .app-header p {
   margin: 0;
-  color: var(--muted);
-  font-size: 1rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
 }
 
 .layout {
@@ -184,17 +187,19 @@ body {
 }
 
 .panel h2 {
-  font-family: var(--font);
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.008em;
   margin: 0 0 4px;
-  color: var(--accent);
+  color: var(--brand-deep);
 }
 
 .panel .hint {
-  color: var(--muted);
-  font-size: 0.85rem;
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.55;
   margin: 0 0 16px;
 }
 
@@ -204,26 +209,33 @@ body {
 
 .field label {
   display: block;
-  font-size: 0.86rem;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   margin-bottom: 5px;
-  color: var(--ink);
+  color: var(--ink-soft);
 }
 
 .field .opt {
-  color: var(--muted);
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  font-style: italic;
+  color: var(--ink-faint);
   font-weight: 400;
 }
 
 input[type="text"],
 select {
   width: 100%;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #fff;
+  padding: 11px 13px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fdfaf0;
   color: var(--ink);
-  font-family: inherit;
+  font-family: var(--font-body);
   /* 16px keeps iOS Safari from zooming in when a field is focused */
   font-size: 1rem;
 }
@@ -252,29 +264,34 @@ select:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border: 1.5px dashed var(--line);
-  border-radius: 11px;
+  gap: 5px;
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
   padding: 20px 16px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
-  background: #fffefb;
+  background: linear-gradient(180deg, #fbf6e8, #f6efd9);
 }
 
 .drop:hover {
-  border-color: var(--accent-soft);
-  background: #fbf7ef;
+  border-color: var(--brand-soft);
+  background: linear-gradient(180deg, #faf3e0, #f1e9cf);
 }
 
 .drop strong {
-  color: var(--accent);
-  font-size: 0.92rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand-deep);
+  font-size: 1rem;
+  letter-spacing: -0.005em;
 }
 
 .drop span {
-  color: var(--muted);
-  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
 }
 
 .files {
@@ -313,12 +330,13 @@ select:focus {
   justify-content: center;
   gap: 7px;
   border: none;
-  border-radius: 10px;
+  border-radius: 9px;
   padding: 12px 18px;
   min-height: 46px;
-  font-family: inherit;
-  font-size: 0.98rem;
+  font-family: var(--font-ui);
+  font-size: 0.97rem;
   font-weight: 600;
+  letter-spacing: 0.005em;
   cursor: pointer;
   transition: filter 0.15s, opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
@@ -478,8 +496,10 @@ select:focus {
 
 .foot {
   text-align: center;
-  color: var(--muted);
-  font-size: 0.8rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
   margin-top: 36px;
 }
 
