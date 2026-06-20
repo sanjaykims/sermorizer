@@ -35,6 +35,85 @@ type ImagePayload = { media_type: string; data: string };
 
 const LANG_LABEL: Record<Lang, string> = { ko: "Korean", en: "English", zh: "中文" };
 
+/* ---- Inline icons (replace emoji glyphs; tinted via currentColor) ---- */
+function IconDownload() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+function IconClose() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+function IconCoin() {
+  return (
+    <svg
+      className="ico"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10" />
+      <path d="M9 9.5c0-1.1 1.3-2 3-2s3 .9 3 2-1.3 2-3 2-3 .9-3 2 1.3 2 3 2 3-.9 3-2" />
+    </svg>
+  );
+}
+function IconCross() {
+  return (
+    <svg
+      className="ico-lg"
+      width="46"
+      height="46"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3v18" />
+      <path d="M7 9h10" />
+    </svg>
+  );
+}
+
 const EMPTY_META: Metadata = {
   title: "",
   preacher: "김영복 담임목사",
@@ -1237,15 +1316,16 @@ function Sermorizer() {
   return (
     <div className="wrap">
       <header className="app-header">
-        <h1>Sermorizer</h1>
-        <p>
-          Turn a week of sermon materials into one beautiful mobile summary —
+        <h1 className="wordmark">Sermorizer</h1>
+        <hr className="rule" />
+        <p className="tagline">
+          Turn a week of sermon materials into one beautiful mobile summary ·
           Galilee Church
         </p>
       </header>
 
       {history.length > 0 && (
-        <details className="panel history">
+        <details className="panel history panel-secondary">
           <summary>Download a past summary ({history.length})</summary>
           <p className="hist-note">
             Past summaries aren&apos;t displayed — tap a language to download the
@@ -1276,7 +1356,7 @@ function Sermorizer() {
                             className="hist-dl"
                             onClick={() => downloadEntry(e, l)}
                           >
-                            ⬇ {LANG_LABEL[l]}
+                            <IconDownload /> {LANG_LABEL[l]}
                           </button>
                         ))
                       ) : inProgress ? (
@@ -1317,7 +1397,7 @@ function Sermorizer() {
                       aria-label="delete saved summary"
                       onClick={() => deleteEntry(e.id)}
                     >
-                      ✕
+                      <IconClose />
                     </button>
                   </div>
                 </li>
@@ -1327,7 +1407,7 @@ function Sermorizer() {
         </details>
       )}
 
-      <details className="panel import">
+      <details className="panel import panel-secondary">
         <summary>+ Import existing summaries</summary>
         <p className="hist-note">
           Already have sermon-summary HTML files from before Sermorizer? Drop
@@ -1386,9 +1466,9 @@ function Sermorizer() {
           year: "numeric",
         });
         return (
-          <details className="panel costs">
+          <details className="panel costs panel-secondary">
             <summary>
-              💰 Cost · {formatCost(totalMonth)} this month
+              <IconCoin /> Cost · {formatCost(totalMonth)} this month
             </summary>
             <p className="hist-note">
               Actual Anthropic spend per summary, totaled from token usage.
@@ -1567,7 +1647,7 @@ function Sermorizer() {
                       setNoteFiles((p) => p.filter((_, idx) => idx !== i))
                     }
                   >
-                    ✕
+                    <IconClose />
                   </button>
                 </li>
               ))}
@@ -1631,7 +1711,7 @@ function Sermorizer() {
                       setBulletinFiles((p) => p.filter((_, idx) => idx !== i))
                     }
                   >
-                    ✕
+                    <IconClose />
                   </button>
                 </li>
               ))}
@@ -1710,7 +1790,7 @@ function Sermorizer() {
               disabled={!docs[activeLang] || busy}
               onClick={download}
             >
-              ⬇ Download HTML
+              <IconDownload /> Download HTML
             </button>
           </div>
 
@@ -1752,7 +1832,9 @@ function Sermorizer() {
             />
           ) : (
             <div className="placeholder">
-              <div className="big">✝</div>
+              <div className="big">
+                <IconCross />
+              </div>
               <p>
                 Fill in the sermon details, handwritten note, and transcript on
                 the left, then tap <strong>Generate summary</strong> — the
