@@ -364,8 +364,10 @@ function ElapsedTimer() {
 // Above this transcript size, one generation risks exceeding the 300s server
 // limit, so we split into parts of roughly this many characters each. (The
 // proofreading pre-pass runs on the single-call path only — on the split
-// path it's skipped so each part fits the time budget.)
-const SPLIT_TRANSCRIPT_CHARS = 16000;
+// path it's skipped so each part fits the time budget.) Conservative on
+// purpose: a borderline-length sermon at the old 16000 cap could run Opus
+// right up to Vercel's 300s function limit, so we split sooner.
+const SPLIT_TRANSCRIPT_CHARS = 12000;
 const STEP_TIMEOUT_MS = 330_000;
 
 /** Read a non-2xx fetch Response and surface the server's `error` message if any. */
