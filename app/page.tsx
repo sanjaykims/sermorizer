@@ -997,38 +997,78 @@ function Sermorizer() {
       workingSlices = slices.map((s, k) => cleaned[String(k)] || s);
     }
 
-    // Phase 2: per-part HTML generation, sequential as today. Each is a
-    // single Opus pass on a (possibly proofread) slice.
-    for (let k = 0; k < n; k++) {
-      setStatusMsg(
-        `Long sermon — writing part ${k + 1} of ${n} on the server… (you can switch away; it keeps working)`,
-      );
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "part",
-          id,
-          partIndex: k,
-          partCount: n,
-          metadata: meta,
-          theme,
-          transcript: workingSlices[k],
-          noteImages,
-          bulletinImages: k === 0 ? bulletinImages : [],
-          // Proofreading already ran in phase 1 (if enabled); never proofread again here.
-          proofread: false,
-        }),
-      });
-      if (!res.ok) throw new Error(await readErr(res));
-      const j = (await res.json()) as { id: string };
-      id = j.id;
-      if (k === 0 && !currentIdRef.current) {
-        setCurrentId(id);
-        currentIdRef.current = id;
-      }
-      await waitForRow(id, (r) => Boolean(r.parts?.[String(k)]));
+    // Phase 2: per-part HTML generation. Fire part 0 first so we have the
+    // row id, then fan out the remaining parts in PARALLEL. Each part runs
+    // inside its own server-side `after()` block, so once submitted the
+    // job is fully server-owned — the browser can be backgrounded or the
+    // tab suspended and every part still completes. (Sequentially queueing
+    // from the client would stall on browser suspension between parts.)
+    setStatusMsg(
+      `Long sermon — writing ${n} parts in parallel on the server… (you can switch away; it keeps working)`,
+    );
+    const firstPartRes = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "part",
+        id,
+        partIndex: 0,
+        partCount: n,
+        metadata: meta,
+        theme,
+        transcript: workingSlices[0],
+        noteImages,
+        bulletinImages,
+        proofread: false,
+      }),
+    });
+    if (!firstPartRes.ok) throw new Error(await readErr(firstPartRes));
+    const firstPartJson = (await firstPartRes.json()) as { id: string };
+    id = firstPartJson.id;
+    if (!currentIdRef.current) {
+      setCurrentId(id);
+      currentIdRef.current = id;
     }
+
+    if (n > 1) {
+      const fanout = workingSlices.slice(1).map((slice, idx) =>
+        fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "part",
+            id,
+            partIndex: idx + 1,
+            partCount: n,
+            metadata: meta,
+            theme,
+            transcript: slice,
+            noteImages,
+            bulletinImages: [],
+            proofread: false,
+          }),
+        }).then(async (r) => {
+          if (!r.ok) throw new Error(await readErr(r));
+          return r.json();
+        }),
+      );
+      await Promise.all(fanout);
+    }
+
+    // One wait covers all N parts: the server's own per-part finalize logic
+    // stitches once the last part lands. Allow N × STEP_TIMEOUT_MS so a
+    // slow part doesn't fail the whole job — parts run concurrently, so
+    // real wall time is closer to ONE part, not N.
+    setStatusMsg(`All ${n} parts dispatched — waiting for the server to finish…`);
+    await waitForRow(
+      id!,
+      (r) => {
+        const ps = r.parts ?? {};
+        for (let i = 0; i < n; i++) if (!ps[String(i)]) return false;
+        return true;
+      },
+      STEP_TIMEOUT_MS * n,
+    );
 
     // The server stitches the parts the moment the last one lands (so a long
     // sermon finishes even if the app was closed). Wait briefly for it; if the
