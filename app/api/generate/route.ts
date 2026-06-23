@@ -350,7 +350,14 @@ export async function POST(req: Request): Promise<Response> {
             partIndex,
             partCount,
           });
-          const { text: html, usage } = await runAnthropic(PART_SYSTEM_PROMPT, content);
+          // Cap part-mode output so a single part can never run Opus past
+          // Vercel's 300s function limit. 14000 tokens ≈ 200–230s of output
+          // at the model's typical rate — comfortable headroom — and each
+          // part only covers a fraction of the sermon, so the cap is not
+          // a real constraint on completeness.
+          const { text: html, usage } = await runAnthropic(PART_SYSTEM_PROMPT, content, {
+            maxTokens: 14000,
+          });
           await addUsageServer(rowId, usage);
           if (!html.toLowerCase().includes("</html>")) {
             throw new Error("A part stopped early — please try again.");
