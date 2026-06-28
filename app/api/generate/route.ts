@@ -31,9 +31,14 @@ import { requireSessionOrUnauthorized } from "@/lib/auth/server";
 import { supabaseAdminAvailable } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
-// The background generation runs inside this function via after(); the work
-// must finish within this limit (and it no longer depends on the client staying
-// connected — locking the phone or switching apps won't interrupt it).
+// The heavy generation runs AFTER the HTTP response via next/server `after()`
+// (so the client gets an id immediately and can lock the phone). That
+// post-response work ONLY executes on Vercel Fluid Compute — on classic
+// Lambdas the function is frozen the moment the response is sent, so the
+// Anthropic call never runs, the row stays "generating", and the client
+// eventually reports "A part took longer than the server allows". Fluid
+// Compute is therefore REQUIRED and is enabled in vercel.json ({ "fluid":
+// true }); do not remove it. maxDuration bounds the post-response work.
 export const maxDuration = 300;
 
 // The whole service runs on the latest, most capable Opus. Hard-coded default
