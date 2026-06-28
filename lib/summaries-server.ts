@@ -86,6 +86,66 @@ export async function insertSummaryServer(input: {
   });
 }
 
+/**
+ * Get a pending row to write a fresh generation into — reusing a recent FAILED
+ * attempt for the same sermon instead of piling up a new row on every retry.
+ *
+ * Only rows with status `error` are reclaimed, so an in-progress generation is
+ * never hijacked, and reuse requires a real title + service date so two
+ * genuinely different sermons are never collapsed onto one row. On reuse the
+ * row is fully reset (docs / parts / proofread_parts cleared, status back to
+ * generating) so no stale fragment from the failed attempt leaks into the new
+ * document. Falls back to a fresh insert when there's nothing safe to reuse.
+ */
+export async function claimPendingSummaryServer(input: {
+  title: string;
+  serviceDate?: string;
+  occasion?: string;
+}): Promise<Summary> {
+  const title = input.title?.trim();
+  const date = input.serviceDate?.trim();
+  if (title && title !== "Generating…" && date) {
+    const reusedId = await withSupabaseRetry(async () => {
+      const supa = getSupabaseAdmin();
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supa
+        .from("summaries")
+        .select("id")
+        .eq("title", title)
+        .eq("service_date", date)
+        .eq("status", "error")
+        .gte("created_at", dayAgo)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data as { id: string } | null)?.id;
+    });
+    if (reusedId) {
+      const row = await withSupabaseRetry(async () => {
+        const supa = getSupabaseAdmin();
+        const { data, error } = await supa
+          .from("summaries")
+          .update({
+            status: "generating",
+            docs: {},
+            parts: {},
+            proofread_parts: {},
+            error: null,
+            occasion: input.occasion ?? null,
+          })
+          .eq("id", reusedId)
+          .select()
+          .single();
+        if (error) throw new Error(error.message);
+        return data as Row;
+      });
+      return toSummary(row);
+    }
+  }
+  return insertSummaryServer(input);
+}
+
 export async function updateSummaryServer(
   id: string,
   patch: {

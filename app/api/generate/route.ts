@@ -13,7 +13,7 @@ import {
   type ImagePayload,
 } from "@/lib/prompt";
 import {
-  insertSummaryServer,
+  claimPendingSummaryServer,
   updateSummaryServer,
   getSummaryServer,
   mergePartServer,
@@ -268,16 +268,14 @@ export async function POST(req: Request): Promise<Response> {
         throw new Error("Invalid proofread part index.");
       }
 
-      // The first proofread part creates the row; later proofread parts (and
-      // the subsequent `part` HTML phase) reference it.
+      // The first proofread part creates (or reclaims) the row; later proofread
+      // parts (and the subsequent `part` HTML phase) reference it by id.
       let id = body.id;
       if (partIndex === 0 && !id) {
-        const pending = await insertSummaryServer({
+        const pending = await claimPendingSummaryServer({
           title: m.title?.trim() || "Generating…",
           serviceDate: m.date?.trim() || undefined,
           occasion: m.occasion?.trim() || undefined,
-          docs: {},
-          status: "generating",
         });
         id = pending.id;
       }
@@ -327,15 +325,15 @@ export async function POST(req: Request): Promise<Response> {
         throw new Error("Invalid part index.");
       }
 
-      // Part 0 creates the row; later parts reference it.
+      // Part 0 creates (or reclaims) the row; later parts reference it by id.
+      // When an id is passed (e.g. the proofread pre-phase already created the
+      // row), reuse it instead of inserting a second, orphaned row.
       let id = body.id;
-      if (partIndex === 0) {
-        const pending = await insertSummaryServer({
+      if (partIndex === 0 && !id) {
+        const pending = await claimPendingSummaryServer({
           title: m.title?.trim() || "Generating…",
           serviceDate: m.date?.trim() || undefined,
           occasion: m.occasion?.trim() || undefined,
-          docs: {},
-          status: "generating",
         });
         id = pending.id;
       }
@@ -440,13 +438,13 @@ export async function POST(req: Request): Promise<Response> {
     const rawTranscript = body.transcript;
     const proofread = body.proofread !== false;
 
-    // Create the pending row first so the client gets an id to poll immediately.
-    const pending = await insertSummaryServer({
+    // Create the pending row first so the client gets an id to poll immediately
+    // — reclaiming a failed earlier attempt for the same sermon instead of
+    // leaving a duplicate behind on every retry.
+    const pending = await claimPendingSummaryServer({
       title: m.title?.trim() || "Generating…",
       serviceDate: m.date?.trim() || undefined,
       occasion: m.occasion?.trim() || undefined,
-      docs: {},
-      status: "generating",
     });
 
     after(async () => {
