@@ -554,6 +554,22 @@ function Sermorizer() {
     // so a finished summary/translation is never mismarked as "error".
     try {
       const row = await cloudGet(job.id);
+      // Re-check ownership AFTER the await: a concurrent pollOnce may have
+      // settled this job and the user may already have started a new one —
+      // stopping polling / writing status here would clobber the new job.
+      if (jobRef.current?.id !== job.id) return;
+      // A recorded server error is NOT a timeout — surface the real message
+      // and never overwrite it in the DB with a generic "timed out".
+      if (row && row.status === "error") {
+        stopPolling();
+        if (currentIdRef.current === job.id) {
+          setStatus("error");
+          setStatusMsg(row.error || "It didn't finish — please try again.");
+        }
+        announce("It didn't finish — please try again.", false);
+        setHistory((prev) => upsert(prev, row));
+        return;
+      }
       const haveResult =
         job.kind === "translate"
           ? Boolean(job.lang && row?.docs?.[job.lang])
@@ -621,6 +637,10 @@ function Sermorizer() {
     } catch {
       return; // transient network error — keep polling
     }
+    // Re-check ownership AFTER the await: if a newer job replaced this one
+    // while the fetch was in flight, stopPolling() here would kill the NEW
+    // job's interval and timeout.
+    if (jobRef.current?.id !== job.id) return;
     if (!row) return;
     setHistory((prev) => upsert(prev, row!));
 
@@ -916,11 +936,33 @@ function Sermorizer() {
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Something went wrong starting generation.";
+      // Before declaring failure, check whether the server actually finished:
+      // a client-side timeout/throw can race a job that completed server-side
+      // (e.g. the split wait giving up on a row that was already stitched).
+      // A completed document must never be stamped 'error' — that would both
+      // mislead the user and make the row reclaimable — so recover it instead.
+      const rid = currentIdRef.current;
+      if (rid) {
+        try {
+          const row = await cloudGet(rid);
+          if (row && (row.status === "done" || row.docs?.ko)) {
+            setDocs(row.docs);
+            setActiveLang("ko");
+            setStatus("done");
+            setStatusMsg("Your summary is ready and saved to the web.");
+            announce("Your sermon summary is ready.", true);
+            setHistory((prev) => upsert(prev, { ...row, status: "done" }));
+            return;
+          }
+        } catch {
+          /* cloud unreachable — fall through to the error path */
+        }
+      }
       setStatus("error");
       setStatusMsg(msg);
       announce("Generation didn't finish — please try again.", false);
-      if (currentIdRef.current) {
-        cloudUpdate(currentIdRef.current, { status: "error", error: msg }).catch(() => {});
+      if (rid) {
+        cloudUpdate(rid, { status: "error", error: msg }).catch(() => {});
       }
     }
   }
@@ -1059,10 +1101,18 @@ function Sermorizer() {
     // stitches once the last part lands. Allow N × STEP_TIMEOUT_MS so a
     // slow part doesn't fail the whole job — parts run concurrently, so
     // real wall time is closer to ONE part, not N.
+    //
+    // CRITICAL: the predicate must accept docs.ko (the finalized document),
+    // not just "all parts present". The server finalize clears `parts` in the
+    // SAME update that stores docs.ko, so the all-parts-present state exists
+    // only for a sub-second window between the last merge and the finalize —
+    // a 3s poll usually never observes it. Waiting on parts alone made
+    // successful long sermons time out and get falsely marked as errors.
     setStatusMsg(`All ${n} parts dispatched — waiting for the server to finish…`);
     await waitForRow(
       id!,
       (r) => {
+        if (r.docs?.ko) return true; // server already stitched + finalized
         const ps = r.parts ?? {};
         for (let i = 0; i < n; i++) if (!ps[String(i)]) return false;
         return true;

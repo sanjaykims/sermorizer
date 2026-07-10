@@ -14,6 +14,8 @@ import {
 } from "@/lib/prompt";
 import {
   claimPendingSummaryServer,
+  markSummaryErrorServer,
+  finalizeSummaryIfGeneratingServer,
   updateSummaryServer,
   getSummaryServer,
   mergePartServer,
@@ -79,7 +81,7 @@ function stripFences(s: string): string {
  * only to assemble the full message without hitting the SDK's non-stream
  * timeout guard — nothing is streamed to a client here.
  */
-type RunResult = { text: string; usage: SummaryUsage };
+type RunResult = { text: string; usage: SummaryUsage; stopReason: string | null };
 
 async function runAnthropic(
   system: string,
@@ -89,7 +91,13 @@ async function runAnthropic(
   const client = new Anthropic();
   const params = {
     model: opts?.model ?? MODEL,
-    max_tokens: opts?.maxTokens ?? 24000,
+    // Default output cap: 20000 tokens ≈ 280-330s at Opus's typical rate.
+    // Deliberately close to (not far past) maxDuration=300 — a run that would
+    // exceed the budget truncates with a detectable stop_reason and fails
+    // CLEANLY, instead of the function being killed mid-flight and the row
+    // sticking in 'generating'/'translating' forever. Typical documents are
+    // 10-15k tokens, so the cap rarely binds.
+    max_tokens: opts?.maxTokens ?? 20000,
     output_config: { effort: opts?.effort ?? "medium" },
     system: [
       {
@@ -122,6 +130,7 @@ async function runAnthropic(
       cache_create: u?.cache_creation_input_tokens ?? 0,
       cache_read: u?.cache_read_input_tokens ?? 0,
     },
+    stopReason: msg.stop_reason ?? null,
   };
 }
 
@@ -139,10 +148,23 @@ async function cleanTranscript(
 ): Promise<{ text: string; usage: SummaryUsage }> {
   try {
     const content = buildProofreadUserContent(metadata, transcript);
-    const { text, usage } = await runAnthropic(PROOFREAD_SYSTEM_PROMPT, content, {
-      maxTokens: 32000,
+    // 16000 tokens ≈ 230s worst case — the proofread pass must leave time in
+    // the same 300s function for whatever runs after it. Callers gate the
+    // transcript size so a full proofread fits well inside this cap.
+    const { text, usage, stopReason } = await runAnthropic(PROOFREAD_SYSTEM_PROMPT, content, {
+      maxTokens: 16000,
       effort: "low",
     });
+    // A max_tokens stop means the tail of the transcript was silently cut —
+    // for a PROOFREAD (which must preserve everything) that is data loss, so
+    // fall back to the raw transcript rather than summarize from a stump.
+    if (stopReason === "max_tokens") {
+      console.warn(
+        "[sermorizer] proofread fallback: output hit the token cap — using raw transcript",
+        { rawLen: transcript.length },
+      );
+      return { text: transcript, usage };
+    }
     if (!text || text.length < transcript.length * 0.5) {
       console.warn(
         "[sermorizer] proofread fallback: cleaned output too short — using raw transcript",
@@ -221,11 +243,16 @@ export async function POST(req: Request): Promise<Response> {
       // Detached background work — continues even if the client disconnects.
       after(async () => {
         try {
-          const { text: raw, usage } = await runAnthropic(
+          const { text: raw, usage, stopReason } = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
           );
           await addUsageServer(id, usage);
+          if (stopReason === "max_tokens") {
+            throw new Error(
+              "This document is too long to translate in one pass — the translation hit the output limit. Please try again.",
+            );
+          }
           if (!raw.toLowerCase().includes("</html>")) {
             throw new Error("Translation stopped early — please try again.");
           }
@@ -243,10 +270,14 @@ export async function POST(req: Request): Promise<Response> {
             lang,
             err: e instanceof Error ? e.message : String(e),
           });
-          await updateSummaryServer(id, {
-            status: "error",
-            error: e instanceof Error ? e.message : "Translation failed.",
-          });
+          // NB: the row still holds the finished Korean doc (and any sibling
+          // translation) — a translate failure must never endanger it. The
+          // error status is safe to set because claimPendingSummaryServer
+          // refuses to reclaim rows whose docs are non-empty.
+          await markSummaryErrorServer(
+            id,
+            e instanceof Error ? e.message : "Translation failed.",
+          );
         }
       });
 
@@ -303,10 +334,10 @@ export async function POST(req: Request): Promise<Response> {
               partIndex,
               err: e instanceof Error ? e.message : String(e),
             });
-            await updateSummaryServer(rowId, {
-              status: "error",
-              error: e instanceof Error ? e.message : "Proofreading failed.",
-            });
+            await markSummaryErrorServer(
+              rowId,
+              e instanceof Error ? e.message : "Proofreading failed.",
+            );
           }
         }
       });
@@ -358,11 +389,13 @@ export async function POST(req: Request): Promise<Response> {
           // at the model's typical rate — comfortable headroom — and each
           // part only covers a fraction of the sermon, so the cap is not
           // a real constraint on completeness.
-          const { text: html, usage } = await runAnthropic(PART_SYSTEM_PROMPT, content, {
-            maxTokens: 14000,
-          });
+          const { text: html, usage, stopReason } = await runAnthropic(
+            PART_SYSTEM_PROMPT,
+            content,
+            { maxTokens: 14000 },
+          );
           await addUsageServer(rowId, usage);
-          if (!html.toLowerCase().includes("</html>")) {
+          if (stopReason === "max_tokens" || !html.toLowerCase().includes("</html>")) {
             throw new Error("A part stopped early — please try again.");
           }
           // Atomic server-side merge — safe even if parts finish concurrently.
@@ -386,17 +419,23 @@ export async function POST(req: Request): Promise<Response> {
               const combined = stitchPartsServer(parts, partCount);
               const title =
                 m.title?.trim() || extractHtmlTitle(combined) || "Untitled sermon";
-              await updateSummaryServer(rowId, {
+              // Compare-and-set on status='generating': when the last two
+              // parts finish in the same instant, both workers reach here —
+              // exactly one wins, so the stitch is stored once and only one
+              // completion push goes out.
+              const won = await finalizeSummaryIfGeneratingServer(rowId, {
                 docs: { ko: combined },
                 title,
                 status: "done",
                 error: null,
                 parts: {},
               });
-              await sendPushToAll({
-                title: "Sermorizer",
-                body: "Your sermon summary is ready.",
-              });
+              if (won) {
+                await sendPushToAll({
+                  title: "Sermorizer",
+                  body: "Your sermon summary is ready.",
+                });
+              }
             } catch {
               // Leave parts in place; the client can still stitch as a fallback.
             }
@@ -408,10 +447,10 @@ export async function POST(req: Request): Promise<Response> {
             partCount,
             err: e instanceof Error ? e.message : String(e),
           });
-          await updateSummaryServer(rowId, {
-            status: "error",
-            error: e instanceof Error ? e.message : "A part failed to generate.",
-          });
+          await markSummaryErrorServer(
+            rowId,
+            e instanceof Error ? e.message : "A part failed to generate.",
+          );
         }
       });
 
@@ -436,7 +475,20 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const rawTranscript = body.transcript;
-    const proofread = body.proofread !== false;
+    // The optional proofread pass adds a SECOND sequential Opus pass to the
+    // same 300s function. Both passes only fit when the transcript is short:
+    // ~6000 chars proofreads in ~130s, leaving ~170s for the summary itself.
+    // Longer transcripts silently skip the proofread (the summary prompt
+    // already corrects mishearings charitably) rather than risk the function
+    // being killed mid-generation and the row sticking at 'generating'.
+    const PROOFREAD_MAX_CHARS = 6000;
+    const proofreadRequested = body.proofread !== false;
+    const proofread = proofreadRequested && rawTranscript.length <= PROOFREAD_MAX_CHARS;
+    if (proofreadRequested && !proofread) {
+      console.warn("[sermorizer] proofread skipped: transcript too long for two passes", {
+        chars: rawTranscript.length,
+      });
+    }
 
     // Create the pending row first so the client gets an id to poll immediately
     // — reclaiming a failed earlier attempt for the same sermon instead of
@@ -457,9 +509,12 @@ export async function POST(req: Request): Promise<Response> {
           await addUsageServer(pending.id, cleaned.usage);
         }
         const content = buildGenerationUserContent({ ...body, transcript });
-        const { text: raw, usage } = await runAnthropic(GENERATION_SYSTEM_PROMPT, content);
+        const { text: raw, usage, stopReason } = await runAnthropic(
+          GENERATION_SYSTEM_PROMPT,
+          content,
+        );
         await addUsageServer(pending.id, usage);
-        if (!raw.toLowerCase().includes("</html>")) {
+        if (stopReason === "max_tokens" || !raw.toLowerCase().includes("</html>")) {
           throw new Error("Generation stopped early — please try again.");
         }
         const html = ensureEnhanceCss(raw);
@@ -479,10 +534,10 @@ export async function POST(req: Request): Promise<Response> {
           id: pending.id,
           err: e instanceof Error ? e.message : String(e),
         });
-        await updateSummaryServer(pending.id, {
-          status: "error",
-          error: e instanceof Error ? e.message : "Generation failed.",
-        });
+        await markSummaryErrorServer(
+          pending.id,
+          e instanceof Error ? e.message : "Generation failed.",
+        );
       }
     });
 

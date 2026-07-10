@@ -90,12 +90,21 @@ export async function insertSummaryServer(input: {
  * Get a pending row to write a fresh generation into — reusing a recent FAILED
  * attempt for the same sermon instead of piling up a new row on every retry.
  *
- * Only rows with status `error` are reclaimed, so an in-progress generation is
- * never hijacked, and reuse requires a real title + service date so two
- * genuinely different sermons are never collapsed onto one row. On reuse the
- * row is fully reset (docs / parts / proofread_parts cleared, status back to
- * generating) so no stale fragment from the failed attempt leaks into the new
- * document. Falls back to a fresh insert when there's nothing safe to reuse.
+ * Safety rails (each closes a real data-loss path):
+ * - Only rows with status `error` are reclaimed, so an in-progress generation
+ *   is never hijacked.
+ * - Rows whose `docs` is non-empty are NEVER reclaimed. A finished summary
+ *   whose translation later failed sits at status='error' with the completed
+ *   Korean doc (and any sibling translation) still in `docs`; resetting that
+ *   row would permanently destroy the only stored copy.
+ * - The reset UPDATE re-checks status='error' (compare-and-set), so if the row
+ *   changed between the lookup and the reset — e.g. a concurrent retry claimed
+ *   it first — we fall through to a fresh insert instead of clobbering it.
+ * - Reuse requires a real title + service date so two genuinely different
+ *   sermons are never collapsed onto one row.
+ * On reuse the row is fully reset (parts / proofread_parts cleared, status
+ * back to generating). Falls back to a fresh insert when nothing is safe to
+ * reuse.
  */
 export async function claimPendingSummaryServer(input: {
   title: string;
@@ -105,12 +114,12 @@ export async function claimPendingSummaryServer(input: {
   const title = input.title?.trim();
   const date = input.serviceDate?.trim();
   if (title && title !== "Generating…" && date) {
-    const reusedId = await withSupabaseRetry(async () => {
+    const candidate = await withSupabaseRetry(async () => {
       const supa = getSupabaseAdmin();
       const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supa
         .from("summaries")
-        .select("id")
+        .select("id, docs")
         .eq("title", title)
         .eq("service_date", date)
         .eq("status", "error")
@@ -119,9 +128,10 @@ export async function claimPendingSummaryServer(input: {
         .limit(1)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return (data as { id: string } | null)?.id;
+      return data as { id: string; docs: Record<string, string> | null } | null;
     });
-    if (reusedId) {
+    const hasDocs = Object.keys(candidate?.docs ?? {}).length > 0;
+    if (candidate && !hasDocs) {
       const row = await withSupabaseRetry(async () => {
         const supa = getSupabaseAdmin();
         const { data, error } = await supa
@@ -134,16 +144,65 @@ export async function claimPendingSummaryServer(input: {
             error: null,
             occasion: input.occasion ?? null,
           })
-          .eq("id", reusedId)
+          .eq("id", candidate.id)
+          .eq("status", "error")
           .select()
-          .single();
+          .maybeSingle();
         if (error) throw new Error(error.message);
-        return data as Row;
+        return data as Row | null;
       });
-      return toSummary(row);
+      if (row) return toSummary(row);
+      // CAS lost — the row changed under us; take the safe path.
     }
   }
   return insertSummaryServer(input);
+}
+
+/**
+ * Mark a job failed WITHOUT ever stomping a row that already reached 'done'.
+ * A finished document's status must not be overwritten by a stale worker from
+ * a previous attempt or by a failure that raced a concurrent success.
+ */
+export async function markSummaryErrorServer(id: string, message: string): Promise<void> {
+  await withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { error } = await supa
+      .from("summaries")
+      .update({ status: "error", error: message })
+      .eq("id", id)
+      .neq("status", "done");
+    if (error) throw new Error(error.message);
+  });
+}
+
+/**
+ * Atomically finalize a split job: apply the patch only if the row is still
+ * 'generating'. Returns whether THIS caller won. Two parts finishing in the
+ * same instant both see "all parts present" and both try to finalize; the
+ * status compare-and-set in the WHERE clause guarantees a single winner, so
+ * the stitch is stored once and only one completion push is sent.
+ */
+export async function finalizeSummaryIfGeneratingServer(
+  id: string,
+  patch: {
+    docs: Partial<Record<Lang, string>>;
+    title: string;
+    status: JobStatus;
+    error: string | null;
+    parts: Record<string, string>;
+  },
+): Promise<boolean> {
+  return withSupabaseRetry(async () => {
+    const supa = getSupabaseAdmin();
+    const { data, error } = await supa
+      .from("summaries")
+      .update(patch)
+      .eq("id", id)
+      .eq("status", "generating")
+      .select("id");
+    if (error) throw new Error(error.message);
+    return (data ?? []).length > 0;
+  });
 }
 
 export async function updateSummaryServer(
