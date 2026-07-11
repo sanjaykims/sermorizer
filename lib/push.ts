@@ -57,8 +57,11 @@ export async function sendPushToAll(payload: {
   body: string;
   url?: string;
 }): Promise<void> {
-  if (!ensureConfigured()) return;
   try {
+    // Inside the try: setVapidDetails() can throw on a malformed key, and this
+    // function is called on the generation SUCCESS path — a push-config error
+    // must never propagate and flip a finished summary to 'error'.
+    if (!ensureConfigured()) return;
     const supa = getSupabaseAdmin();
     const { data, error } = await supa.from("push_subscriptions").select("*");
     if (error || !data) return;

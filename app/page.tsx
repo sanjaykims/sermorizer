@@ -180,11 +180,21 @@ async function fileToPayload(file: File): Promise<ImagePayload> {
 }
 
 function fileName(
-  parts: { title?: string; occasion?: string; date?: string; createdAt?: number },
+  parts: {
+    title?: string;
+    occasion?: string;
+    date?: string;
+    serviceDate?: string;
+    createdAt?: number;
+  },
   lang: Lang,
 ): string {
   const date =
     parts.date?.trim() ||
+    // History rows are Summary objects whose service date lives in `serviceDate`
+    // (not `date`); prefer it over the creation timestamp so a downloaded file
+    // is named for the sermon's service date, not when the row was created.
+    parts.serviceDate?.trim() ||
     (parts.createdAt ? new Date(parts.createdAt).toISOString().slice(0, 10) : "") ||
     new Date().toISOString().slice(0, 10);
   const occ = slug(parts.occasion || "", "sunday-service");

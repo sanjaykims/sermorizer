@@ -87,7 +87,10 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
           docs[lang] = v;
         }
       }
-      patch.docs = docs;
+      // A PATCH sets the whole docs column. Only apply it when at least one
+      // language was provided — an empty/keyless docs object would otherwise
+      // erase every stored document in one request.
+      if (Object.keys(docs).length > 0) patch.docs = docs;
     }
     if (raw.parts && typeof raw.parts === "object") {
       const parts: Record<string, string> = {};
