@@ -91,7 +91,14 @@ export default function SceneHero() {
       <div className="sh-scrim" />
       <div className="sh-vig" />
 
-      <div className="sh-wordmark">Sermorizer</div>
+      <div className="sh-top">
+        <div className="sh-wordmark">Sermorizer</div>
+        <p className="sh-purpose">
+          설교와 손글씨 노트를, 한 편의 아름다운 요약으로
+          <br />
+          <span className="sh-purpose-en">Turn your sermon into one beautiful summary</span>
+        </p>
+      </div>
       <blockquote className="sh-verse">
         <div className="sh-ref">마태복음 5:1–2 · Matthew 5:1–2</div>
         <p className="sh-ko">
