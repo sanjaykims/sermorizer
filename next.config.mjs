@@ -17,9 +17,13 @@
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
+  // Generated summaries load their Korean/Latin serif faces via a Google Fonts
+  // @import (the one permitted external reference — see CLAUDE.md). The stylesheet
+  // comes from fonts.googleapis.com and the font files from fonts.gstatic.com;
+  // without these the in-app preview iframe falls back to generic serifs.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob:",
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self'",
   "worker-src 'self'",
   "frame-src 'self' blob:",

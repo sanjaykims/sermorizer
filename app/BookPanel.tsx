@@ -95,20 +95,20 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
 
       const html = buildBookHtml(items, bookMeta);
       if (action === "open") {
-        // Open via a Blob URL — gives the popup an opaque origin so it can't
-        // touch the app's storage, and avoids the document.write XSS surface.
+        // Open via a Blob URL and pass "noopener" so the print window can't
+        // reach back into the app through window.opener.
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
-        const w = window.open(url, "_blank", "noopener");
-        if (!w) {
-          URL.revokeObjectURL(url);
-          setMsg("Please allow pop-ups, then tap “Open book” again.");
-          return;
-        }
+        // NB: with "noopener" the DOM spec forces window.open to return null
+        // even on success, so its return value can't be used to detect a
+        // blocked pop-up — checking it revoked the blob mid-load and always
+        // showed a false "allow pop-ups" error. Assume it opened; if the pop-up
+        // really was blocked the user simply sees nothing and can retry.
+        window.open(url, "_blank", "noopener");
         // Keep the URL alive long enough for the popup (and Paged.js) to load.
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
         setMsg(
-          `Opened a ${items.length}-chapter book. Use the “Save as PDF / 인쇄” button (or your browser’s Print) to make the PDF.`,
+          `Opened a ${items.length}-chapter book. Use the “Save as PDF / 인쇄” button (or your browser’s Print) to make the PDF. If nothing opened, allow pop-ups and tap again.`,
         );
       } else {
         dl(new Blob([html], { type: "text/html;charset=utf-8" }), `${slug(meta.title)}-${lang}.html`);

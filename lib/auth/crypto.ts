@@ -29,6 +29,12 @@ export async function verifyPasscode(
   try {
     const expected = Buffer.from(hashB64, "base64");
     const salt = Buffer.from(saltB64, "base64");
+    // Reject a zero-length or salt-less stored hash outright: deriving a
+    // 0-byte key would make timingSafeEqual(empty, empty) return true, so any
+    // passcode would "match" a corrupt/blank hash. (The route also guards the
+    // empty-string case, but a non-empty string that base64-decodes to 0 bytes
+    // would slip past it.)
+    if (expected.length === 0 || salt.length === 0) return false;
     const derived = await scryptAsync(passcode.normalize("NFKC"), salt, expected.length);
     if (derived.length !== expected.length) return false;
     return timingSafeEqual(derived, expected);

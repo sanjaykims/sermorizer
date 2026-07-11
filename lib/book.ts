@@ -105,6 +105,9 @@ function extractChapter(html: string, summary: Summary): Chapter {
   const date = formatDate(summary.serviceDate, summary.createdAt);
   const sub = [date, scripture, "김영복 담임목사"].filter(Boolean).join("  ·  ");
 
+  // Split (multi-part) generations wrap the sermon in #sermon-body; single-call
+  // generations and imported/legacy documents do NOT — for those, fall back to
+  // the document's own <section>s so the chapter isn't silently empty.
   const bodyEl = doc.querySelector("#sermon-body");
   let body = "";
   if (bodyEl) {
@@ -117,6 +120,21 @@ function extractChapter(html: string, summary: Summary): Chapter {
       if (icon) icon.textContent = String(i + 1);
     });
     body = bodyEl.innerHTML;
+  } else {
+    const root = doc.body ?? doc.documentElement;
+    // The at-a-glance summary and the key-verse are rendered separately in the
+    // chapter head, so drop them (plus nav/footer chrome) before collecting.
+    root
+      .querySelectorAll(".summary, .toc, .footer, .key-verse, .info-card")
+      .forEach((n) => n.remove());
+    const secs = Array.from(root.querySelectorAll("section")).filter(
+      (s) => !s.classList.contains("summary"),
+    );
+    secs.forEach((sec, i) => {
+      const icon = sec.querySelector(".sec-icon");
+      if (icon) icon.textContent = String(i + 1);
+    });
+    body = secs.map((s) => s.outerHTML).join("\n");
   }
   return { title, sub, scripture, keyVerse, body };
 }
