@@ -117,25 +117,28 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 Output ONLY the HTML document.`;
 
 /**
- * Translation system prompt. Static, prompt-cacheable.
+ * Fragment-translation system prompt. Static, prompt-cacheable.
+ *
+ * Long (or long, stitched multi-part) documents are translated as several
+ * independent HTML-fragment calls instead of one whole-document pass — see
+ * lib/translate-split.ts. The <head>/<style>/fonts never reach the model:
+ * they're swapped deterministically in code, and only body content — where
+ * all the human-readable text lives — needs translating. This also means
+ * every call, long document or short, skips reproducing the sermon's
+ * (often several-KB) <style> block.
  */
-export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **Sermorizer**. You receive a complete, self-contained Korean HTML sermon-summary document and produce a faithful translation of it into a target language.
+export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **Sermorizer**. You receive ONE HTML fragment — a slice of a larger Korean sermon-summary document's <body> (some of its sections, its header, or its footer) — and produce a faithful translation of it into a target language.
 
 ## Rules
-- Translate EVERYTHING that a human reads: the title, headings, all prose, scripture quotations, illustration cards, pull-quotes, the at-a-glance summary, captions, and the footer. Leave nothing in Korean.
-- Preserve the document's structure, layout, CSS, and class names EXACTLY. Only the human-readable text content changes. Do not redesign, reorder, add, or drop sections.
-- Update the \`<html lang>\` attribute to the target language code (\`en\` or \`zh\`).
-- Swap the fonts in the \`<style>\` block — both the Google Fonts \`@import\` and every \`font-family\` declaration:
-  - English: \`Cormorant Garamond\` for display/headings + \`Crimson Pro\` for body.
-  - Chinese (Simplified): \`Noto Serif SC\` for display/headings + \`Noto Sans SC\` for body.
-  Keep appropriate serif fallbacks.
+- Translate EVERYTHING a human reads inside the fragment: headings, all prose, scripture quotations, illustration cards, pull-quotes, at-a-glance summary items, captions, alt/title/aria-label text. Leave nothing in Korean.
+- Preserve the fragment's HTML structure, tags, attributes, classes, and nesting EXACTLY. Change ONLY text content (and translatable attributes like alt/title/aria-label). Do not redesign, reorder, add, or drop elements.
 - Use the standard Bible book names for the target language — English ESV-style names, Chinese 和合本 names — and translate verse references accordingly.
 - The senior pastor's name: render as "Rev. Kim Young-bok" in English, and "金永福主任牧师" in Chinese.
 - Keep any Hebrew or Greek 原文 glyphs intact and untranslated.
-- Keep all base64 \`data:\` URIs, CSS rules, and structural markup unchanged.
+- Keep all base64 \`data:\` URIs and any CSS/style attribute values unchanged.
 - Keep the tone warm, reverent, and appropriate for all ages.
 
-Output ONLY the translated HTML document — it must begin with \`<!DOCTYPE html>\` and end with \`</html>\`. No preamble, no commentary, no markdown code fences.`;
+Output ONLY the translated HTML fragment — no \`<html>\`/\`<head>\`/\`<body>\` wrapper, no preamble, no commentary, no markdown code fences. The fragment must remain valid HTML.`;
 
 /* ------------------------------------------------------------------ */
 /* User-message builders                                              */
@@ -333,17 +336,19 @@ export function buildProofreadUserContent(
   ];
 }
 
+/** Build the user message for ONE fragment-translation call (one chunk of a
+ *  split document's body — see lib/translate-split.ts). */
 export function buildTranslationUserContent(
   language: "en" | "zh",
-  sourceHtml: string,
+  fragmentHtml: string,
 ): ContentBlock[] {
   const target = language === "en" ? "English" : "Simplified Chinese (简体中文)";
   return [
     {
       type: "text",
       text:
-        `Translate the following Korean HTML sermon-summary document into ${target}. Follow every rule in your instructions: translate all human-readable text, preserve the structure, classes and design exactly, swap the fonts and the <html lang> attribute, and render the pastor's name correctly for the target language. Output ONLY the translated HTML document — no code fences, no commentary.\n\n` +
-        `--- BEGIN KOREAN HTML ---\n${sourceHtml}\n--- END KOREAN HTML ---`,
+        `Translate the following HTML fragment (a slice of a Korean sermon-summary document's body) into ${target}. Follow every rule in your instructions: translate all human-readable text, preserve the HTML structure/classes/attributes exactly, and render the pastor's name correctly for the target language. Output ONLY the translated HTML fragment — no wrapper tags, no code fences, no commentary.\n\n` +
+        `--- BEGIN FRAGMENT ---\n${fragmentHtml}\n--- END FRAGMENT ---`,
     },
   ];
 }

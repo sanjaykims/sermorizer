@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { THEMES } from "@/lib/themes";
 import {
   cloudList,
@@ -111,6 +111,102 @@ function IconCross() {
     >
       <path d="M12 3v18" />
       <path d="M7 9h10" />
+    </svg>
+  );
+}
+/* Disclosure chevron for the four collapsible utility panels; rotated via
+   CSS (.sum-chev) so it doubles as the open/close indicator. */
+function IconChevron() {
+  return (
+    <svg
+      className="ico sum-chev"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 15.5 14" />
+    </svg>
+  );
+}
+function IconPlus() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+function IconAlert() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
     </svg>
   );
 }
@@ -372,7 +468,7 @@ function ElapsedTimer() {
     const id = setInterval(() => setS(Math.round((Date.now() - start) / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
-  return <>({s}s)</>;
+  return <span className="elapsed">({s}s)</span>;
 }
 
 /* ---- Split generation: chunk a long transcript into multiple parts ---- */
@@ -523,6 +619,21 @@ function Sermorizer() {
   // default — the Clova review + the summary step's own correction already
   // handle most ASR errors; turn it on for an unusually rough transcript.
   const [proofread, setProofread] = useState<boolean>(false);
+
+  // Visual-only: which drop zone ("note" | "transcript" | "bulletin") a file
+  // is currently being dragged over, purely to drive a glow/border style.
+  // File intake itself is unchanged — it still happens via the hidden
+  // <input type="file"> onChange handlers below.
+  const [dragZone, setDragZone] = useState<string | null>(null);
+  const onZoneDragOver = (zone: string) => (e: DragEvent) => {
+    e.preventDefault();
+    setDragZone(zone);
+  };
+  const onZoneDragLeave = () => setDragZone(null);
+  const onZoneDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragZone(null);
+  };
 
   const [status, setStatus] = useState<Status>("idle");
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -1473,7 +1584,7 @@ function Sermorizer() {
     <>
       <SceneHero />
       <div className="wrap">
-      <header className="app-header">
+      <header className="app-header app-header--bridge">
         <h1 className="wordmark">Sermorizer</h1>
         <hr className="rule" />
         <p className="tagline">
@@ -1482,9 +1593,15 @@ function Sermorizer() {
         </p>
       </header>
 
+      <div className="util-panels">
       {history.length > 0 && (
         <details className="panel history panel-secondary">
-          <summary>Download a past summary ({history.length})</summary>
+          <summary>
+            <IconClock /> Download a past summary ({history.length})
+            <IconChevron />
+          </summary>
+          <div className="panel-body">
+          <div className="panel-body-inner">
           <p className="hist-note">
             Past summaries aren&apos;t displayed — tap a language to download the
             file.
@@ -1562,11 +1679,18 @@ function Sermorizer() {
               );
             })}
           </ul>
+          </div>
+          </div>
         </details>
       )}
 
       <details className="panel import panel-secondary">
-        <summary>+ Import existing summaries</summary>
+        <summary>
+          <IconPlus /> Import existing summaries
+          <IconChevron />
+        </summary>
+        <div className="panel-body">
+        <div className="panel-body-inner">
         <p className="hist-note">
           Already have sermon-summary HTML files from before Sermorizer? Drop
           them in here and they&apos;ll appear in the list above — ready to
@@ -1598,6 +1722,8 @@ function Sermorizer() {
             {importMsg}
           </div>
         )}
+        </div>
+        </div>
       </details>
 
       {history.length > 0 && (() => {
@@ -1627,7 +1753,10 @@ function Sermorizer() {
           <details className="panel costs panel-secondary">
             <summary>
               <IconCoin /> Cost · {formatCost(totalMonth)} this month
+              <IconChevron />
             </summary>
+            <div className="panel-body">
+            <div className="panel-body-inner">
             <p className="hist-note">
               Actual Anthropic spend per summary, totaled from token usage.
               {tracked.length === 0
@@ -1635,11 +1764,11 @@ function Sermorizer() {
                 : " Summaries from before tracking started are shown as “—”."}
             </p>
             <div className="cost-totals">
-              <div>
+              <div className="cost-card cost-card-primary">
                 <span className="cost-label">{monthLabel}</span>
                 <span className="cost-amount">{formatCost(totalMonth)}</span>
               </div>
-              <div>
+              <div className="cost-card">
                 <span className="cost-label">
                   All time {tracked.length > 0 ? `(${tracked.length})` : ""}
                 </span>
@@ -1673,16 +1802,23 @@ function Sermorizer() {
                 );
               })}
             </ul>
+            </div>
+            </div>
           </details>
         );
       })()}
 
       {history.length > 0 && <BookPanel summaries={history} />}
+      </div>
 
       <div className="layout">
         {/* ---------- Input panel ---------- */}
-        <div className="panel">
-          <h2>1. Sermon details</h2>
+        <div className="steps">
+        <section className="step-panel">
+          <h2>
+            <span className="step-num" aria-hidden="true">1</span>
+            Sermon details
+          </h2>
           <p className="hint">
             Enter the sermon&apos;s basic information. You can leave the title and
             scripture blank if you add the order-of-service photo in step 4 —
@@ -1761,25 +1897,55 @@ function Sermorizer() {
             />
           </div>
           <div className="field">
-            <label>Color theme</label>
-            <select value={theme} onChange={(e) => setTheme(e.target.value)}>
+            <label id="theme-field-label">Color theme</label>
+            <div
+              className="theme-picker"
+              role="group"
+              aria-labelledby="theme-field-label"
+            >
               {THEMES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
+                <button
+                  key={t.key}
+                  type="button"
+                  className="theme-swatch"
+                  aria-pressed={theme === t.key}
+                  title={t.label}
+                  onClick={() => setTheme(t.key)}
+                >
+                  <span
+                    className="dot"
+                    style={{
+                      background: t.palette
+                        ? `linear-gradient(135deg, ${t.palette.brand}, ${t.palette.gilt})`
+                        : "conic-gradient(from 0deg, var(--brand), var(--gilt), var(--brand-soft), var(--brand))",
+                    }}
+                    aria-hidden="true"
+                  />
+                  {t.key === "auto" ? "Auto" : t.label.split("—")[0].trim()}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
+        </section>
 
-          <hr className="section-divider" />
+        <hr className="section-divider" />
 
-          <h2>2. Handwritten note</h2>
+        <section className="step-panel">
+          <h2>
+            <span className="step-num" aria-hidden="true">2</span>
+            Handwritten note
+          </h2>
           <p className="hint">
             Photo(s) or a PDF of the notes you wrote during the service
             (JPG/PNG/PDF). They are used to highlight the points that mattered
             most to you.
           </p>
-          <label className="drop">
+          <label
+            className={`drop${dragZone === "note" ? " drop-active" : ""}`}
+            onDragOver={onZoneDragOver("note")}
+            onDragLeave={onZoneDragLeave}
+            onDrop={onZoneDrop}
+          >
             <strong>+ Add note image(s) or PDF</strong>
             <span>Photos or a PDF — you can select multiple</span>
             <input
@@ -1811,12 +1977,22 @@ function Sermorizer() {
               ))}
             </ul>
           )}
+        </section>
 
-          <hr className="section-divider" />
+        <hr className="section-divider" />
 
-          <h2>3. Recorded sermon transcript</h2>
+        <section className="step-panel">
+          <h2>
+            <span className="step-num" aria-hidden="true">3</span>
+            Recorded sermon transcript
+          </h2>
           <p className="hint">A .txt file transcribed with Clova Note or similar.</p>
-          <label className="drop">
+          <label
+            className={`drop${dragZone === "transcript" ? " drop-active" : ""}`}
+            onDragOver={onZoneDragOver("transcript")}
+            onDragLeave={onZoneDragLeave}
+            onDrop={onZoneDrop}
+          >
             <strong>
               {transcript ? "Replace transcript .txt" : "+ Upload transcript .txt"}
             </strong>
@@ -1831,11 +2007,14 @@ function Sermorizer() {
               }}
             />
           </label>
+        </section>
 
-          <hr className="section-divider" />
+        <hr className="section-divider" />
 
+        <section className="step-panel">
           <h2>
-            4. Order of service <span className="opt">(optional)</span>
+            <span className="step-num" aria-hidden="true">4</span>
+            Order of service <span className="opt">(optional)</span>
           </h2>
           <p className="hint">
             A photo of the printed order of service (주보). It is used only to
@@ -1843,7 +2022,12 @@ function Sermorizer() {
             scripture, date) — it won&apos;t appear in the summary, which is the
             sermon only.
           </p>
-          <label className="drop">
+          <label
+            className={`drop${dragZone === "bulletin" ? " drop-active" : ""}`}
+            onDragOver={onZoneDragOver("bulletin")}
+            onDragLeave={onZoneDragLeave}
+            onDrop={onZoneDrop}
+          >
             <strong>+ Add bulletin image(s)</strong>
             <span>You can select multiple</span>
             <input
@@ -1875,9 +2059,11 @@ function Sermorizer() {
               ))}
             </ul>
           )}
+        </section>
 
-          <hr className="section-divider" />
+        <hr className="section-divider" />
 
+        <div className="lead-in">
           <label className="proofread-toggle">
             <input
               type="checkbox"
@@ -1900,16 +2086,19 @@ function Sermorizer() {
 
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary btn-cta"
             disabled={busy}
             onClick={onGenerate}
           >
-            {status === "generating" ? (
-              <>Generating… <ElapsedTimer /></>
-            ) : (
-              "Generate summary"
-            )}
+            <span className="btn-cta-label">
+              {status === "generating" ? (
+                <>Generating… <ElapsedTimer /></>
+              ) : (
+                "Generate summary"
+              )}
+            </span>
           </button>
+        </div>
         </div>
 
         {/* ---------- Preview panel ---------- */}
@@ -1952,25 +2141,42 @@ function Sermorizer() {
             </button>
           </div>
 
-          {statusMsg && (
-            <div
-              className={`status ${
-                status === "error"
-                  ? "error"
-                  : busy
-                    ? "working"
-                    : status === "done"
-                      ? "done"
-                      : "working"
-              }`}
-            >
-              {statusMsg} {busy && <ElapsedTimer />}
-            </div>
-          )}
+          {statusMsg && (() => {
+            // Same precedence the badge/copy already used — just named once
+            // so the icon and the className agree. No behavior change.
+            const statusKind =
+              status === "error"
+                ? "error"
+                : busy
+                  ? "working"
+                  : status === "done"
+                    ? "done"
+                    : "working";
+            return (
+              <div className={`status ${statusKind}`}>
+                <span className="status-icon" aria-hidden="true">
+                  {statusKind === "error" ? (
+                    <IconAlert />
+                  ) : statusKind === "done" ? (
+                    <IconCheck />
+                  ) : (
+                    <span className="status-dot" />
+                  )}
+                </span>
+                <span className="status-text">
+                  {statusMsg} {busy && <ElapsedTimer />}
+                </span>
+              </div>
+            );
+          })()}
 
           {busy ? (
-            <div className="placeholder">
-              <div className="big">⏳</div>
+            <div className="placeholder placeholder-busy">
+              <div className="busy-emblem" aria-hidden="true">
+                <span className="busy-ring busy-ring-outer" />
+                <span className="busy-ring busy-ring-inner" />
+                <IconCross />
+              </div>
               <p>
                 Working on the server — this can take 1–3 minutes.
                 <br />
@@ -1989,8 +2195,8 @@ function Sermorizer() {
               sandbox=""
             />
           ) : (
-            <div className="placeholder">
-              <div className="big">
+            <div className="placeholder placeholder-empty">
+              <div className="empty-emblem" aria-hidden="true">
                 <IconCross />
               </div>
               <p>

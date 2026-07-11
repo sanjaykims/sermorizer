@@ -27,6 +27,7 @@ import type { SummaryUsage } from "@/lib/types";
 import { sendPushToAll } from "@/lib/push";
 import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
+import { splitHtmlForTranslation, reassembleTranslatedHtml } from "@/lib/translate-split";
 import { stitchPartsServer } from "@/lib/stitch";
 import { extractHtmlTitle } from "@/lib/util";
 import { requireSessionOrUnauthorized } from "@/lib/auth/server";
@@ -42,11 +43,11 @@ export const runtime = "nodejs";
 // Compute is therefore REQUIRED and is enabled in vercel.json ({ "fluid":
 // true }); do not remove it. maxDuration bounds the post-response work.
 //
-// 800s is Fluid Compute's ceiling. Raising it from 300 gives real headroom: a
-// full-length translation (one large pass) and the optional two-pass
-// (proofread + summarize) generate path both fit instead of being killed
-// mid-flight. Individual model calls stay capped by max_tokens so each still
-// finishes well inside this budget.
+// 300 is the hard ceiling on this Vercel plan — a higher value FAILS THE BUILD
+// ("maxDuration must be between 1 and 300"). Every model call is capped by
+// max_tokens so it finishes inside this budget; a run that would exceed it
+// truncates with a detectable stop_reason and fails cleanly instead of being
+// killed mid-flight.
 export const maxDuration = 300;
 
 // The whole service runs on the latest, most capable Opus. Hard-coded default
@@ -253,25 +254,34 @@ export async function POST(req: Request): Promise<Response> {
       // Detached background work — continues even if the client disconnects.
       after(async () => {
         try {
-          // A translation reproduces the whole (possibly stitched multi-part)
-          // Korean document, so it needs a large output budget — the 20000
-          // default truncates long sermons. 48000 tokens still finishes inside
-          // the 800s function limit.
-          const { text: raw, usage, stopReason } = await runAnthropic(
-            TRANSLATION_SYSTEM_PROMPT,
-            buildTranslationUserContent(lang, sourceHtml),
-            { maxTokens: 18000 },
+          // Split the document into a head (untranslated — fonts swapped
+          // deterministically) and 1+ body chunks, and translate every chunk
+          // in PARALLEL. This is what lets a long (or long, stitched
+          // multi-part) document translate reliably: each chunk is a small,
+          // independent fragment call bounded well inside the 300s function
+          // limit, instead of one huge whole-document pass that risked
+          // truncating past the output-token cap.
+          const doc = splitHtmlForTranslation(sourceHtml);
+          const results = await Promise.all(
+            doc.chunks.map((chunk) =>
+              runAnthropic(TRANSLATION_SYSTEM_PROMPT, buildTranslationUserContent(lang, chunk), {
+                maxTokens: 12000,
+              }),
+            ),
           );
-          await addUsageServer(id, usage);
-          if (stopReason === "max_tokens") {
+          for (const r of results) await addUsageServer(id, r.usage);
+          if (results.some((r) => r.stopReason === "max_tokens")) {
             throw new Error(
-              "This document is too long to translate in one pass — the translation hit the output limit. Please try again.",
+              "A part of this document is too long to translate in one pass. Please try again.",
             );
           }
-          if (!raw.toLowerCase().includes("</html>")) {
-            throw new Error("Translation stopped early — please try again.");
-          }
-          const html = ensureEnhanceCss(raw);
+          const html = ensureEnhanceCss(
+            reassembleTranslatedHtml(
+              doc,
+              lang,
+              results.map((r) => r.text),
+            ),
+          );
           // Atomic merge — won't clobber a sibling-language translation that
           // finishes around the same time.
           await mergeSummaryDocServer(id, lang, html);

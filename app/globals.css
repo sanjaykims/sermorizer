@@ -23,7 +23,10 @@
   --ground: #efe8d8;
   --ink: #2a1f17;
   --ink-soft: #6b5c4a;
-  --ink-faint: #8c7d6b;
+  /* Darkened from #8c7d6b: on the cream paper that was ~2.9:1 — below the 4.5:1
+     body-text minimum (Impeccable's most-flagged readability issue). This sits
+     near ~4:1 and still reads as the faintest tier. */
+  --ink-faint: #6f5f47;
   --rule: #d8cdb8;
   --rule-soft: #e6dfcd;
   --brand: #7c4a32;
@@ -47,6 +50,15 @@
   --radius: 10px;
   --shadow:
     0 1px 0 rgba(124, 74, 50, 0.04), 0 8px 24px -16px rgba(124, 74, 50, 0.18);
+  /* Lighter twin of --shadow for the secondary utility panels (history,
+     import, cost, book) — present, but a step down from the primary
+     input/preview cards so the hierarchy stays legible. */
+  --shadow-soft:
+    0 1px 1px rgba(124, 74, 50, 0.03), 0 6px 18px -14px rgba(124, 74, 50, 0.22);
+  /* Faint fractal-noise paper grain, tinted toward ink, used at very low
+     alpha so panels read as "paper" rather than flat vector fills — the
+     same restrained texture vocabulary as the scene hero. */
+  --grain: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.16 0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 * {
@@ -79,27 +91,80 @@ body {
     max(80px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
+/* The header sits directly beneath the full-bleed SceneHero photograph. Its
+   job is no longer to restate the brand at full volume — the hero already
+   said "Sermorizer" in gold on a photograph seconds ago — but to act as a
+   quiet chapter marker that bridges the hero's dark, photographic drama into
+   the calmer parchment workspace below. */
 .app-header {
+  position: relative;
   text-align: center;
-  padding: 16px 0 28px;
+  padding: 6px 0 18px;
+  z-index: 1;
 }
 
-.app-header h1 {
+/* Soft tonal fade from the hero's near-black scrim into --ground, so the cut
+   from photograph to parchment reads as an intentional transition rather
+   than an abrupt seam. Purely decorative: no layout footprint, no motion. */
+.app-header--bridge::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 112px;
+  background: linear-gradient(
+    180deg,
+    rgba(18, 10, 4, 0.5) 0%,
+    rgba(18, 10, 4, 0.16) 55%,
+    rgba(18, 10, 4, 0) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.app-header h1.wordmark {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.85rem;
-  font-weight: 700;
-  margin: 0 0 6px;
+  font-variant-caps: all-small-caps;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
   color: var(--brand-deep);
-  letter-spacing: -0.012em;
 }
 
+/* A slim gilt hairline punctuated by a small medallion diamond — the
+   editorial "chapter break" device, standing in for the old plain hr. */
 .app-header .rule {
+  position: relative;
   display: block;
-  width: 64px;
+  width: 84px;
   height: 1px;
   border: 0;
-  background: var(--rule);
-  margin: 10px auto 8px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--gilt-soft) 18%,
+    var(--gilt) 50%,
+    var(--gilt-soft) 82%,
+    transparent
+  );
+  margin: 11px auto 12px;
+}
+
+.app-header .rule::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--gilt);
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow:
+    0 0 0 3px var(--ground),
+    0 0 5px rgba(184, 137, 63, 0.45);
 }
 
 .app-header p,
@@ -108,7 +173,7 @@ body {
   font-family: var(--font-display);
   font-style: italic;
   color: var(--ink-soft);
-  font-size: 0.98rem;
+  font-size: 0.92rem;
 }
 
 .layout {
@@ -138,13 +203,14 @@ body {
       max(56px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
   .app-header {
-    padding: 6px 0 16px;
+    padding: 4px 0 14px;
   }
-  .app-header h1 {
-    font-size: 1.95rem;
+  .app-header h1.wordmark {
+    font-size: 0.92rem;
+    letter-spacing: 0.13em;
   }
   .app-header p {
-    font-size: 0.9rem;
+    font-size: 0.86rem;
   }
   .panel {
     padding: 16px;
@@ -266,20 +332,40 @@ select:focus {
   gap: 12px;
 }
 
+/* Ornamental section divider. Renders as three CSS background layers — a
+   hairline, an inline SVG fleuron, another hairline — instead of a
+   font-glyph character (❦), which was rendering as tofu/an incorrect glyph
+   on several platforms since font coverage for that character isn't
+   guaranteed. Background-image SVG has no such dependency. */
 .section-divider {
   border: none;
-  height: auto;
-  margin: 22px 0;
-  text-align: center;
+  height: 20px;
+  margin: 30px 0;
   overflow: visible;
-}
-
-.section-divider::before {
-  content: "· ❦ ·";
-  color: var(--gilt);
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  letter-spacing: 0.28em;
+  background-repeat: no-repeat;
+  background-position:
+    left center,
+    right center,
+    center center;
+  background-size:
+    calc(50% - 20px) 1px,
+    calc(50% - 20px) 1px,
+    16px 16px;
+  background-image: linear-gradient(
+      to right,
+      transparent,
+      var(--rule) 25%,
+      var(--rule) 75%,
+      transparent
+    ),
+    linear-gradient(
+      to right,
+      transparent,
+      var(--rule) 25%,
+      var(--rule) 75%,
+      transparent
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.4 L14.3 9 L22.4 12 L14.3 15 L12 22.6 L9.7 15 L1.6 12 L9.7 9 Z' fill='none' stroke='%23b8893f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%23b8893f'/%3E%3C/svg%3E");
 }
 
 .drop {
@@ -289,17 +375,33 @@ select:focus {
   justify-content: center;
   gap: 5px;
   border: 1px dashed var(--rule);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 20px 16px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
   background: linear-gradient(180deg, #fbf6e8, #f6efd9);
 }
 
 .drop:hover {
   border-color: var(--brand-soft);
   background: linear-gradient(180deg, #faf3e0, #f1e9cf);
+}
+
+.drop:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
+/* Visual-only drag-over feedback — toggled by onDragOver/onDragLeave/onDrop
+   handlers in page.tsx that set no state beyond this className; the actual
+   file intake is unchanged and still happens via the hidden file input. */
+.drop.drop-active {
+  border-style: solid;
+  border-color: var(--gilt);
+  background: linear-gradient(180deg, #fbf1da, #f5e6c0);
+  box-shadow: 0 0 0 4px rgba(184, 137, 63, 0.14), 0 6px 18px -10px rgba(124, 74, 50, 0.35);
+  transform: translateY(-1px);
 }
 
 .drop strong {
@@ -368,16 +470,105 @@ select:focus {
   touch-action: manipulation;
 }
 
+/* Generate CTA — the commitment moment. Same gilt-on-brand vocabulary as the
+   hero's wordmark/crest (deep brand fill, a thin gilt hairline, a slow sheen
+   sweep on interaction) instead of a flat filled button. */
 .btn-primary {
-  background: var(--brand);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(180deg, var(--brand-soft) 0%, var(--brand) 42%, var(--brand-deep) 130%);
   color: var(--accent-ink);
   width: 100%;
+  padding: 13px 18px;
+  min-height: 50px;
+  font-size: 1rem;
+  letter-spacing: 0.012em;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 0 var(--brand-deep);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 1px 0 rgba(224, 199, 154, 0.55),
+    0 12px 26px -14px rgba(47, 27, 16, 0.55),
+    0 2px 0 var(--brand-deep);
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+
+/* Slender gilt rule across the top edge, echoing .auth-card::before. */
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 1px;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--gilt) 22%,
+    var(--gilt-soft) 50%,
+    var(--gilt) 78%,
+    transparent
+  );
+  z-index: 1;
+}
+
+/* Sheen sweep — a single restrained pass on hover/focus, not a loop. */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -35%;
+  width: 30%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: skewX(-14deg);
+  pointer-events: none;
+}
+
+.btn-primary:hover:not(:disabled)::after,
+.btn-primary:focus-visible::after {
+  animation: cta-sheen 1.05s cubic-bezier(0.2, 0.7, 0.15, 1);
+}
+
+.btn-cta-label {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+@keyframes cta-sheen {
+  from {
+    left: -35%;
+  }
+  to {
+    left: 135%;
+  }
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+  filter: brightness(1.05);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 0 var(--brand-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary::after {
+    display: none;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .btn:disabled {
@@ -385,14 +576,22 @@ select:focus {
   cursor: not-allowed;
 }
 
+.btn:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
 .btn-ghost {
   background: #fefbf2;
   color: var(--brand);
   border: 1px solid var(--rule);
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .btn-ghost:hover:not(:disabled) {
   background: #faf3e0;
+  border-color: var(--brand-soft);
 }
 
 .preview-panel {
@@ -417,6 +616,7 @@ select:focus {
 }
 
 .tab {
+  position: relative;
   border: 1px solid var(--rule);
   background: #fefbf2;
   color: var(--ink-soft);
@@ -431,12 +631,14 @@ select:focus {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .tab.active {
   background: var(--brand);
   color: var(--accent-ink);
   border-color: var(--brand);
+  box-shadow: inset 0 -2px 0 var(--gilt);
 }
 
 .tab:disabled {
@@ -458,58 +660,221 @@ select:focus {
 }
 
 .placeholder {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
+  background:
+    radial-gradient(120% 90% at 50% -10%, var(--paper-tint) 0%, transparent 60%),
+    var(--panel);
   color: var(--muted);
   padding: 40px;
   min-height: 520px;
 }
 
-.placeholder .big {
-  font-size: 2.6rem;
-  line-height: 1;
-  color: var(--gilt);
-  margin-bottom: 14px;
+/* Gilt rule across the top edge, the same quiet flourish as .auth-card. */
+.placeholder::before {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--gilt-soft) 25%,
+    var(--gilt-soft) 75%,
+    transparent
+  );
 }
 
 .placeholder p {
+  max-width: 40ch;
   font-family: var(--font-body);
   font-size: 0.94rem;
-  line-height: 1.55;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.placeholder-empty .empty-emblem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 18px;
+  color: var(--gilt);
+}
+
+.empty-emblem::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--gilt-soft) 0%, transparent 72%);
+  opacity: 0.5;
+}
+
+.empty-emblem .ico-lg {
+  position: relative;
+  z-index: 1;
+}
+
+/* Busy emblem — a slow breathing gilt ring around the cross, in place of a
+   plain hourglass/spinner. Two rings drift in and out of phase, matching the
+   restraint of the hero's own bloom pulse. */
+.placeholder-busy .busy-emblem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 18px;
+  color: var(--gilt);
+}
+
+.busy-emblem .ico-lg {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 7px rgba(184, 137, 63, 0.35));
+}
+
+.busy-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--gilt-soft);
+  animation: bz-breathe 3.2s ease-in-out infinite;
+}
+
+.busy-ring-inner {
+  inset: 14px;
+  border-color: var(--gilt);
+  opacity: 0.6;
+  animation-delay: -1.6s;
+}
+
+@keyframes bz-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busy-ring {
+    animation: none;
+    opacity: 0.55;
+  }
+  .busy-ring-inner {
+    opacity: 0.75;
+  }
 }
 
 .status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-family: var(--font-ui);
   font-size: 0.84rem;
-  padding: 10px 13px;
-  border-radius: 7px;
+  padding: 11px 14px 11px 13px;
+  border-radius: 9px;
   margin-bottom: 12px;
   letter-spacing: 0.01em;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  box-shadow: 0 1px 0 rgba(124, 74, 50, 0.04), 0 8px 20px -16px rgba(124, 74, 50, 0.3);
+  overflow: hidden;
+}
+
+/* Top-edge accent instead of a side stripe — same gilt/rust hairline motif
+   used on .auth-card and .placeholder, just recolored per status. */
+.status::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--status-accent, var(--gilt)) 15%,
+    var(--status-accent, var(--gilt)) 85%,
+    transparent
+  );
+}
+
+.status-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--status-accent, var(--brand));
+}
+
+.status-text {
+  flex: 1;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gilt);
+  display: inline-block;
+  animation: status-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot {
+    animation: none;
+    opacity: 0.85;
+  }
 }
 
 .status.working {
-  background: #f6efd9;
+  --status-accent: var(--gilt);
   color: var(--brand-deep);
-  border: 1px solid #e7d8b0;
 }
 
 .status.error {
-  background: #f7e6e3;
+  --status-accent: var(--danger);
+  background: #fbf3f1;
   color: var(--danger);
-  border: 1px solid #ecc9c1;
 }
 
 .status.done {
-  background: #e8f0e6;
+  --status-accent: var(--ok);
+  background: #f2f7f0;
   color: var(--ok);
-  border: 1px solid #c9d9c3;
   animation: done-pulse 0.6s ease;
 }
 
@@ -525,6 +890,17 @@ select:focus {
   100% {
     transform: scale(1);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status.done {
+    animation: none;
+  }
+}
+
+.elapsed {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
 }
 
 .translate-row {
@@ -546,22 +922,126 @@ select:focus {
   margin-top: 36px;
 }
 
+/* ---- Utility panel group (history, import, cost, book) ---- */
+/* A quiet flex column so the four collapsible panels read as one coherent
+   "housekeeping" cluster with even rhythm, distinct from the main two-column
+   form below it. */
+.util-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
 /* ---- Secondary panels + inline icons (Phase 2E) ---- */
-/* The input + preview panels keep the paper-card fill and soft shadow; the
-   collapsible utility panels (history, cost, import, book) drop to a flat
-   hairline so the page has a clear primary/secondary hierarchy. */
+/* The input + preview panels keep the paper-card fill and full shadow; the
+   collapsible utility panels (history, cost, import, book) get the same
+   paper-grain material and a lighter twin shadow, so they read as the same
+   illuminated-manuscript world at a quieter volume rather than a flat,
+   unrelated accordion bar. */
 .panel-secondary {
-  background: transparent;
-  box-shadow: none;
-  border-color: var(--rule);
+  padding: 0;
+  margin: 0;
+  background-color: var(--paper-card);
+  background-image: var(--grain);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.panel-secondary[open] {
+  box-shadow: var(--shadow);
+  border-color: var(--rule-soft);
 }
 
 .panel-secondary > summary {
   display: flex;
   align-items: center;
   gap: 8px;
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 20px;
   font-family: var(--font-ui);
+  font-weight: 600;
   letter-spacing: 0.005em;
+  color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.panel-secondary > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Firefox draws its own disclosure marker via ::marker rather than the
+   webkit pseudo-element above; blank it the same way. */
+.panel-secondary > summary::marker {
+  content: "";
+}
+
+.panel-secondary > summary:hover,
+.panel-secondary > summary:focus-visible {
+  background-color: var(--paper-tint);
+}
+
+.panel-secondary > summary:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: -2px;
+}
+
+.panel-secondary[open] > summary {
+  border-bottom: 1px solid var(--rule-soft);
+  background-image: linear-gradient(180deg, var(--paper-tint), transparent);
+}
+
+/* Small gilt disclosure chevron — replaces the mismatched native marker /
+   plain-text ▾▴ characters that made the four panels feel inconsistent. */
+.sum-chev {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+}
+
+.panel-secondary[open] .sum-chev {
+  transform: rotate(180deg);
+  color: var(--gilt);
+}
+
+/* Animated open/close — the collapsible content is always in the DOM as a
+   single .panel-body wrapper; the rule below overrides the browser's own
+   `details:not([open]) > *:not(summary){display:none}` (author origin always
+   wins over user-agent origin, regardless of specificity), and the actual
+   collapse is done visually via a 0fr → 1fr grid-row + visibility, which
+   animates smoothly and avoids the layout jank of height:auto transitions. */
+.panel-secondary > .panel-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0s linear 0.4s;
+}
+
+.panel-secondary[open] > .panel-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel-body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-secondary,
+  .panel-secondary > summary,
+  .panel-secondary > .panel-body,
+  .sum-chev {
+    transition: none !important;
+  }
 }
 
 /* Inline icon glyphs replacing the old emoji. */
@@ -581,55 +1061,41 @@ select:focus {
   justify-content: center;
 }
 
-/* Saved summaries (history) */
-.history {
+.panel-body-inner {
+  padding: 6px 20px 20px;
+}
+
+.panel-body .hist-note {
+  margin: 0 0 14px;
   padding: 0;
-  margin-bottom: 24px;
-}
-
-.history > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 15px 20px;
-  font-weight: 600;
-  color: var(--accent);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.history > summary::-webkit-details-marker {
-  display: none;
-}
-
-.history > summary::after {
-  content: "▾";
-  float: right;
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.history[open] > summary::after {
-  content: "▴";
-}
-
-.hist-note {
-  margin: 0;
-  padding: 0 20px 10px;
   color: var(--muted);
   font-size: 0.78rem;
+  line-height: 1.55;
 }
 
 .hist-list {
   list-style: none;
   margin: 0;
-  padding: 0 10px 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .hist-list li {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 12px 10px;
-  border-top: 1px solid var(--line);
+  gap: 9px;
+  padding: 13px 14px;
+  background: var(--paper-tint);
+  border: 1px solid var(--rule-soft);
+  border-radius: 9px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hist-list li:hover {
+  border-color: var(--brand-soft);
+  box-shadow: 0 3px 10px -7px rgba(124, 74, 50, 0.4);
 }
 
 .hist-meta {
@@ -728,35 +1194,11 @@ select:focus {
 }
 
 /* Make-a-book panel */
-.book {
-  padding: 0;
-  margin-bottom: 24px;
-}
-.book > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 15px 20px;
-  font-weight: 600;
-  color: var(--accent);
-  -webkit-tap-highlight-color: transparent;
-}
-.book > summary::-webkit-details-marker {
-  display: none;
-}
-.book > summary::after {
-  content: "▾";
-  float: right;
-  color: var(--muted);
-  font-weight: 400;
-}
-.book[open] > summary::after {
-  content: "▴";
-}
 .book .hist-note {
-  padding: 0 20px 6px;
+  margin-bottom: 4px;
 }
 .book-body {
-  padding: 4px 20px 18px;
+  padding: 0;
 }
 .book-select-head {
   display: flex;
@@ -765,7 +1207,7 @@ select:focus {
   font-size: 0.86rem;
   font-weight: 600;
   color: var(--ink);
-  margin: 16px 0 8px;
+  margin: 18px 0 8px;
 }
 .link-btn {
   border: none;
@@ -776,18 +1218,58 @@ select:focus {
   font-size: 0.82rem;
   font-weight: 600;
   padding: 4px 6px;
+  border-radius: 5px;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
+.link-btn:hover {
+  color: var(--brand-deep);
+  background-color: var(--paper-tint);
+}
+
+/* Book language — a small tab group standing in for the old native <select>,
+   matching the .tabs/.tab vocabulary already used by the preview panel so
+   the two language pickers in the app feel like one control. */
+.lang-tabs {
+  display: flex;
+  gap: 6px;
+}
+.lang-tab {
+  flex: 1;
+  border: 1px solid var(--rule);
+  background: #fefbf2;
+  color: var(--ink-soft);
+  border-radius: 8px;
+  padding: 10px 10px;
+  min-height: 44px;
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.lang-tab:hover {
+  border-color: var(--brand-soft);
+}
+.lang-tab.active {
+  background: var(--brand);
+  color: var(--accent-ink);
+  border-color: var(--brand);
+}
+
 .book-list {
   list-style: none;
   margin: 0;
   padding: 0;
   max-height: 240px;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--paper-tint);
 }
 .book-list li {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule-soft);
 }
 .book-list li:first-child {
   border-top: none;
@@ -796,14 +1278,19 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 11px 13px;
   cursor: pointer;
   font-size: 0.9rem;
+  transition: background-color 0.15s ease;
+}
+.book-list label:hover {
+  background-color: var(--paper-card);
 }
 .book-list input[type="checkbox"] {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
+  accent-color: var(--brand);
 }
 .book-list .bl-title {
   flex: 1;
@@ -828,36 +1315,100 @@ select:focus {
 }
 
 /* ---------- Auth screens ---------- */
+/* Illuminated-manuscript treatment, matching the hero: warm parchment,
+   restrained gilt, a faint grain, and a slow god-ray glow behind the card. */
 .auth-shell {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 32px 18px;
+  overflow: hidden;
   background:
     radial-gradient(circle at 50% -8%, #f9f1dc 0%, transparent 60%),
     linear-gradient(180deg, #f1e7d2 0%, #e6dab8 100%);
 }
+/* faint parchment grain over the whole scene */
+.auth-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+/* slow rotating god-ray glow behind the card */
+.auth-shell::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 900px;
+  height: 900px;
+  margin: -450px 0 0 -450px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(184, 137, 63, 0.14) 8deg,
+    transparent 22deg,
+    transparent 165deg,
+    rgba(184, 137, 63, 0.1) 178deg,
+    transparent 195deg,
+    transparent 360deg
+  );
+  animation: auth-rays-turn 48s linear infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-shell::after {
+    animation: none;
+  }
+}
+@keyframes auth-rays-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .auth-card {
   position: relative;
+  z-index: 1;
   overflow: hidden;
   width: 100%;
   max-width: 380px;
   background: var(--paper-card);
   border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 32px 26px 28px;
+  border-radius: 14px;
+  padding: 38px 28px 30px;
   box-shadow:
-    0 24px 60px -16px rgba(76, 46, 28, 0.28),
-    0 4px 12px -4px rgba(76, 46, 28, 0.14);
+    0 30px 70px -20px rgba(76, 46, 28, 0.32),
+    0 6px 16px -6px rgba(76, 46, 28, 0.16),
+    inset 0 0 0 1px rgba(255, 253, 244, 0.6);
+  animation: auth-card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
-/* gilt accent rule across the top edge — Anglican prayer-book detail */
-.auth-card::before {
+@media (prefers-reduced-motion: reduce) {
+  .auth-card {
+    animation: none;
+  }
+}
+@keyframes auth-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+/* gilt accent rules across the top and bottom edges — prayer-book detail */
+.auth-card::before,
+.auth-card::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: 0;
   height: 3px;
   background: linear-gradient(
     to right,
@@ -867,14 +1418,105 @@ select:focus {
     transparent
   );
 }
+.auth-card::before {
+  top: 0;
+}
+.auth-card::after {
+  bottom: 0;
+  opacity: 0.55;
+}
+/* corner brackets — an illuminated-page frame, not a side-stripe accent */
+.auth-corner {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+  opacity: 0.45;
+}
+.auth-corner-tl {
+  top: 11px;
+  left: 11px;
+  border-top: 1.5px solid var(--gilt);
+  border-left: 1.5px solid var(--gilt);
+}
+.auth-corner-tr {
+  top: 11px;
+  right: 11px;
+  border-top: 1.5px solid var(--gilt);
+  border-right: 1.5px solid var(--gilt);
+}
+.auth-corner-bl {
+  bottom: 11px;
+  left: 11px;
+  border-bottom: 1.5px solid var(--gilt);
+  border-left: 1.5px solid var(--gilt);
+}
+.auth-corner-br {
+  bottom: 11px;
+  right: 11px;
+  border-bottom: 1.5px solid var(--gilt);
+  border-right: 1.5px solid var(--gilt);
+}
+/* small sunburst/compass emblem, echoing the hero's god-rays */
+.auth-crest {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 6px;
+  color: var(--gilt);
+  filter: drop-shadow(0 0 7px rgba(184, 137, 63, 0.35));
+  animation: auth-crest-glow 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-crest {
+    animation: none;
+  }
+}
+@keyframes auth-crest-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(184, 137, 63, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 11px rgba(184, 137, 63, 0.5));
+  }
+}
+.auth-spinner {
+  width: 32px;
+  height: 32px;
+  margin: 2px auto 4px;
+  border-radius: 50%;
+  border: 2.5px solid var(--rule-soft);
+  border-top-color: var(--gilt);
+  animation: auth-spin 0.85s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-spinner {
+    animation: auth-spin-fade 1.6s ease-in-out infinite;
+  }
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes auth-spin-fade {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
 .auth-card h1 {
   margin: 0 0 4px;
   font-family: var(--font-display);
   font-weight: 700;
   color: var(--brand-deep);
-  font-size: 1.55rem;
+  font-size: 1.6rem;
   letter-spacing: -0.01em;
   text-align: center;
+  text-wrap: balance;
 }
 .auth-card .auth-sub {
   margin: 0 0 22px;
@@ -883,6 +1525,7 @@ select:focus {
   color: var(--ink-soft);
   font-size: 0.95rem;
   text-align: center;
+  text-wrap: pretty;
 }
 .auth-label {
   display: block;
@@ -891,7 +1534,7 @@ select:focus {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--brand);
   margin: 14px 0 6px;
 }
 .auth-input {
@@ -899,110 +1542,187 @@ select:focus {
   width: 100%;
   font-family: var(--font-body);
   font-size: 1rem;
-  padding: 12px 14px;
+  padding: 13px 14px;
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: 9px;
   background: #fdfaf0;
   color: var(--ink);
+  box-shadow: inset 0 1px 3px rgba(76, 46, 28, 0.06);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.auth-input::placeholder {
+  color: var(--ink-faint);
 }
 .auth-input:focus {
-  outline: 2px solid var(--accent-soft);
-  border-color: var(--accent-soft);
+  outline: none;
+  border-color: var(--gilt);
+  box-shadow:
+    inset 0 1px 3px rgba(76, 46, 28, 0.06),
+    0 0 0 3px rgba(184, 137, 63, 0.22);
 }
 .auth-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
+  min-height: 44px;
   margin-top: 14px;
   padding: 14px 18px;
   font-family: var(--font-ui);
   font-size: 0.97rem;
   font-weight: 600;
   letter-spacing: 0.005em;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-btn {
+    transition: opacity 0.15s ease;
+  }
 }
 .auth-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 .auth-btn-primary {
-  background: var(--brand);
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-deep) 100%);
   color: var(--accent-ink);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 0 var(--brand-deep);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 var(--brand-deep),
+    0 10px 22px -12px rgba(76, 46, 28, 0.55);
+}
+.auth-btn-primary:not(:disabled):active {
+  transform: translateY(1px);
+}
+@media (hover: hover) {
+  .auth-btn-primary:not(:disabled):hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 0 var(--brand-deep),
+      0 12px 26px -10px rgba(76, 46, 28, 0.6);
+  }
 }
 .auth-btn-ghost {
   background: #fefbf2;
   color: var(--brand);
   border-color: var(--rule);
 }
+@media (hover: hover) {
+  .auth-btn-ghost:not(:disabled):hover {
+    border-color: var(--brand-soft);
+    background: var(--paper-tint);
+  }
+}
+.auth-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
 .auth-err {
   margin: 12px 0 0;
   color: var(--danger);
   font-size: 0.88rem;
+  line-height: 1.4;
 }
 .auth-hint {
   margin: 14px 0 0;
-  color: #8c7d6b;
+  color: var(--ink-faint);
   font-size: 0.82rem;
   line-height: 1.45;
 }
 .auth-hint code {
-  background: #f3ecdc;
+  background: var(--paper-tint);
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 0.78rem;
 }
 .auth-divider {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   text-align: center;
-  margin: 18px 0 6px;
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--ink-faint);
-  font-size: 0.9rem;
+  margin: 20px 0 6px;
 }
 .auth-divider::before,
 .auth-divider::after {
   content: "";
-  position: absolute;
-  top: 50%;
-  width: calc(50% - 24px);
+  flex: 1;
   height: 1px;
-  background: var(--rule);
+  background: linear-gradient(to right, transparent, var(--rule), transparent);
 }
-.auth-divider::before {
-  left: 0;
-}
-.auth-divider::after {
-  right: 0;
+.auth-divider span {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--gilt);
+  font-size: 0.85rem;
 }
 .session-bar {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
   margin: 12px auto 0;
-  padding: 8px 14px;
+  padding: 10px 16px;
   max-width: 1180px;
-  border: 1px solid #e6dfd2;
-  background: #fdfaf3;
-  border-radius: 10px;
+  border: 1px solid var(--rule-soft);
+  background: linear-gradient(180deg, #fffdf5 0%, #fdf7e8 100%);
+  border-radius: 12px;
   font-size: 0.85rem;
-  color: #6b5b4a;
+  color: var(--ink-soft);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 8px 20px -16px rgba(76, 46, 28, 0.3);
+  animation: auth-card-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-bar {
+    animation: none;
+  }
+}
+.session-bar::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--gilt-soft) 25%,
+    var(--gilt-soft) 75%,
+    transparent
+  );
 }
 .session-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  background: var(--paper-tint);
+  border: 1px solid var(--gilt-soft);
   font-family: var(--font-ui);
   font-weight: 600;
-  color: var(--brand);
+  color: var(--brand-deep);
+}
+.session-tag .ico {
+  color: var(--gilt);
 }
 .session-spacer {
   flex: 1;
@@ -1017,7 +1737,16 @@ select:focus {
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .session-btn:not(:disabled):hover {
+    background: var(--paper-tint);
+    border-color: var(--brand);
+  }
 }
 .session-btn:disabled {
   opacity: 0.6;
@@ -1025,21 +1754,35 @@ select:focus {
 }
 .session-msg {
   flex-basis: 100%;
-  color: #6b5b4a;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--paper-tint);
+  color: var(--ink-soft);
   font-size: 0.8rem;
 }
 
-/* ---------- Proofread toggle ---------- */
+/* ---------- Proofread toggle (immediate lead-in to Generate) ---------- */
 .proofread-toggle {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  border: 1px solid #e6dfd2;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 6px 0 16px;
+  border: 1px solid var(--rule-soft);
   border-radius: 10px;
-  background: #fdfaf3;
+  background: linear-gradient(180deg, var(--paper-card), var(--paper-tint));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 16px -12px rgba(124, 74, 50, 0.22);
   cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.proofread-toggle:hover {
+  border-color: var(--gilt-soft);
+}
+
+.proofread-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
 }
 .proofread-toggle input[type="checkbox"] {
   width: 20px;
@@ -1064,44 +1807,57 @@ select:focus {
 }
 
 /* ---------- Cost panel ---------- */
-.panel.costs > summary {
-  font-weight: 600;
-  color: var(--accent);
-}
 .cost-totals {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin: 8px 0 14px;
+  margin: 4px 0 16px;
 }
-.cost-totals > div {
+.cost-card {
   flex: 1 1 calc(50% - 12px);
-  background: #fdfaf3;
-  border: 1px solid #e6dfd2;
+  background: var(--paper-tint);
+  border: 1px solid var(--rule-soft);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
+/* The current month's spend is the figure the user actually checks this
+   panel for — a restrained gilt wash + gilt figure singles it out from the
+   all-time total beside it, without touching the side-stripe-accent ban. */
+.cost-card-primary {
+  background: linear-gradient(160deg, var(--paper-tint) 40%, #f7ecd2 100%);
+  border-color: var(--gilt-soft);
+}
+.cost-card-primary .cost-amount {
+  color: var(--gilt);
+}
 .cost-label {
   font-size: 0.78rem;
-  color: #8c7d6b;
+  color: var(--ink-faint);
 }
 .cost-amount {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 .cost-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule-soft);
 }
 .cost-list li {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 11px 6px;
+  margin: 0 -6px;
+  border-bottom: 1px solid var(--rule-soft);
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+.cost-list li:hover {
+  background-color: var(--paper-tint);
 }
 .cost-row {
   display: flex;
@@ -1131,10 +1887,6 @@ select:focus {
 }
 
 /* ---------- Import existing summaries ---------- */
-.panel.import > summary {
-  font-weight: 600;
-  color: var(--accent);
-}
 .panel.import code {
   background: #f3ecdc;
   padding: 1px 5px;
@@ -1284,6 +2036,7 @@ input[type="checkbox"] {
 .scene-hero .sh-wordmark{
   position:absolute;top:calc(20px + env(safe-area-inset-top));left:0;right:0;z-index:3;text-align:center;
   font-family:var(--font-display);font-weight:700;font-size:1.55rem;letter-spacing:.02em;
+  /* impeccable-disable-next-line gradient-text -- intentional gilt wordmark on the hero */
   background:linear-gradient(180deg,#fbeecb,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
   text-shadow:0 2px 18px rgba(0,0,0,.4);opacity:calc(.9 - .25 * var(--p));
 }
@@ -1305,4 +2058,189 @@ input[type="checkbox"] {
 @media (prefers-reduced-motion: reduce){
   .scene-hero .sh-photo,.scene-hero .sh-rays{animation:none;}
   .scene-hero .sh-arrow{animation:none;}
+}
+
+/* ================================================================
+   Step panels — the 4-step input workspace
+   Each numbered step (was one flat block inside a single .panel) is
+   now its own illuminated card: gilt-tinted hairline border, layered
+   parchment shadow (same depth language as .scene-hero), a gilt
+   medallion step number, and a gentle scroll-reveal as it enters
+   view. The dividers between steps stay — the ornament fix above —
+   now sitting in the seam between two cards rather than inside one.
+   ================================================================ */
+.steps {
+  display: flex;
+  flex-direction: column;
+  /* No flex `gap` here — the ornamental .section-divider between each
+     step-panel already carries its own vertical margin, and doubling up
+     would over-space the stack. */
+}
+
+.lead-in {
+  margin-top: 2px;
+}
+
+.step-panel {
+  position: relative;
+  background: linear-gradient(180deg, var(--paper-card) 0%, var(--paper-tint) 145%);
+  border: 1px solid var(--rule-soft);
+  border-radius: 14px;
+  padding: 24px 22px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 1px 2px rgba(124, 74, 50, 0.05),
+    0 14px 32px -22px rgba(124, 74, 50, 0.3),
+    0 30px 60px -36px rgba(79, 46, 31, 0.24);
+}
+
+/* A hairline gilt edge along the top, echoing the hero's restraint —
+   a sliver of illumination, not a bar. */
+.step-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22px;
+  right: 22px;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--gilt-soft) 30%,
+    var(--gilt-soft) 70%,
+    transparent
+  );
+  opacity: 0.85;
+}
+
+.step-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.step-num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--paper-card);
+  background: linear-gradient(155deg, var(--gilt), var(--brand-soft));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 3px 8px -3px rgba(124, 74, 50, 0.45);
+}
+
+.step-panel .hint {
+  margin-top: 2px;
+}
+
+/* Vertical rhythm: a touch more breathing room between label / input /
+   hint than the old flat form gave them. */
+.step-panel .field {
+  margin-bottom: 16px;
+}
+
+.step-panel .field label {
+  margin-bottom: 6px;
+}
+
+.step-panel > .field:last-child {
+  margin-bottom: 0;
+}
+
+/* Scroll-reveal: a restrained rise + sharpen as each step-panel enters view,
+   driven by CSS scroll-driven animations. Deliberately does NOT animate
+   opacity — content must never be invisible by default (a class/timeline
+   that fails to run, or a browser without view() support, would otherwise
+   ship a blank form). @supports scopes it to browsers that implement
+   animation-timeline; everywhere else — and always under reduced motion —
+   the panel is simply static and fully visible. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .step-panel {
+      animation: step-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 40%;
+    }
+
+    @keyframes step-reveal {
+      from {
+        transform: translateY(16px);
+        filter: blur(1.5px);
+      }
+      to {
+        transform: translateY(0);
+        filter: blur(0);
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .step-panel {
+    padding: 18px 16px;
+    border-radius: 12px;
+  }
+}
+
+/* ---------- Theme swatch picker (replaces the native <select>) ---------- */
+.theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper-card);
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.theme-swatch:hover {
+  border-color: var(--brand-soft);
+}
+
+.theme-swatch:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
+.theme-swatch .dot {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(124, 74, 50, 0.2) inset;
+}
+
+.theme-swatch[aria-pressed="true"] {
+  color: var(--brand-deep);
+  font-weight: 600;
+  border-color: var(--gilt);
+  background: var(--paper-tint);
+  box-shadow: 0 0 0 3px rgba(184, 137, 63, 0.16);
+}
+
+@media (max-width: 640px) {
+  .theme-swatch {
+    font-size: 0.76rem;
+    padding: 5px 10px 5px 5px;
+  }
 }
