@@ -936,13 +936,18 @@ function Sermorizer() {
       const noteImages = await Promise.all(noteFiles.map(fileToPayload));
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
 
+      // One token identifies THIS generation attempt. Every request of the
+      // attempt carries it; the server uses it to fence out stale workers from
+      // a previous, reclaimed attempt for the same sermon.
+      const genToken = crypto.randomUUID();
+
       // Long sermons are split into parts that each fit the 300s server limit,
       // then stitched into one continuous file. The proofreading pass runs on
       // the single-call path only — too slow to fit alongside per-part HTML
       // generation in 300s — so we skip it when we split.
       const nParts = Math.ceil(transcript.text.length / SPLIT_TRANSCRIPT_CHARS);
       if (nParts > 1) {
-        await runSplitGeneration(transcript.text, nParts, noteImages, bulletinImages);
+        await runSplitGeneration(transcript.text, nParts, noteImages, bulletinImages, genToken);
         return;
       }
 
@@ -960,6 +965,7 @@ function Sermorizer() {
           noteImages,
           bulletinImages,
           proofread,
+          genToken,
         }),
       });
       if (!res.ok) throw new Error(await readErr(res));
@@ -1013,6 +1019,7 @@ function Sermorizer() {
     requestedParts: number,
     noteImages: ImagePayload[],
     bulletinImages: ImagePayload[],
+    genToken: string,
   ) {
     const slices = splitTranscript(text, requestedParts);
     const n = slices.length;
@@ -1039,6 +1046,7 @@ function Sermorizer() {
           partCount: n,
           metadata: meta,
           transcript: slices[0],
+          genToken,
         }),
       });
       if (!firstRes.ok) throw new Error(await readErr(firstRes));
@@ -1059,6 +1067,7 @@ function Sermorizer() {
               partCount: n,
               metadata: meta,
               transcript: slice,
+              genToken,
             }),
           }).then(async (r) => {
             if (!r.ok) throw new Error(await readErr(r));
@@ -1102,6 +1111,7 @@ function Sermorizer() {
         noteImages,
         bulletinImages,
         proofread: false,
+        genToken,
       }),
     });
     if (!firstPartRes.ok) throw new Error(await readErr(firstPartRes));
@@ -1128,6 +1138,7 @@ function Sermorizer() {
             noteImages,
             bulletinImages: [],
             proofread: false,
+            genToken,
           }),
         }).then(async (r) => {
           if (!r.ok) throw new Error(await readErr(r));

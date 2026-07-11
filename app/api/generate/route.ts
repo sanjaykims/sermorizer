@@ -68,6 +68,10 @@ type RequestBody = {
   partCount?: number;
   /** When true, Claude proofreads the transcript before summarizing. */
   proofread?: boolean;
+  /** Per-attempt token. Every request of one generation attempt carries the
+   *  same token; it fences out stale workers from a previous, reclaimed
+   *  attempt (they carry the old token). */
+  genToken?: string;
 };
 
 type UserContent = ReturnType<typeof buildGenerationUserContent>;
@@ -312,12 +316,14 @@ export async function POST(req: Request): Promise<Response> {
 
       // The first proofread part creates (or reclaims) the row; later proofread
       // parts (and the subsequent `part` HTML phase) reference it by id.
+      const genToken = body.genToken;
       let id = body.id;
       if (partIndex === 0 && !id) {
         const pending = await claimPendingSummaryServer({
           title: m.title?.trim() || "Generating…",
           serviceDate: m.date?.trim() || undefined,
           occasion: m.occasion?.trim() || undefined,
+          genToken,
         });
         id = pending.id;
       }
@@ -333,12 +339,12 @@ export async function POST(req: Request): Promise<Response> {
           // we always end up storing usable text for this index.
           const { text: cleaned, usage } = await cleanTranscript(m, slice);
           await addUsageServer(rowId, usage);
-          await mergeProofreadPartServer(rowId, String(partIndex), cleaned);
+          await mergeProofreadPartServer(rowId, String(partIndex), cleaned, genToken);
         } catch {
           // Fall back to the raw slice rather than fail the whole job — the
           // HTML pass can still produce a summary from the uncorrected text.
           try {
-            await mergeProofreadPartServer(rowId, String(partIndex), slice);
+            await mergeProofreadPartServer(rowId, String(partIndex), slice, genToken);
           } catch (e) {
             console.error("[sermorizer] proofread part fallback also failed", {
               id: rowId,
@@ -348,6 +354,7 @@ export async function POST(req: Request): Promise<Response> {
             await markSummaryErrorServer(
               rowId,
               e instanceof Error ? e.message : "Proofreading failed.",
+              genToken,
             );
           }
         }
@@ -370,12 +377,14 @@ export async function POST(req: Request): Promise<Response> {
       // Part 0 creates (or reclaims) the row; later parts reference it by id.
       // When an id is passed (e.g. the proofread pre-phase already created the
       // row), reuse it instead of inserting a second, orphaned row.
+      const genToken = body.genToken;
       let id = body.id;
       if (partIndex === 0 && !id) {
         const pending = await claimPendingSummaryServer({
           title: m.title?.trim() || "Generating…",
           serviceDate: m.date?.trim() || undefined,
           occasion: m.occasion?.trim() || undefined,
+          genToken,
         });
         id = pending.id;
       }
@@ -418,7 +427,10 @@ export async function POST(req: Request): Promise<Response> {
             throw new Error("A part stopped early — please try again.");
           }
           // Atomic server-side merge — safe even if parts finish concurrently.
-          await mergePartServer(rowId, String(partIndex), html);
+          // Fenced by genToken: a straggler from a reclaimed prior attempt is
+          // skipped (merged === false) so it can't mix stale HTML in.
+          const merged = await mergePartServer(rowId, String(partIndex), html, genToken);
+          if (!merged) return;
 
           // If this completed the set, finalize server-side: stitch into one
           // document, set docs.ko + done, clear the now-unneeded parts, and
@@ -442,13 +454,17 @@ export async function POST(req: Request): Promise<Response> {
               // parts finish in the same instant, both workers reach here —
               // exactly one wins, so the stitch is stored once and only one
               // completion push goes out.
-              const won = await finalizeSummaryIfGeneratingServer(rowId, {
-                docs: { ko: combined },
-                title,
-                status: "done",
-                error: null,
-                parts: {},
-              });
+              const won = await finalizeSummaryIfGeneratingServer(
+                rowId,
+                {
+                  docs: { ko: combined },
+                  title,
+                  status: "done",
+                  error: null,
+                  parts: {},
+                },
+                genToken,
+              );
               if (won) {
                 await sendPushToAll({
                   title: "Sermorizer",
@@ -477,6 +493,7 @@ export async function POST(req: Request): Promise<Response> {
           await markSummaryErrorServer(
             rowId,
             e instanceof Error ? e.message : "A part failed to generate.",
+            genToken,
           );
         }
       });
@@ -520,10 +537,12 @@ export async function POST(req: Request): Promise<Response> {
     // Create the pending row first so the client gets an id to poll immediately
     // — reclaiming a failed earlier attempt for the same sermon instead of
     // leaving a duplicate behind on every retry.
+    const genToken = body.genToken;
     const pending = await claimPendingSummaryServer({
       title: m.title?.trim() || "Generating…",
       serviceDate: m.date?.trim() || undefined,
       occasion: m.occasion?.trim() || undefined,
+      genToken,
     });
 
     after(async () => {
@@ -546,16 +565,20 @@ export async function POST(req: Request): Promise<Response> {
         }
         const html = ensureEnhanceCss(raw);
         const title = m.title?.trim() || extractHtmlTitle(html) || "Untitled sermon";
-        await updateSummaryServer(pending.id, {
-          docs: { ko: html },
-          title,
-          status: "done",
-          error: null,
-        });
-        await sendPushToAll({
-          title: "Sermorizer",
-          body: "Your sermon summary is ready.",
-        });
+        // Fenced finalize: only publish if this attempt still owns the row and
+        // it's still 'generating'. A retry that reclaimed the row (new token)
+        // means this straggler shouldn't overwrite the fresh attempt.
+        const won = await finalizeSummaryIfGeneratingServer(
+          pending.id,
+          { docs: { ko: html }, title, status: "done", error: null, parts: {} },
+          genToken,
+        );
+        if (won) {
+          await sendPushToAll({
+            title: "Sermorizer",
+            body: "Your sermon summary is ready.",
+          });
+        }
       } catch (e) {
         console.error("[sermorizer] generate failed", {
           id: pending.id,
@@ -564,6 +587,7 @@ export async function POST(req: Request): Promise<Response> {
         await markSummaryErrorServer(
           pending.id,
           e instanceof Error ? e.message : "Generation failed.",
+          genToken,
         );
       }
     });

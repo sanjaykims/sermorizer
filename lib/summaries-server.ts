@@ -17,7 +17,32 @@ type Row = {
   proofread_parts: Record<string, string> | null;
   usage: SummaryUsage | null;
   created_at: string | null;
+  gen_token: string | null;
 };
+
+/**
+ * Read a row's current attempt token. Used to fence stale writers: a part /
+ * proofread worker from a previous attempt (that failed and was reclaimed)
+ * carries an old token, so its late merge/error can be skipped rather than
+ * corrupting the fresh attempt now owning the row. Returns undefined on error
+ * so the caller proceeds — fencing is best-effort, never a hard failure.
+ */
+export async function getGenTokenServer(id: string): Promise<string | null | undefined> {
+  try {
+    return await withSupabaseRetry(async () => {
+      const supa = getSupabaseAdmin();
+      const { data, error } = await supa
+        .from("summaries")
+        .select("gen_token")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data as { gen_token: string | null } | null)?.gen_token ?? null;
+    });
+  } catch {
+    return undefined;
+  }
+}
 
 function toSummary(r: Row): Summary {
   return {
@@ -73,6 +98,7 @@ export async function insertSummaryServer(input: {
   occasion?: string;
   docs?: Partial<Record<Lang, string>>;
   status?: JobStatus;
+  genToken?: string;
 }): Promise<Summary> {
   return withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
@@ -84,6 +110,7 @@ export async function insertSummaryServer(input: {
         occasion: input.occasion ?? null,
         docs: input.docs ?? {},
         status: input.status ?? "done",
+        gen_token: input.genToken ?? null,
       })
       .select()
       .single();
@@ -116,6 +143,7 @@ export async function claimPendingSummaryServer(input: {
   title: string;
   serviceDate?: string;
   occasion?: string;
+  genToken?: string;
 }): Promise<Summary> {
   const title = input.title?.trim();
   const date = input.serviceDate?.trim();
@@ -165,6 +193,9 @@ export async function claimPendingSummaryServer(input: {
             // current month (not the failed attempt's month) and it sorts to
             // the top of history like any fresh summary.
             created_at: new Date().toISOString(),
+            // Stamp the fresh attempt's token: the previous attempt's stragglers
+            // still carry the OLD token, so their late writes are now fenced out.
+            gen_token: input.genToken ?? null,
           })
           .eq("id", candidate.id)
           // Compare-and-set on the exact status we read: if a concurrent claim
@@ -180,7 +211,7 @@ export async function claimPendingSummaryServer(input: {
       // CAS lost — the row changed under us; take the safe path.
     }
   }
-  return insertSummaryServer(input);
+  return insertSummaryServer({ ...input, genToken: input.genToken });
 }
 
 /**
@@ -188,14 +219,24 @@ export async function claimPendingSummaryServer(input: {
  * A finished document's status must not be overwritten by a stale worker from
  * a previous attempt or by a failure that raced a concurrent success.
  */
-export async function markSummaryErrorServer(id: string, message: string): Promise<void> {
+export async function markSummaryErrorServer(
+  id: string,
+  message: string,
+  genToken?: string,
+): Promise<void> {
   await withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
-    const { error } = await supa
+    let q = supa
       .from("summaries")
       .update({ status: "error", error: message })
       .eq("id", id)
       .neq("status", "done");
+    // Attempt fence: when a token is supplied, only fail the row if it still
+    // belongs to THIS attempt. A straggler worker from a previous (reclaimed)
+    // attempt carries an old token, so it can't flip the fresh attempt to
+    // 'error'. (Translation, which has no attempt token, passes none.)
+    if (genToken) q = q.eq("gen_token", genToken);
+    const { error } = await q;
     if (error) throw new Error(error.message);
   });
 }
@@ -216,15 +257,19 @@ export async function finalizeSummaryIfGeneratingServer(
     error: string | null;
     parts: Record<string, string>;
   },
+  genToken?: string,
 ): Promise<boolean> {
   return withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
-    const { data, error } = await supa
+    let q = supa
       .from("summaries")
       .update(patch)
       .eq("id", id)
-      .eq("status", "generating")
-      .select("id");
+      .eq("status", "generating");
+    // Attempt fence: only the attempt that currently owns the row may finalize
+    // it, so a straggler from a previous attempt can't publish a stale stitch.
+    if (genToken) q = q.eq("gen_token", genToken);
+    const { data, error } = await q.select("id");
     if (error) throw new Error(error.message);
     return (data ?? []).length > 0;
   });
@@ -247,7 +292,19 @@ export async function updateSummaryServer(
   });
 }
 
-export async function mergePartServer(id: string, key: string, html: string): Promise<void> {
+export async function mergePartServer(
+  id: string,
+  key: string,
+  html: string,
+  genToken?: string,
+): Promise<boolean> {
+  // Attempt fence: if the row's token has moved on (this is a straggler from a
+  // reclaimed previous attempt), skip the merge so stale part HTML can't mix
+  // into the fresh attempt's document. Best-effort read-then-write.
+  if (genToken) {
+    const current = await getGenTokenServer(id);
+    if (current !== undefined && current !== genToken) return false;
+  }
   await withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
     const { error } = await supa.rpc("merge_summary_part", {
@@ -257,6 +314,7 @@ export async function mergePartServer(id: string, key: string, html: string): Pr
     });
     if (error) throw new Error(error.message);
   });
+  return true;
 }
 
 /** Atomically merge one proofread-cleaned transcript slice into the row's
@@ -265,7 +323,12 @@ export async function mergeProofreadPartServer(
   id: string,
   key: string,
   text: string,
-): Promise<void> {
+  genToken?: string,
+): Promise<boolean> {
+  if (genToken) {
+    const current = await getGenTokenServer(id);
+    if (current !== undefined && current !== genToken) return false;
+  }
   await withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
     const { error } = await supa.rpc("merge_proofread_part", {
@@ -275,6 +338,7 @@ export async function mergeProofreadPartServer(
     });
     if (error) throw new Error(error.message);
   });
+  return true;
 }
 
 /** Atomically merge one language's HTML into the row's `docs` map and mark it
