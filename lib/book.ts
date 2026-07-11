@@ -96,6 +96,26 @@ export type Chapter = {
 function extractChapter(html: string, summary: Summary, lang: Lang): Chapter {
   const doc = new DOMParser().parseFromString(html, "text/html");
 
+  // The book prints in a real (same-origin) window — a blob: URL inherits the
+  // app origin — so any inline <script> in a stored/imported summary would run
+  // with access to the app. Neutralize active content before lifting any HTML
+  // out: drop <script>, strip on* handler attributes, and defuse javascript:
+  // URLs. (The in-app preview relies on sandbox="" instead; the book can't,
+  // because printing needs a real window.)
+  doc.querySelectorAll("script").forEach((n) => n.remove());
+  doc.querySelectorAll("*").forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith("on")) el.removeAttribute(attr.name);
+      else if (
+        (name === "href" || name === "src" || name === "xlink:href") &&
+        /^\s*javascript:/i.test(attr.value)
+      ) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+
   const rawTitle =
     doc.querySelector(".h-title")?.textContent ||
     doc.querySelector("h1")?.textContent ||

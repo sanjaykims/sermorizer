@@ -454,7 +454,7 @@ function stitchParts(parts: Record<string, string>, n: number): string {
     const items = toc
       .map(
         (t, i) =>
-          `<div class="sm-item"><div class="sm-num">${i + 1}</div><div class="sm-text">${escapeHtml(
+          `<div class="sm-item"><div class="sm-num" aria-hidden="true">${i + 1}</div><div class="sm-text">${escapeHtml(
             t.title,
           )}</div></div>`,
       )
