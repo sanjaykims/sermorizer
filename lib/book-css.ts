@@ -138,12 +138,15 @@ body {
 @media print { .print-bar { display: none !important; } }
 `;
 
-// Progressive-enhancement scripts appended to the book HTML: Paged.js paginates
-// (running heads, page numbers, TOC page refs) and a print button is added after.
+// Appended to the book HTML: a print button. Page breaks come from the CSS
+// `break-before: page` / `@page` rules above, which browsers honour natively.
+//
+// We deliberately do NOT load Paged.js from a CDN here. The app's CSP
+// (script-src 'self') blocks third-party scripts — correctly, since the book
+// popup shares the app origin — so an unpkg <script> would silently fail
+// anyway. The book prints cleanly without it: chapters start on new pages and
+// the browser supplies page numbers on paper. (Running heads / a page-numbered
+// TOC would need Paged.js self-hosted — a future opt-in, not a CDN.)
 export const BOOK_SCRIPTS = `
 <div class="print-bar"><button onclick="window.print()">🖨 Save as PDF / 인쇄</button></div>
-<script>
-  window.PagedConfig = { auto: true };
-</script>
-<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
 `;

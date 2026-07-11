@@ -4,10 +4,11 @@
 // CSP notes:
 // - script-src and style-src deliberately allow 'unsafe-inline' because Next's
 //   App Router injects inline hydration scripts and styles; a stricter policy
-//   without a nonce-wired layout would break hydration. The iframe sandbox
-//   below — sandbox="" on the preview, opaque-origin blob URL on the book
-//   popup — is the actual defence against model-injected scripts in stored
-//   summary HTML.
+//   without a nonce-wired layout would break hydration. Defence against
+//   model-injected scripts in stored summary HTML: the preview renders in a
+//   sandbox="" iframe, and the book popup — which is SAME-origin (a blob: URL
+//   inherits the app origin), not opaque — is sanitized before compile
+//   (lib/book.ts strips <script>, on* handlers, and javascript: URLs).
 // - connect-src 'self' is enough because every external API call (Anthropic,
 //   Supabase) happens server-side; the browser only talks to /api/* on this
 //   origin. Push subscriptions go to the user's chosen push service, which
