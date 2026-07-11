@@ -46,19 +46,15 @@ export function stitchPartsServer(parts: Record<string, string>, n: number): str
   sections.forEach((sec, i) => {
     const id = `sec-${i + 1}`;
     sec.setAttribute("id", id);
-    const titleEl =
-      sec.querySelector(".sec-title") ??
-      sec.querySelector("h2") ??
-      sec.querySelector("h3");
+    // Match the client stitcher: take the first h2/h3 in document order (not
+    // h2-always-before-h3), so server- and client-stitched docs are identical.
+    const titleEl = sec.querySelector(".sec-title") ?? sec.querySelector("h2, h3");
     const title = (titleEl?.textContent ?? `Section ${i + 1}`).trim();
     toc.push({ id, title });
   });
 
   // Sticky tab bar: one link per section + the summary.
-  const tocEl =
-    base.querySelector(".toc") ??
-    base.querySelector("#toc") ??
-    base.querySelector("nav.toc");
+  const tocEl = base.querySelector(".toc, #toc, nav.toc");
   if (tocEl && toc.length) {
     tocEl.set_content(
       toc.map((t) => `<a href="#${t.id}">${escapeHtml(t.title)}</a>`).join("") +
