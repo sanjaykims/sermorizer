@@ -45,7 +45,10 @@ export function parseFilename(filename: string): {
     .replace(/[-_]?(?:EN|English|ZH|Chinese)$/i, "");
 
   const dateMatch = base.match(/(\d{4}-\d{2}-\d{2})/);
-  const date = dateMatch?.[1];
+  // Only accept a REAL calendar date. An out-of-range value like 2026-13-05
+  // would otherwise be sent straight to the date column and throw on insert,
+  // failing the whole KO/EN/ZH group — better to import it date-less.
+  const date = dateMatch && isValidYmd(dateMatch[1]) ? dateMatch[1] : undefined;
 
   let occasion: string | undefined;
   if (date) {
@@ -54,6 +57,18 @@ export function parseFilename(filename: string): {
     if (occMatch && occMatch[1].length > 0) occasion = occMatch[1];
   }
   return { date, occasion };
+}
+
+/** True for a real YYYY-MM-DD calendar date (rejects 2026-13-05, 2026-02-30). */
+export function isValidYmd(s: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return (
+    dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d
+  );
 }
 
 /** The grouping key that merges a KO/EN/ZH triple sharing a date prefix into

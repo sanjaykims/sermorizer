@@ -41,7 +41,13 @@ export const runtime = "nodejs";
 // eventually reports "A part took longer than the server allows". Fluid
 // Compute is therefore REQUIRED and is enabled in vercel.json ({ "fluid":
 // true }); do not remove it. maxDuration bounds the post-response work.
-export const maxDuration = 300;
+//
+// 800s is Fluid Compute's ceiling. Raising it from 300 gives real headroom: a
+// full-length translation (one large pass) and the optional two-pass
+// (proofread + summarize) generate path both fit instead of being killed
+// mid-flight. Individual model calls stay capped by max_tokens so each still
+// finishes well inside this budget.
+export const maxDuration = 800;
 
 // The whole service runs on the latest, most capable Opus. Hard-coded default
 // (the deliberate quality choice), with an emergency override so a sudden model
@@ -243,9 +249,14 @@ export async function POST(req: Request): Promise<Response> {
       // Detached background work — continues even if the client disconnects.
       after(async () => {
         try {
+          // A translation reproduces the whole (possibly stitched multi-part)
+          // Korean document, so it needs a large output budget — the 20000
+          // default truncates long sermons. 48000 tokens still finishes inside
+          // the 800s function limit.
           const { text: raw, usage, stopReason } = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
+            { maxTokens: 48000 },
           );
           await addUsageServer(id, usage);
           if (stopReason === "max_tokens") {
@@ -395,7 +406,15 @@ export async function POST(req: Request): Promise<Response> {
             { maxTokens: 14000 },
           );
           await addUsageServer(rowId, usage);
-          if (stopReason === "max_tokens" || !html.toLowerCase().includes("</html>")) {
+          // Reject a truncated part, and one missing the #sermon-body wrapper:
+          // the stitcher silently drops wrapper-less parts (k>=1), so without
+          // this check a whole slice of the sermon could vanish from a doc the
+          // job still marks 'done'. Failing here reclaims the row on retry.
+          if (
+            stopReason === "max_tokens" ||
+            !html.toLowerCase().includes("</html>") ||
+            !/id\s*=\s*["']?sermon-body/i.test(html)
+          ) {
             throw new Error("A part stopped early — please try again.");
           }
           // Atomic server-side merge — safe even if parts finish concurrently.
@@ -436,8 +455,16 @@ export async function POST(req: Request): Promise<Response> {
                   body: "Your sermon summary is ready.",
                 });
               }
-            } catch {
-              // Leave parts in place; the client can still stitch as a fallback.
+            } catch (stitchErr) {
+              // Leave parts in place and status 'generating' so the client can
+              // still stitch as a fallback (its waitForRow accepts all-parts-
+              // present). Log it so a genuinely stuck row is diagnosable rather
+              // than silently swallowed.
+              console.error("[sermorizer] server stitch failed; leaving parts for client", {
+                id: rowId,
+                partCount,
+                err: stitchErr instanceof Error ? stitchErr.message : String(stitchErr),
+              });
             }
           }
         } catch (e) {

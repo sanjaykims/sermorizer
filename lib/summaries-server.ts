@@ -38,9 +38,15 @@ function toSummary(r: Row): Summary {
 export async function listSummariesServer(): Promise<Summary[]> {
   return withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
+    // Deliberately omit `parts` and `proofread_parts`: those hold the raw
+    // multi-part / proofread HTML for an in-flight job and can be several MB
+    // per row. Shipping them for up to 200 rows can blow past the platform
+    // response limit (then cloudList silently returns []). The list only needs
+    // metadata + the finished docs; the polling path re-fetches a single row
+    // (with parts) by id when it actually needs them.
     const { data, error } = await supa
       .from("summaries")
-      .select("*")
+      .select("id,title,service_date,occasion,docs,status,error,usage,created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -117,18 +123,25 @@ export async function claimPendingSummaryServer(input: {
     const candidate = await withSupabaseRetry(async () => {
       const supa = getSupabaseAdmin();
       const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // A stale 'generating' row (older than 15 min — well past the 800s
+      // function ceiling) is a dead attempt that was abandoned mid-flight
+      // (e.g. the client died between the proofread and part phases). Reclaim
+      // those too, so a retry reuses the stranded row instead of leaving it
+      // stuck forever and inserting a duplicate. 15 min can never catch a
+      // genuinely-live run.
+      const staleTs = new Date(Date.now() - 15 * 60 * 1000).toISOString();
       const { data, error } = await supa
         .from("summaries")
-        .select("id, docs")
+        .select("id, docs, status")
         .eq("title", title)
         .eq("service_date", date)
-        .eq("status", "error")
+        .or(`status.eq.error,and(status.eq.generating,created_at.lt.${staleTs})`)
         .gte("created_at", dayAgo)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return data as { id: string; docs: Record<string, string> | null } | null;
+      return data as { id: string; docs: Record<string, string> | null; status: string } | null;
     });
     const hasDocs = Object.keys(candidate?.docs ?? {}).length > 0;
     if (candidate && !hasDocs) {
@@ -143,9 +156,16 @@ export async function claimPendingSummaryServer(input: {
             proofread_parts: {},
             error: null,
             occasion: input.occasion ?? null,
+            // Reset accumulated usage too: the fresh attempt starts a new token
+            // tally, so the previous failed attempt's tokens must not linger and
+            // double-count in the cost panel.
+            usage: null,
           })
           .eq("id", candidate.id)
-          .eq("status", "error")
+          // Compare-and-set on the exact status we read: if a concurrent claim
+          // (or a straggler worker) changed the row since the lookup, this
+          // no-ops and we fall through to a fresh insert.
+          .eq("status", candidate.status)
           .select()
           .maybeSingle();
         if (error) throw new Error(error.message);

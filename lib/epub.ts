@@ -96,14 +96,22 @@ async function renderCoverPng(meta: BookMeta, bookTitle: string): Promise<Uint8A
   const titleSize = bookTitle.length > 16 ? 84 : 104;
   ctx.font = `700 ${titleSize}px serif`;
   const maxW = W - 220;
-  const words = bookTitle.split(/(\s+)/);
+  // Character-level greedy wrap so a space-less CJK (or one very long) title
+  // wraps instead of overflowing off the cover. Break at the last space when
+  // there is one (keeps Latin words intact); otherwise break between glyphs.
   const lines: string[] = [];
   let line = "";
-  for (const w of words) {
-    const test = line + w;
+  for (const ch of Array.from(bookTitle)) {
+    const test = line + ch;
     if (ctx.measureText(test).width > maxW && line.trim()) {
-      lines.push(line.trim());
-      line = w;
+      const lastSpace = line.lastIndexOf(" ");
+      if (lastSpace > 0) {
+        lines.push(line.slice(0, lastSpace).trim());
+        line = line.slice(lastSpace + 1) + ch;
+      } else {
+        lines.push(line.trim());
+        line = ch;
+      }
     } else {
       line = test;
     }
@@ -161,6 +169,16 @@ function toXhtml(fragment: string): string {
     `<!DOCTYPE html><html><body>${fragment}</body></html>`,
     "text/html",
   );
+  // Strip comment nodes: an HTML comment containing "--" (e.g. "<!-- part 2 --")
+  // is not well-formed XML and makes strict readers (Apple Books / epubcheck)
+  // reject the chapter file.
+  const stripComments = (node: Node) => {
+    for (const child of Array.from(node.childNodes)) {
+      if (child.nodeType === 8 /* COMMENT_NODE */) child.parentNode?.removeChild(child);
+      else stripComments(child);
+    }
+  };
+  stripComments(doc.body);
   const ser = new XMLSerializer();
   return Array.from(doc.body.childNodes)
     .map((n) => ser.serializeToString(n))

@@ -22,6 +22,10 @@ export type BookLabels = {
   rights: string;
   scriptureNote: string;
   publisher: string;
+  /** The senior pastor's name, rendered in the book's language. */
+  pastor: string;
+  preachedBy: string;
+  compiledBy: string;
 };
 
 export const LABELS: Record<Lang, BookLabels> = {
@@ -35,6 +39,9 @@ export const LABELS: Record<Lang, BookLabels> = {
     rights: "이 책의 모든 권리는 갈릴리교회에 있습니다.",
     scriptureNote: "성경 인용은 개역개정판을 따릅니다.",
     publisher: "갈릴리교회 (기독교대한감리회)",
+    pastor: "김영복 담임목사",
+    preachedBy: "설교",
+    compiledBy: "Sermorizer로 엮음",
   },
   en: {
     chapter: (n) => `Chapter ${n}`,
@@ -46,6 +53,9 @@ export const LABELS: Record<Lang, BookLabels> = {
     rights: "All rights reserved.",
     scriptureNote: "Scripture quotations follow the ESV.",
     publisher: "Galilee Church (Korean Methodist Church)",
+    pastor: "Rev. Kim Young-bok",
+    preachedBy: "Preached by",
+    compiledBy: "Compiled with Sermorizer",
   },
   zh: {
     chapter: (n) => `第 ${n} 章`,
@@ -57,6 +67,9 @@ export const LABELS: Record<Lang, BookLabels> = {
     rights: "版权所有。",
     scriptureNote: "经文引用采用和合本。",
     publisher: "加利利教会 (基督教大韩监理会)",
+    pastor: "金永福主任牧师",
+    preachedBy: "证道",
+    compiledBy: "由 Sermorizer 编纂",
   },
 };
 
@@ -80,7 +93,7 @@ export type Chapter = {
 };
 
 /** Pull one sermon's content out of its stored HTML for use as a book chapter. */
-function extractChapter(html: string, summary: Summary): Chapter {
+function extractChapter(html: string, summary: Summary, lang: Lang): Chapter {
   const doc = new DOMParser().parseFromString(html, "text/html");
 
   const rawTitle =
@@ -103,7 +116,7 @@ function extractChapter(html: string, summary: Summary): Chapter {
     .replace(/^[\s—–\-·]+/, "")
     .trim();
   const date = formatDate(summary.serviceDate, summary.createdAt);
-  const sub = [date, scripture, "김영복 담임목사"].filter(Boolean).join("  ·  ");
+  const sub = [date, scripture, LABELS[lang].pastor].filter(Boolean).join("  ·  ");
 
   // Split (multi-part) generations wrap the sermon in #sermon-body; single-call
   // generations and imported/legacy documents do NOT — for those, fall back to
@@ -142,7 +155,7 @@ function extractChapter(html: string, summary: Summary): Chapter {
 export function compileChapters(summaries: Summary[], lang: Lang): Chapter[] {
   return summaries
     .filter((s) => s.docs?.[lang])
-    .map((s) => extractChapter(s.docs[lang] as string, s));
+    .map((s) => extractChapter(s.docs[lang] as string, s, lang));
 }
 
 /* ---- Scripture index ---- */
@@ -223,7 +236,7 @@ export function buildBookHtml(summaries: Summary[], meta: BookMeta): string {
   const toc = chapters
     .map(
       (c, i) =>
-        `<li><a href="#ch${i + 1}"><span class="toc-t">${i + 1}. ${esc(c.title)}</span><span class="toc-leader"></span></a>${c.sub ? `<div class="toc-d">${esc(c.sub.replace(/\s*·\s*김영복 담임목사$/, ""))}</div>` : ""}</li>`,
+        `<li><a href="#ch${i + 1}"><span class="toc-t">${i + 1}. ${esc(c.title)}</span><span class="toc-leader"></span></a>${c.sub ? `<div class="toc-d">${esc(c.sub.replace(/\s*·\s*[^·]*$/, ""))}</div>` : ""}</li>`,
     )
     .join("\n");
 
@@ -251,13 +264,13 @@ export function buildBookHtml(summaries: Summary[], meta: BookMeta): string {
   const copyright = `<section class="copyright-page">
   <p class="cp-title">${esc(bookTitle)}</p>
   ${meta.subtitle.trim() ? `<p>${esc(meta.subtitle.trim())}</p>` : ""}
-  <p>${esc(L.editedBy)} · ${esc(meta.author.trim() || "김영복 담임목사")}</p>
+  <p>${esc(L.editedBy)} · ${esc(meta.author.trim() || L.pastor)}</p>
   <p style="margin-top:14px">© ${esc(year)} ${esc(L.publisher)}</p>
   <p>${esc(L.rights)}</p>
   ${meta.isbn.trim() ? `<p>ISBN ${esc(meta.isbn.trim())}</p>` : ""}
-  <p style="margin-top:14px">설교 · 김영복 담임목사</p>
+  <p style="margin-top:14px">${esc(L.preachedBy)} · ${esc(L.pastor)}</p>
   <p>${esc(L.scriptureNote)}</p>
-  <p style="margin-top:14px">Sermorizer로 엮음</p>
+  <p style="margin-top:14px">${esc(L.compiledBy)}</p>
 </section>`;
 
   return `<!DOCTYPE html>

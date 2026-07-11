@@ -247,7 +247,12 @@ async function registerPush() {
     ) {
       return;
     }
-    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.register("/sw.js");
+    // Wait for an ACTIVE worker before touching pushManager — register()
+    // resolves while the worker is still installing, and subscribing on a
+    // not-yet-active registration can reject with InvalidStateError on the
+    // very first enrolment.
+    const reg = await navigator.serviceWorker.ready;
     const existing = await reg.pushManager.getSubscription();
     const sub =
       existing ??
@@ -558,16 +563,26 @@ function Sermorizer() {
     jobRef.current = null;
   }
 
+  // True only when `job` is still THE active job — same row AND same kind.
+  // A translation reuses the generate row's id (startPolling({ id: currentId,
+  // kind: "translate" })), so an id-only check would let a stale generate
+  // poll stop/clobber a live translate job on the same row. Comparing kind too
+  // closes that race.
+  function ownsJob(job: Job): boolean {
+    return jobRef.current?.id === job.id && jobRef.current?.kind === job.kind;
+  }
+
   async function onJobTimeout(job: Job) {
-    if (jobRef.current?.id !== job.id) return;
+    if (!ownsJob(job)) return;
     // The work may actually have completed — verify before declaring failure,
     // so a finished summary/translation is never mismarked as "error".
     try {
       const row = await cloudGet(job.id);
       // Re-check ownership AFTER the await: a concurrent pollOnce may have
-      // settled this job and the user may already have started a new one —
-      // stopping polling / writing status here would clobber the new job.
-      if (jobRef.current?.id !== job.id) return;
+      // settled this job and the user may already have started a new one (or a
+      // translate reusing the same row id) — stopping polling / writing status
+      // here would clobber the new job.
+      if (!ownsJob(job)) return;
       // A recorded server error is NOT a timeout — surface the real message
       // and never overwrite it in the DB with a generic "timed out".
       if (row && row.status === "error") {
@@ -620,7 +635,7 @@ function Sermorizer() {
       /* fall through to the genuine-timeout path */
     }
 
-    if (jobRef.current?.id !== job.id) return;
+    if (!ownsJob(job)) return;
     stopPolling();
     if (currentIdRef.current === job.id) {
       setStatus("error");
@@ -649,8 +664,8 @@ function Sermorizer() {
     }
     // Re-check ownership AFTER the await: if a newer job replaced this one
     // while the fetch was in flight, stopPolling() here would kill the NEW
-    // job's interval and timeout.
-    if (jobRef.current?.id !== job.id) return;
+    // job's interval and timeout. Compares kind too (translate reuses the id).
+    if (!ownsJob(job)) return;
     if (!row) return;
     setHistory((prev) => upsert(prev, row!));
 
@@ -787,8 +802,16 @@ function Sermorizer() {
   useEffect(() => {
     if (entryTranslating.size === 0) return;
     let cancelled = false;
+    let ticking = false;
     const interval = setInterval(async () => {
       if (cancelled) return;
+      // Re-entrancy guard: a slow tick (several awaited cloudGets) can still be
+      // running when the next interval fires. Overlapping iterations would fire
+      // duplicate completion chimes and could re-add a just-deleted row. Skip
+      // this tick if the previous one hasn't finished.
+      if (ticking) return;
+      ticking = true;
+      try {
       for (const key of Array.from(entryTranslating)) {
         const [id, langStr] = key.split(":");
         const lang = langStr as Lang;
@@ -838,6 +861,9 @@ function Sermorizer() {
           /* transient network error — keep polling */
         }
       }
+      } finally {
+        ticking = false;
+      }
     }, 3000);
     return () => {
       cancelled = true;
@@ -855,7 +881,11 @@ function Sermorizer() {
     // Notes may be photos or a PDF scan; the bulletin stays photos-only.
     const allowed = (f: File) =>
       f.type.startsWith("image/") ||
-      (kind === "note" && f.type === "application/pdf");
+      // Some Android pickers report an empty MIME type for a .pdf chosen by
+      // extension; accept those for notes rather than silently dropping them.
+      (kind === "note" &&
+        (f.type === "application/pdf" ||
+          (f.type === "" && /\.pdf$/i.test(f.name))));
     const picked = Array.from(list).filter(allowed);
     if (kind === "note") setNoteFiles((p) => [...p, ...picked]);
     else setBulletinFiles((p) => [...p, ...picked]);
@@ -1144,19 +1174,28 @@ function Sermorizer() {
     }
     if (!combined) {
       const row2 = await cloudGet(id!);
-      combined = stitchParts(row2?.parts ?? {}, n);
-      if (!combined.toLowerCase().includes("</html>")) {
-        throw new Error("Could not assemble the parts. Please try again.");
+      // The server may have finalized late — after the wait above gave up but
+      // before this fetch. In that case parts are already cleared and the
+      // document lives in docs.ko; use it directly instead of stitching an
+      // empty parts map (which would throw and stamp a finished job as failed).
+      if (row2?.docs?.ko) {
+        combined = row2.docs.ko;
+        finalRow = row2;
+      } else {
+        combined = stitchParts(row2?.parts ?? {}, n);
+        if (!combined.toLowerCase().includes("</html>")) {
+          throw new Error("Could not assemble the parts. Please try again.");
+        }
+        const title = meta.title.trim() || extractHtmlTitle(combined) || "Untitled sermon";
+        await cloudUpdate(id!, {
+          docs: { ko: combined },
+          title,
+          status: "done",
+          error: null,
+          parts: {},
+        });
+        finalRow = row2;
       }
-      const title = meta.title.trim() || extractHtmlTitle(combined) || "Untitled sermon";
-      await cloudUpdate(id!, {
-        docs: { ko: combined },
-        title,
-        status: "done",
-        error: null,
-        parts: {},
-      });
-      finalRow = row2;
     }
 
     const finalTitle =
@@ -1179,6 +1218,9 @@ function Sermorizer() {
         occasion: meta.occasion.trim() || undefined,
         docs: { ko: combined },
         status: "done",
+        // Carry the server-accumulated token usage so the cost panel shows this
+        // (often most expensive) multi-part job's spend without a reload.
+        usage: finalRow?.usage,
       }),
     );
   }

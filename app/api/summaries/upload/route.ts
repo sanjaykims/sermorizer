@@ -18,7 +18,9 @@ import { detectLang, parseFilename, importGroupKey } from "@/lib/import-parse";
 import type { Lang } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Up to 200 sequential inserts; 60s risked a mid-loop kill (leaving a partial
+// import that duplicates on re-upload). 300s gives comfortable headroom.
+export const maxDuration = 300;
 
 type Item = { filename?: string; html?: string };
 type Body = { items?: Item[] };
@@ -118,16 +120,21 @@ export async function POST(req: Request): Promise<Response> {
   };
   const groups = new Map<string, Group>();
   for (const p of parsed) {
-    const g = groups.get(p.groupKey) ?? { docs: {} };
-    // Don't overwrite an already-populated language for this group (first
-    // wins — typically the Korean file when several upload together).
-    if (!g.docs[p.lang]) g.docs[p.lang] = p.html;
-    // Prefer the Korean entry's title; otherwise fall back to whatever we
-    // have. The "ko" file's title is canonical for the sermon.
+    // If this date-group already holds this language, the incoming file is a
+    // DIFFERENT same-day sermon (e.g. a morning and an evening service), not a
+    // translation of the same one — give it its own group instead of silently
+    // dropping it. (KO/EN/ZH of ONE sermon still merge, since they occupy
+    // different language slots.)
+    let key = p.groupKey;
+    for (let i = 1; groups.get(key)?.docs[p.lang]; i++) key = `${p.groupKey}#${i}`;
+    const g = groups.get(key) ?? { docs: {} };
+    g.docs[p.lang] = p.html;
+    // Prefer the Korean entry's title/occasion; otherwise fall back to whatever
+    // we have. The "ko" file's values are canonical for the sermon.
     if (!g.title || p.lang === "ko") g.title = p.title;
     if (!g.date && p.date) g.date = p.date;
-    if (!g.occasion && p.occasion) g.occasion = p.occasion;
-    groups.set(p.groupKey, g);
+    if ((!g.occasion || p.lang === "ko") && p.occasion) g.occasion = p.occasion;
+    groups.set(key, g);
   }
 
   const created: { id: string; title: string; langs: Lang[] }[] = [];

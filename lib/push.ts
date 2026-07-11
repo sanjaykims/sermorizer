@@ -42,7 +42,13 @@ export async function savePushSubscription(sub: StoredSub): Promise<void> {
 
 export async function deletePushSubscription(endpoint: string): Promise<void> {
   const supa = getSupabaseAdmin();
-  await supa.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  const { error } = await supa
+    .from("push_subscriptions")
+    .delete()
+    .eq("endpoint", endpoint);
+  // Surface a failed delete instead of reporting success — otherwise the stale
+  // row keeps receiving pushes and the user believes they unsubscribed.
+  if (error) throw new Error(error.message);
 }
 
 /** Best-effort push to every stored subscription. Prunes dead endpoints
