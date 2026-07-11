@@ -16,6 +16,7 @@ import { VAPID_PUBLIC_KEY } from "@/lib/push-key";
 import { usageToCost, formatCost } from "@/lib/pricing";
 import dynamic from "next/dynamic";
 import AuthGate from "./AuthGate";
+import SceneHero from "./SceneHero";
 
 // Lazy-load the book panel so it isn't shipped in the initial bundle.
 const BookPanel = dynamic(() => import("./BookPanel"), { ssr: false, loading: () => null });
@@ -1469,7 +1470,9 @@ function Sermorizer() {
   const hasAnyDoc = Boolean(docs.ko || docs.en || docs.zh);
 
   return (
-    <div className="wrap">
+    <>
+      <SceneHero />
+      <div className="wrap">
       <header className="app-header">
         <h1 className="wordmark">Sermorizer</h1>
         <hr className="rule" />
@@ -2023,6 +2026,7 @@ function Sermorizer() {
         Sermorizer · Sermon summary tool for Galilee Church · Powered by Claude
         (claude-opus-4-8)
       </p>
-    </div>
+      </div>
+    </>
   );
 }

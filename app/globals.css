@@ -1238,3 +1238,71 @@ input[type="checkbox"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* ================================================================
+   Scene hero — Sermon on the Mount intro (SceneHero.tsx)
+   Full-bleed photo that reveals on scroll: a golden light "flash"
+   over the sun, faint god-rays, and Matthew 5:1-2 rise in.
+   Driven by CSS vars --p (reveal 0..1), --sy (scroll px), --tx/--ty
+   (device tilt) set inline by the component.
+   ================================================================ */
+.scene-hero{
+  --gold:#e7c477; --gold-hi:#fbe6b6; --gold-deep:#b8893f;
+  --p:0; --sy:0px; --tx:0deg; --ty:0deg;
+  position:relative;width:100%;height:100svh;min-height:560px;overflow:hidden;
+  background:#160b04;color:#f6ecd2;isolation:isolate;
+}
+.scene-hero .sh-photo{
+  position:absolute;inset:-5%;z-index:0;
+  background:url('/scene/sermon-on-the-mount.jpg') 50% 34% / cover no-repeat;
+  transform:translateY(calc(var(--sy) * -1))
+            scale(calc(1.12 - .10 * var(--p)))
+            translate(calc(var(--ty) * .6), calc(var(--tx) * -.5));
+  filter:brightness(calc(.5 + .6 * var(--p))) saturate(calc(.82 + .30 * var(--p))) contrast(1.03);
+  animation:sh-kb 26s ease-in-out infinite alternate;
+  will-change:transform,filter;
+}
+@keyframes sh-kb{from{background-position:50% 32%}to{background-position:52% 40%}}
+.scene-hero .sh-rays{
+  position:absolute;left:30%;top:20%;width:200vmax;height:200vmax;translate:-50% -50%;z-index:1;pointer-events:none;
+  background:repeating-conic-gradient(from 200deg, rgba(255,238,196,calc(.18 * var(--p))) 0deg 1.2deg, transparent 1.2deg 13deg);
+  -webkit-mask:radial-gradient(closest-side,#000 6%,rgba(0,0,0,.4) 34%,transparent 62%);
+          mask:radial-gradient(closest-side,#000 6%,rgba(0,0,0,.4) 34%,transparent 62%);
+  opacity:calc(.2 + .8 * var(--p));mix-blend-mode:screen;animation:sh-spin 120s linear infinite;
+}
+@keyframes sh-spin{to{rotate:360deg}}
+.scene-hero .sh-bloom{
+  position:absolute;left:30%;top:20%;width:150vmax;height:150vmax;translate:-50% -50%;z-index:1;pointer-events:none;
+  background:radial-gradient(closest-side, rgba(255,251,235,.9), rgba(255,226,160,.45) 20%, rgba(255,200,120,0) 55%);
+  opacity:calc(max(0,(var(--p) - .4)) * 1.7);scale:calc(.35 + var(--p) * 1.0);mix-blend-mode:screen;
+  transform:translate(calc(var(--ty) * 1.4), calc(var(--tx) * -1.2));
+}
+.scene-hero .sh-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(180deg, rgba(20,10,4,.28) 0%, rgba(20,10,4,0) 26%, rgba(20,10,4,0) 52%, rgba(20,10,4,.55) 82%, rgba(16,8,3,.86) 100%);}
+.scene-hero .sh-vig{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 40px rgba(12,6,2,.6);}
+
+.scene-hero .sh-wordmark{
+  position:absolute;top:calc(20px + env(safe-area-inset-top));left:0;right:0;z-index:3;text-align:center;
+  font-family:var(--font-display);font-weight:700;font-size:1.55rem;letter-spacing:.02em;
+  background:linear-gradient(180deg,#fbeecb,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 2px 18px rgba(0,0,0,.4);opacity:calc(.9 - .25 * var(--p));
+}
+.scene-hero .sh-verse{
+  position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom));z-index:3;text-align:center;padding:0 28px;margin:0;
+  opacity:calc(max(0,(var(--p) - .32)) * 1.9);transform:translateY(calc((1 - var(--p)) * 22px));
+}
+.scene-hero .sh-ref{font-family:var(--font-display);font-style:italic;letter-spacing:.14em;text-transform:uppercase;font-size:.74rem;color:var(--gold-hi);margin-bottom:9px;}
+.scene-hero .sh-ko{font-family:var(--font-display);font-size:1.14rem;line-height:1.75;color:#fdf4dd;text-shadow:0 2px 14px rgba(0,0,0,.7);margin:0;}
+.scene-hero .sh-en{font-family:var(--font-display);font-style:italic;font-size:1rem;color:#ecdcb2;margin:9px 0 0;opacity:.92;text-shadow:0 2px 10px rgba(0,0,0,.6);}
+.scene-hero .sh-pull{
+  position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));translate:-50% 0;z-index:3;text-align:center;
+  font-family:var(--font-body);font-size:.82rem;color:#f3e2b8;text-shadow:0 1px 8px rgba(0,0,0,.7);
+  opacity:calc(max(0,.92 - var(--p) * 1.7));
+}
+.scene-hero .sh-arrow{display:block;font-size:1.5rem;line-height:1;margin-top:2px;animation:sh-bob 1.8s ease-in-out infinite;}
+@keyframes sh-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+
+@media (prefers-reduced-motion: reduce){
+  .scene-hero .sh-photo,.scene-hero .sh-rays{animation:none;}
+  .scene-hero .sh-arrow{animation:none;}
+}
