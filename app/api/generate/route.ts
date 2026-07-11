@@ -47,7 +47,7 @@ export const runtime = "nodejs";
 // (proofread + summarize) generate path both fit instead of being killed
 // mid-flight. Individual model calls stay capped by max_tokens so each still
 // finishes well inside this budget.
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 // The whole service runs on the latest, most capable Opus. Hard-coded default
 // (the deliberate quality choice), with an emergency override so a sudden model
@@ -260,7 +260,7 @@ export async function POST(req: Request): Promise<Response> {
           const { text: raw, usage, stopReason } = await runAnthropic(
             TRANSLATION_SYSTEM_PROMPT,
             buildTranslationUserContent(lang, sourceHtml),
-            { maxTokens: 48000 },
+            { maxTokens: 18000 },
           );
           await addUsageServer(id, usage);
           if (stopReason === "max_tokens") {
