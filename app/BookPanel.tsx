@@ -7,6 +7,48 @@ import { buildEpub } from "@/lib/epub";
 import { slug, downloadBlob as dl } from "@/lib/util";
 
 const LANG_LABEL: Record<Lang, string> = { ko: "한국어", en: "English", zh: "中文" };
+const LANG_ORDER: Lang[] = ["ko", "en", "zh"];
+
+/* Small inline icons, matching the stroke-on-currentColor style used
+   throughout page.tsx (kept as local copies rather than a shared import so
+   this panel's lazy-loaded chunk stays self-contained). */
+function IconChevron() {
+  return (
+    <svg
+      className="ico sum-chev"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+function IconBook() {
+  return (
+    <svg
+      className="ico"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 4.5h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
+      <path d="M22 4.5h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" />
+    </svg>
+  );
+}
 
 export default function BookPanel({ summaries }: { summaries: Summary[] }) {
   const [lang, setLang] = useState<Lang>("ko");
@@ -125,7 +167,12 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
 
   return (
     <details className="panel book panel-secondary">
-      <summary>Make a book (PDF)</summary>
+      <summary>
+        <IconBook /> Make a book (PDF)
+        <IconChevron />
+      </summary>
+      <div className="panel-body">
+      <div className="panel-body-inner">
       <p className="hist-note">
         Compile selected summaries into one print-ready book (6×9″, color). Open
         it and “Save as PDF” for a print-on-demand hard copy.
@@ -134,11 +181,20 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
       <div className="book-body">
         <div className="field">
           <label>Book language</label>
-          <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-            <option value="ko">한국어</option>
-            <option value="en">English</option>
-            <option value="zh">中文</option>
-          </select>
+          <div className="lang-tabs" role="tablist" aria-label="Book language">
+            {LANG_ORDER.map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="tab"
+                aria-selected={lang === l}
+                className={`lang-tab${lang === l ? " active" : ""}`}
+                onClick={() => setLang(l)}
+              >
+                {LANG_LABEL[l]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="field">
@@ -205,6 +261,8 @@ export default function BookPanel({ summaries }: { summaries: Summary[] }) {
             Download book (.html)
           </button>
         </div>
+      </div>
+      </div>
       </div>
     </details>
   );
