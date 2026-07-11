@@ -160,6 +160,11 @@ export async function claimPendingSummaryServer(input: {
             // tally, so the previous failed attempt's tokens must not linger and
             // double-count in the cost panel.
             usage: null,
+            // Stamp the reclaimed row with the retry time: a reused row is
+            // effectively a new generation, so its spend buckets under the
+            // current month (not the failed attempt's month) and it sorts to
+            // the top of history like any fresh summary.
+            created_at: new Date().toISOString(),
           })
           .eq("id", candidate.id)
           // Compare-and-set on the exact status we read: if a concurrent claim
