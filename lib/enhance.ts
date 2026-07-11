@@ -28,9 +28,23 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 
 const MARKER = "sermorizer-layout";
 
-/** Inject ENHANCE_LAYOUT_CSS once, just before </head>. Idempotent. */
+/** Inject ENHANCE_LAYOUT_CSS once, near the top of the document. Idempotent.
+ *  Prefers just-before-</head>, but tolerates a document that uses </HEAD>,
+ *  omits the optional </head> tag, or has no <head> at all (all spec-valid) —
+ *  otherwise the layout/house-style CSS would be silently dropped and the doc
+ *  would ship with a non-sticky TOC and no summary grid. */
 export function ensureEnhanceCss(html: string): string {
   if (!html || html.includes(MARKER)) return html;
   const tag = `<style id="${MARKER}">${ENHANCE_LAYOUT_CSS}</style>`;
-  return html.includes("</head>") ? html.replace("</head>", tag + "</head>") : html;
+  // 1) before a (case-insensitive) </head>
+  const headClose = html.match(/<\/head\s*>/i);
+  if (headClose) return html.replace(headClose[0], tag + headClose[0]);
+  // 2) else after an opening <body ...> so the style still lands in the doc
+  const bodyOpen = html.match(/<body\b[^>]*>/i);
+  if (bodyOpen) return html.replace(bodyOpen[0], bodyOpen[0] + tag);
+  // 3) else after <html ...>, or as an outright prefix — a <style> before the
+  //    content is still honored by browsers.
+  const htmlOpen = html.match(/<html\b[^>]*>/i);
+  if (htmlOpen) return html.replace(htmlOpen[0], htmlOpen[0] + tag);
+  return tag + html;
 }

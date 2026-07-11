@@ -32,8 +32,24 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
   const s = body.subscription;
-  if (!s?.endpoint || !s.keys?.p256dh || !s.keys?.auth) {
+  if (
+    typeof s?.endpoint !== "string" ||
+    typeof s.keys?.p256dh !== "string" ||
+    typeof s.keys?.auth !== "string"
+  ) {
     return Response.json({ error: "Incomplete push subscription." }, { status: 400 });
+  }
+  // The endpoint is later handed to webpush.sendNotification (an outbound POST),
+  // so require a well-formed https:// URL — never store arbitrary/garbage values
+  // that would become blind outbound requests or un-prunable dead rows.
+  let endpointUrl: URL;
+  try {
+    endpointUrl = new URL(s.endpoint);
+  } catch {
+    return Response.json({ error: "Invalid push endpoint." }, { status: 400 });
+  }
+  if (endpointUrl.protocol !== "https:") {
+    return Response.json({ error: "Push endpoint must be https." }, { status: 400 });
   }
   try {
     await savePushSubscription({

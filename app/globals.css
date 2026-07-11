@@ -132,7 +132,10 @@ body {
 
 @media (max-width: 640px) {
   .wrap {
-    padding: 16px 12px 56px;
+    /* Keep the safe-area insets on phones (notch/punch-hole/home indicator) —
+       these widths are exactly where they matter in the installed PWA. */
+    padding: max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(56px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
   .app-header {
     padding: 6px 0 16px;

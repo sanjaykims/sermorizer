@@ -90,15 +90,25 @@ export async function isSetupComplete(): Promise<boolean> {
 
 export async function persistPasscode(hash: string, salt: string): Promise<void> {
   const supa = getSupabaseAdmin();
-  const { error } = await supa
+  // Atomic first-run guard: only write when no passcode is set yet
+  // (passcode_hash IS NULL). This closes the check-then-act race between two
+  // concurrent first-run setups and prevents the setup route from silently
+  // overwriting an existing passcode. A deliberate reset (DB sets the hash back
+  // to null) re-enables setup, as intended.
+  const { data, error } = await supa
     .from("auth_config")
     .update({
       passcode_hash: hash,
       passcode_salt: salt,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", "singleton");
+    .eq("id", "singleton")
+    .is("passcode_hash", null)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error("A passcode is already set. Sign in instead.");
+  }
 }
 
 export type SessionPayload = { kind: "session"; authedAt: number };
@@ -112,7 +122,11 @@ export async function readSession(): Promise<SessionPayload | null> {
   const cfg = await getAuthConfig();
   const c = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!c) return null;
-  return verifyToken<SessionPayload>(cfg.session_secret, c);
+  const payload = verifyToken<SessionPayload>(cfg.session_secret, c);
+  // Verify kind, not just the signature: a signature-valid challenge token
+  // (also signed with session_secret) must not be accepted as a session, or
+  // /api/auth/status would report authed:true for an unauthenticated caller.
+  return payload && payload.kind === "session" ? payload : null;
 }
 
 export async function setSessionCookie(): Promise<void> {

@@ -27,11 +27,21 @@ export function stitchPartsServer(parts: Record<string, string>, n: number): str
     if (!html) continue;
     const d = parse(html);
     const b = d.querySelector("#sermon-body");
-    if (b) body.insertAdjacentHTML("beforeend", b.innerHTML);
+    if (b) {
+      body.insertAdjacentHTML("beforeend", b.innerHTML);
+    } else {
+      // The part omitted the #sermon-body wrapper. Rather than silently drop a
+      // whole slice of the sermon, salvage its thematic sections directly.
+      const salvaged = d.querySelectorAll("section, .section");
+      for (const sec of salvaged) body.insertAdjacentHTML("beforeend", sec.toString());
+    }
   }
 
-  // Renumber sections and collect the table of contents.
-  const sections = body.querySelectorAll("section");
+  // Renumber sections and collect the table of contents. Prefer <section>
+  // elements; fall back to `.section` (the prompts list both), so a document
+  // that used the class form still gets a populated TOC + summary.
+  let sections = body.querySelectorAll("section");
+  if (sections.length === 0) sections = body.querySelectorAll(".section");
   const toc: { id: string; title: string }[] = [];
   sections.forEach((sec, i) => {
     const id = `sec-${i + 1}`;
@@ -71,12 +81,16 @@ export function stitchPartsServer(parts: Record<string, string>, n: number): str
   }
 
   // Guarantee the tab-bar + summary-card layout regardless of generated CSS.
-  const head = base.querySelector("head");
-  if (head && !base.querySelector("#sermorizer-layout")) {
-    head.insertAdjacentHTML(
-      "beforeend",
-      `<style id="sermorizer-layout">${ENHANCE_LAYOUT_CSS}</style>`,
-    );
+  // If part 0's shell has no <head> (node-html-parser doesn't synthesize one,
+  // unlike the client's DOMParser), fall back to injecting the style into
+  // <html> / the body so the layout CSS is never silently omitted.
+  if (!base.querySelector("#sermorizer-layout")) {
+    const styleTag = `<style id="sermorizer-layout">${ENHANCE_LAYOUT_CSS}</style>`;
+    const head = base.querySelector("head");
+    const htmlNode = base.querySelector("html");
+    if (head) head.insertAdjacentHTML("beforeend", styleTag);
+    else if (htmlNode) htmlNode.insertAdjacentHTML("afterbegin", styleTag);
+    else base.insertAdjacentHTML("afterbegin", styleTag);
   }
 
   const htmlEl = base.querySelector("html");

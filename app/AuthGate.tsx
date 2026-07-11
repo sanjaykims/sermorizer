@@ -383,6 +383,10 @@ function SessionBar({
     try {
       await api("/api/auth/logout", { method: "POST" });
       onChanged();
+    } catch (e) {
+      // Surface a failed sign-out instead of swallowing it as an unhandled
+      // rejection with no feedback (api() throws on non-2xx/network error).
+      setMsg(e instanceof Error ? e.message : "Sign-out failed. Please try again.");
     } finally {
       setBusy(false);
     }
