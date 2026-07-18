@@ -88,37 +88,47 @@ A **single self-contained `.html` file**:
 
 ## Design system
 
-The HTML uses a **liturgical color theme chosen per sermon/season**. Past themes:
+Generated summaries use the **Hearth design system** — the same warm
+editorial-tech system as the app shell: flat surfaces (never colour-*blocks*),
+hairline borders, restrained radii, a Newsreader + Geist + Geist Mono type
+pairing (with Nanum Myeongjo / Noto Sans KR for Hangul), and quiet craft. **The
+app supplies the entire stylesheet** — `lib/enhance.ts` (`ENHANCE_LAYOUT_CSS`)
+is injected into every document; the model outputs only semantic HTML with the
+standard component classes (plus one required `:root` palette line) and writes
+no CSS of its own.
 
-| Occasion / book        | Theme                         |
-|------------------------|-------------------------------|
-| Ezra                   | rust / brown                  |
-| 2 Corinthians 12:9     | blue                          |
-| Lent / Palm Sunday     | deep purple                   |
-| Easter                 | warm gold / amber             |
-| John 4 (the well)      | teal                          |
-| Children's Sunday      | green                         |
-| Word/Bible seminar     | forest green / gold           |
-| Parents' Day           | rose / carnation / gold       |
-| Teachers' Sunday       | teal / gold                   |
+**Colour is per-sermon** — each summary still "picks the right colour" for its
+occasion/season (Lent → purple, Easter → gold, Ezra → rust, John 4 → teal,
+Children's → green, ordinary → warm oat + signal orange, …), NOT a fixed
+white/oat every time. The whole palette is driven by four CSS variables the
+model echoes for the sermon — `--doc-paper` (a light, warm-tinted page, never
+pure `#fff`), `--doc-ink` (near-black warm text), `--doc-accent` (the single
+highlighter), `--doc-accent-strong` (its darker AA-safe shade) — and the
+injected stylesheet derives every card/border/tint/wash from them via
+`color-mix`. The season → colour choices live in `lib/themes.ts` (`themeHint`);
+"auto" lets the model choose from the sermon itself.
 
 Recurring component classes (keep names consistent across documents):
-`.header`, `.key-verse`, `.toc` (sticky), `.container`, `.info-card`,
-`.section` + `.sec-head`/`.sec-icon`/`.sec-title`, `.card`,
-`.order-table` (+ `.ot-*`), highlight boxes `.hl` / `.hl-gold` / `.hl-rust` /
-`.hl-cream` / `.hl-dark`, `.bref` (inline Bible reference chip),
-`.key-quote`, `.pastor-box`, `.summary` (+ `.sm-*`), `.closing-prayer`,
-`.divider`, `.footer`.
-
-Standard features: gradient header, animated/sticky elements used sparingly,
-collapsible or anchored sections, card layouts, Bible-verse boxes, quote
-blocks, numbered summary grid.
+`.header` (with `.h-title`), `.key-verse` (+ `.ref`), `.toc` (sticky tab bar),
+`.info-card`, `.section` + `.sec-head`/`.sec-icon`/`.sec-title`, `.card`,
+`<blockquote>` for scripture, highlight boxes `.hl` / `.hl-gold` / `.hl-dark`,
+`.bref` (inline Bible reference chip), `.key-quote`, `.pastor-box`,
+`.summary` (+ `.sm-grid`/`.sm-item`/`.sm-num`/`.sm-text`), `.divider`,
+`.footer`. (No `.order-table` / `.closing-prayer` — the output is the sermon
+only.) No parchment texture, drop caps, fleurons, or gradient headers — flat,
+clean, phone-first.
 
 ### Fonts by language
 
-- **Korean:** `Gowun Batang` (display) + `Noto Serif KR` (body).
-- **English:** `Cormorant Garamond` (display) + `Crimson Pro` (body).
-- **Chinese (Simplified):** `Noto Serif SC` + `Noto Sans SC`.
+All served via one Google-Fonts `@import` in the injected stylesheet (the one
+permitted external reference); translations swap the pairing deterministically
+in `lib/translate-split.ts`.
+
+- **Korean:** `Newsreader` + `Nanum Myeongjo` (display) / `Geist` +
+  `Noto Sans KR` (body) / `Geist Mono` (labels, data).
+- **English:** `Newsreader` (display) + `Geist` (body) + `Geist Mono`.
+- **Chinese (Simplified):** `Noto Serif SC` + `Noto Sans SC` (with
+  Newsreader / Geist / Geist Mono for Latin & data).
 
 ## File naming convention
 
