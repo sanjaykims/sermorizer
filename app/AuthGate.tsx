@@ -65,33 +65,14 @@ function IconLock() {
   );
 }
 
-/* Illuminated-manuscript ornaments shared by every auth screen — a corner
-   frame and a small sunburst emblem, echoing the hero's god-rays motif. */
-function CornerFlourishes() {
+/* The Hearth wordmark mark — a small rotated signal-orange square. It stands
+   in for the old sunburst crest and gilt corner frames; the system's north
+   star is restraint, so the auth screens carry the identity with one accent
+   mark rather than illuminated-manuscript ornament. */
+function AuthMark() {
   return (
-    <>
-      <span className="auth-corner auth-corner-tl" aria-hidden="true" />
-      <span className="auth-corner auth-corner-tr" aria-hidden="true" />
-      <span className="auth-corner auth-corner-bl" aria-hidden="true" />
-      <span className="auth-corner auth-corner-br" aria-hidden="true" />
-    </>
-  );
-}
-
-function AuthCrest() {
-  return (
-    <div className="auth-crest" aria-hidden="true">
-      <svg viewBox="0 0 64 64" width="38" height="38">
-        <circle cx="32" cy="32" r="13" fill="none" stroke="currentColor" strokeWidth="1.3" />
-        <circle cx="32" cy="32" r="3" fill="currentColor" />
-        <g stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-          <path d="M32 4v9M32 51v9M4 32h9M51 32h9" />
-          <path
-            d="M13.5 13.5l6.2 6.2M44.3 44.3l6.2 6.2M50.5 13.5l-6.2 6.2M19.7 44.3l-6.2 6.2"
-            strokeWidth="1.1"
-          />
-        </g>
-      </svg>
+    <div className="auth-mark" aria-hidden="true">
+      <span />
     </div>
   );
 }
@@ -136,8 +117,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <CornerFlourishes />
-          <AuthCrest />
+          <AuthMark />
           <h1>Sermorizer</h1>
           <AuthSpinner />
           <p className="auth-sub">Checking sign-in…</p>
@@ -149,8 +129,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <CornerFlourishes />
-          <AuthCrest />
+          <AuthMark />
           <h1>Sermorizer</h1>
           <p className="auth-sub">Couldn&apos;t reach the server.</p>
           <p className="auth-err">{error ?? "Status check failed."}</p>
@@ -228,8 +207,7 @@ function SetupScreen({ onDone }: { onDone: () => void }) {
   return (
     <div className="auth-shell">
       <form className="auth-card" onSubmit={submit}>
-        <CornerFlourishes />
-        <AuthCrest />
+        <AuthMark />
         <h1>Sermorizer</h1>
         <p className="auth-sub">
           First time here — choose a passcode to protect your sermon library.
@@ -330,8 +308,7 @@ function LoginScreen({
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <CornerFlourishes />
-        <AuthCrest />
+        <AuthMark />
         <h1>Sermorizer</h1>
         <p className="auth-sub">Sign in to your sermon library.</p>
 
