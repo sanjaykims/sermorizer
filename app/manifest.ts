@@ -7,8 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Turn weekly church sermon materials into one beautiful HTML summary.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f1ea",
-    theme_color: "#7c4a32",
+    // Warm-oat paper splash; warm-ink chrome to match the dark photographic hero.
+    background_color: "#faf6ef",
+    theme_color: "#1e1712",
     orientation: "portrait",
     icons: [
       { src: "/icon-192", sizes: "192x192", type: "image/png", purpose: "any" },

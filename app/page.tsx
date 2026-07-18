@@ -448,7 +448,8 @@ function announce(message: string, ok: boolean) {
     // Remove any prior pending restorer so listeners can't stack up across
     // multiple completions while the tab stays hidden.
     if (titleRestore) titleRestore();
-    document.title = `${ok ? "✅" : "⚠️"} ${message}`;
+    // No emoji in product chrome (Hearth) — a plain word carries the status.
+    document.title = `${ok ? "Done" : "Failed"} — ${message}`;
     const restore = () => {
       document.title = APP_TITLE;
       document.removeEventListener("visibilitychange", restore);
@@ -1917,7 +1918,7 @@ function Sermorizer() {
                     style={{
                       background: t.palette
                         ? `linear-gradient(135deg, ${t.palette.brand}, ${t.palette.gilt})`
-                        : "conic-gradient(from 0deg, var(--brand), var(--gilt), var(--brand-soft), var(--brand))",
+                        : "conic-gradient(from 0deg, var(--accent), var(--paper-3), var(--ink-2), var(--accent))",
                     }}
                     aria-hidden="true"
                   />

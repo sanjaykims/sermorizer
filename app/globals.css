@@ -1,66 +1,152 @@
+/* ============================================================================
+   Sermorizer — app shell, styled with the Hearth Design System.
+
+   Hearth is a warm editorial-tech system: warm-oat paper (never #fff), ONE
+   signal-orange accent used as a highlighter (≤3% of any view), a committed
+   Newsreader + Geist + Geist Mono pairing, flat surfaces, hairline borders,
+   restrained radii, quiet named motion, and full eight-state interaction
+   coverage. The north star: "made, not generated."
+
+   Tokens below are the Hearth tokens (tokens/*.css) inlined into one file so
+   the app is self-contained; the three Latin faces are wired to the
+   next/font variables from layout.tsx, each paired with a Korean companion
+   (Nanum Myeongjo for the serif display stack, Noto Sans KR for the body/UI
+   stack) so Hangul never falls back to a system face.
+
+   NOTE: this styles only the app SHELL. The generated sermon documents keep
+   their own per-season liturgical themes (lib/themes.ts, lib/prompt.ts) — a
+   separate, deliberate design surface — and are rendered untouched inside the
+   sandboxed preview iframe.
+   ========================================================================== */
+
 :root {
-  /* ---- Editorial type system (Phase 2A) ---- */
-  /* Composed stacks fall through KR → Latin → system. The KR family is listed
-     first so Hangul glyphs always land on Gowun Batang / Noto Serif KR /
-     Noto Sans KR — Cormorant / Crimson / Inter only render the Latin glyphs. */
-  --font-display:
-    var(--font-display-kr), var(--font-display-lat), "Apple SD Gothic Neo",
-    ui-serif, Georgia, serif;
-  --font-body:
-    var(--font-body-kr), var(--font-body-lat), "Apple SD Gothic Neo", ui-serif,
-    Georgia, serif;
-  --font-ui:
-    var(--font-ui-kr), var(--font-ui-lat), -apple-system, BlinkMacSystemFont,
-    "Segoe UI", "Malgun Gothic", sans-serif;
-  /* Legacy alias — other rules still reference --font; map it to the ui stack
-     so non-typography-aware surfaces (file chips, etc.) inherit it. */
-  --font: var(--font-ui);
+  /* — Type: the committed pairing + Korean companions — */
+  --font-display: var(--font-newsreader), var(--font-nanum-myeongjo),
+    "Nanum Myeongjo", "Apple SD Gothic Neo", ui-serif, Georgia, serif;
+  --font-body: var(--font-geist), var(--font-noto-sans-kr), "Apple SD Gothic Neo",
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), var(--font-noto-sans-kr), ui-monospace,
+    "SF Mono", "Geist Mono", monospace;
+  --font-ui: var(--font-body);
+  --font-wordmark: var(--font-display);
 
-  /* ---- Palette ---- */
-  --paper: #faf6ec;
-  --paper-card: #fffbf0;
-  --paper-tint: #f5efde;
-  --ground: #efe8d8;
-  --ink: #2a1f17;
-  --ink-soft: #6b5c4a;
-  /* Darkened from #8c7d6b: on the cream paper that was ~2.9:1 — below the 4.5:1
-     body-text minimum (Impeccable's most-flagged readability issue). This sits
-     near ~4:1 and still reads as the faintest tier. */
-  --ink-faint: #6f5f47;
-  --rule: #d8cdb8;
-  --rule-soft: #e6dfcd;
-  --brand: #7c4a32;
-  --brand-deep: #4f2e1f;
-  --brand-soft: #a9764f;
-  --gilt: #b8893f;
-  --gilt-soft: #e0c79a;
-  --danger: #9a3b2f;
-  --ok: #3f6f4a;
+  /* — Type scale (major third, 1.25, from a 16px base) — */
+  --text-xs: 0.64rem;
+  --text-sm: 0.8rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.9531rem;
+  --text-2xl: 2.4414rem;
 
-  /* ---- Legacy aliases (kept so untouched rules still resolve) ---- */
-  --bg: var(--ground);
-  --panel: var(--paper-card);
-  --muted: var(--ink-soft);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-body: 1.6;
+  --tracking-tight: -0.015em;
+  --tracking-display: -0.03em;
+  --tracking-label: 0.1em;
+  --measure: 65ch;
+
+  /* — Colour (OKLCH). Warm-oat surfaces, warm ink, one signal-orange accent — */
+  --paper: oklch(97.5% 0.010 80);
+  --paper-2: oklch(94.5% 0.013 80);
+  --paper-3: oklch(91.5% 0.015 78);
+
+  --rule: oklch(88% 0.010 78);
+  --rule-2: oklch(80% 0.012 76);
+
+  --ink: oklch(21% 0.014 55);
+  --ink-2: oklch(32% 0.012 58);
+  --neutral: oklch(50% 0.010 62);
+  /* Darkened from Hearth's 58% so helper/label text clears WCAG AA (4.5:1) on
+     the warm-oat paper while staying the lightest text tier. */
+  --muted: oklch(53% 0.009 66);
+
+  --accent: oklch(64% 0.205 42); /* ≈ #FC4C02 — links, focus, active, marks */
+  --accent-strong: oklch(55% 0.195 40); /* filled accent surface, AA with ink */
+  --accent-ink: oklch(99% 0.005 80);
+  --accent-wash: oklch(94% 0.045 55);
+
+  --focus: oklch(52% 0.19 45);
+
+  --success: oklch(58% 0.14 150);
+  --success-wash: oklch(93% 0.05 150);
+  --warning-ink: oklch(45% 0.13 70);
+  --error: oklch(57% 0.205 25);
+  --error-wash: oklch(94% 0.05 25);
+  --info: oklch(58% 0.13 240);
+  --info-wash: oklch(94% 0.04 240);
+
+  /* — Spacing (4pt base) — */
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+
+  /* — Radii (restrained; controls read as cut, not bubbly) — */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-full: 999px;
+
+  --control-h-sm: 34px;
+  --control-h: 44px;
+  --control-h-lg: 52px;
+
+  /* — Elevation (one shadow at a time; no coloured glow) — */
+  --shadow-hairline: 0 0 0 1px oklch(30% 0.01 60 / 0.08);
+  --shadow-whisper: 0 1px 2px oklch(20% 0.01 60 / 0.06),
+    0 1px 1px oklch(20% 0.01 60 / 0.04);
+  --shadow-raised: 0 4px 12px oklch(20% 0.01 60 / 0.08),
+    0 1px 3px oklch(20% 0.01 60 / 0.05);
+  --shadow-overlay: 0 16px 40px oklch(18% 0.01 60 / 0.14),
+    0 4px 12px oklch(18% 0.01 60 / 0.08);
+
+  /* — Motion (transform & opacity only; named easings/durations) — */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  /* — Legacy aliases: map any lingering old names onto Hearth tokens so no
+       stray reference resolves to nothing (all rules below use Hearth names) — */
+  --panel: var(--paper);
+  --bg: var(--paper);
   --line: var(--rule);
-  --accent: var(--brand);
-  --accent-soft: var(--brand-soft);
-  --accent-ink: #fdf6e9;
-
-  /* ---- Geometry / depth ---- */
-  --radius: 10px;
-  --shadow:
-    0 1px 0 rgba(124, 74, 50, 0.04), 0 8px 24px -16px rgba(124, 74, 50, 0.18);
-  /* Lighter twin of --shadow for the secondary utility panels (history,
-     import, cost, book) — present, but a step down from the primary
-     input/preview cards so the hierarchy stays legible. */
-  --shadow-soft:
-    0 1px 1px rgba(124, 74, 50, 0.03), 0 6px 18px -14px rgba(124, 74, 50, 0.22);
-  /* Faint fractal-noise paper grain, tinted toward ink, used at very low
-     alpha so panels read as "paper" rather than flat vector fills — the
-     same restrained texture vocabulary as the scene hero. */
-  --grain: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.16 0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --brand: var(--ink);
+  --brand-deep: var(--ink);
+  --brand-soft: var(--neutral);
+  --accent-soft: var(--accent);
+  --gilt: var(--accent);
+  --gilt-soft: var(--accent-wash);
+  --danger: var(--error);
+  --ok: var(--success);
+  --radius: var(--radius-md);
+  --shadow: var(--shadow-whisper);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-micro: 1ms;
+    --dur-short: 1ms;
+    --dur-long: 1ms;
+  }
+}
+
+/* ---------------------------------------------------------------- base ---- */
 * {
   box-sizing: border-box;
 }
@@ -71,16 +157,58 @@ body {
   padding: 0;
 }
 
+/* Guard against the full-bleed header fade's 100vw bleed spilling a hair past
+   the viewport on a scrollbar. `clip` (paired with the default visible on the
+   other axis) doesn't create a scroll container, so the sticky preview panel
+   is unaffected. */
+html {
+  overflow-x: clip;
+}
+
 body {
-  background: var(--ground);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Stop Samsung Chrome pull-to-refresh from reloading mid-job. */
   overscroll-behavior-y: contain;
+}
+
+::selection {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+a {
+  /* accent-strong (≈4.9:1 on paper) clears AA for link text; raw --accent is
+     only ≈3.4:1 which fails for normal-size text. */
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+@media (hover: hover) {
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* One visible focus ring for keyboard users, everywhere, no layout shift. */
+:where(
+    a,
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    input,
+    select,
+    textarea
+  ):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .wrap {
@@ -91,21 +219,18 @@ body {
     max(80px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
-/* The header sits directly beneath the full-bleed SceneHero photograph. Its
-   job is no longer to restate the brand at full volume — the hero already
-   said "Sermorizer" in gold on a photograph seconds ago — but to act as a
-   quiet chapter marker that bridges the hero's dark, photographic drama into
-   the calmer parchment workspace below. */
+/* --------------------------------------------------------- app header ---- */
+/* A quiet masthead that bridges the dark photographic hero into the calm
+   warm-oat workspace below. */
 .app-header {
   position: relative;
   text-align: center;
-  padding: 6px 0 18px;
+  padding: 8px 0 22px;
   z-index: 1;
 }
 
-/* Soft tonal fade from the hero's near-black scrim into --ground, so the cut
-   from photograph to parchment reads as an intentional transition rather
-   than an abrupt seam. Purely decorative: no layout footprint, no motion. */
+/* A soft tonal fade from the hero's near-black base into the paper, so the
+   cut from photograph to workspace reads as an intentional transition. */
 .app-header--bridge::before {
   content: "";
   position: absolute;
@@ -113,110 +238,1762 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 100vw;
-  height: 112px;
+  height: 96px;
   background: linear-gradient(
     180deg,
-    rgba(18, 10, 4, 0.5) 0%,
-    rgba(18, 10, 4, 0.16) 55%,
-    rgba(18, 10, 4, 0) 100%
+    oklch(18% 0.02 55 / 0.45) 0%,
+    oklch(18% 0.02 55 / 0.12) 55%,
+    oklch(18% 0.02 55 / 0) 100%
   );
   pointer-events: none;
   z-index: -1;
 }
 
-.app-header h1.wordmark {
+.app-header .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
   margin: 0;
   font-family: var(--font-display);
-  font-variant-caps: all-small-caps;
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 0.15em;
-  color: var(--brand-deep);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
 }
 
-/* A slim gilt hairline punctuated by a small medallion diamond — the
-   editorial "chapter break" device, standing in for the old plain hr. */
+/* The Hearth wordmark mark: a small rotated signal-orange square. */
+.app-header .wordmark::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
 .app-header .rule {
-  position: relative;
-  display: block;
-  width: 84px;
+  width: 44px;
   height: 1px;
   border: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--gilt-soft) 18%,
-    var(--gilt) 50%,
-    var(--gilt-soft) 82%,
-    transparent
-  );
-  margin: 11px auto 12px;
+  background: var(--rule-2);
+  margin: 12px auto;
 }
 
-.app-header .rule::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: var(--gilt);
-  transform: translate(-50%, -50%) rotate(45deg);
-  box-shadow:
-    0 0 0 3px var(--ground),
-    0 0 5px rgba(184, 137, 63, 0.45);
-}
-
-.app-header p,
 .app-header .tagline {
   margin: 0;
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--ink-soft);
-  font-size: 0.92rem;
+  max-width: 52ch;
+  margin-inline: auto;
+  font-family: var(--font-body);
+  color: var(--neutral);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
 }
 
+/* ------------------------------------------------------------- layout ---- */
 .layout {
   display: grid;
   grid-template-columns: 420px 1fr;
-  gap: 24px;
+  gap: var(--space-lg);
   align-items: start;
 }
 
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: var(--space-md);
   }
-  /* On a stacked layout the preview shouldn't pin to the viewport. */
   .preview-panel {
     position: static;
     min-height: 0;
   }
 }
 
+/* ------------------------------------------------------------- panels ---- */
+/* Flat Hearth card: warm paper, one hairline border, restrained radius. */
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.2;
+  margin: 0 0 var(--space-2xs);
+  color: var(--ink);
+}
+
+.hint {
+  font-family: var(--font-body);
+  color: var(--neutral);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  margin: 0 0 var(--space-md);
+  max-width: var(--measure);
+}
+
+/* -------------------------------------------------------------- forms ---- */
+.field {
+  margin-bottom: var(--space-md);
+}
+
+/* Small-caps micro-label — the one uppercased register (mono, wide tracking). */
+.field label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  margin-bottom: var(--space-xs);
+  color: var(--neutral);
+}
+
+.field .opt {
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-weight: var(--weight-regular);
+}
+
+input[type="text"],
+input[type="password"],
+select {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--space-md);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  /* 16px keeps iOS Safari from zooming when a field is focused. */
+  font-size: var(--text-base);
+  transition: border-color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+
+select {
+  cursor: pointer;
+  /* Native chevron kept for the two selects, but padded so text never overlaps. */
+  padding-right: var(--space-xl);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+@media (hover: hover) {
+  input[type="text"]:hover,
+  input[type="password"]:hover,
+  select:hover {
+    background: var(--paper-2);
+  }
+}
+
+/* Text entry warrants a persistent focus ring (not just :focus-visible) —
+   border deepens with no width change, so nothing shifts. */
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: var(--ink-2);
+  background: var(--paper);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+/* Section divider — a plain hairline, generous rhythm, no ornament. */
+.section-divider {
+  border: 0;
+  height: 1px;
+  background: var(--rule);
+  margin: var(--space-lg) 0;
+}
+
+/* --------------------------------------------------------- dropzones ---- */
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3xs);
+  border: 1px dashed var(--rule-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  cursor: pointer;
+  background: var(--paper);
+  transition: border-color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .drop:hover {
+    border-color: var(--ink-2);
+    background: var(--paper-2);
+  }
+}
+
+/* Active drag target — the accent as a highlighter (a genuine selected state). */
+.drop.drop-active {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.drop strong {
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-tight);
+}
+
+.drop span {
+  font-family: var(--font-body);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.files {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+}
+
+.files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2xs);
+  color: var(--ink-2);
+}
+
+.files li button {
+  border: none;
+  background: transparent;
+  color: var(--neutral);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-h);
+  min-height: var(--control-h);
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .files li button:hover {
+    color: var(--error);
+    background: var(--error-wash);
+  }
+}
+
+/* ------------------------------------------------------------ buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-lg);
+  min-height: var(--control-h);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color var(--dur-micro) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out),
+    color var(--dur-micro) var(--ease-out);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary — the crafted default: ink surface, paper text. Accent stays a
+   highlighter, so the strong action is dark, not orange. */
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--ink-2);
+  }
+}
+
+/* The single accent CTA — Generate. The one saturated fill on the page,
+   AA-safe via accent-strong + accent-ink. */
+.btn-cta {
+  width: 100%;
+  min-height: var(--control-h-lg);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  background: var(--accent-strong);
+  color: var(--accent-ink);
+}
+@media (hover: hover) {
+  .btn-cta:hover:not(:disabled) {
+    /* Darken (not lighten) on hover so the accent-ink label keeps AA contrast —
+       lightening to raw --accent would drop the label to ~3.5:1. */
+    background: oklch(50% 0.185 40);
+  }
+}
+
+.btn-cta-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+
+/* Secondary — outlined, quiet. */
+.btn-ghost {
+  background: var(--paper);
+  color: var(--ink-2);
+  border-color: var(--rule-2);
+}
+@media (hover: hover) {
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--paper-2);
+    border-color: var(--ink-2);
+  }
+}
+
+/* ------------------------------------------------------ preview panel ---- */
+.preview-panel {
+  position: sticky;
+  top: var(--space-md);
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+/* Hearth tabs — underline, quiet until active, accent only on the selected
+   bottom-border. */
+.tabs {
+  display: flex;
+  gap: var(--space-2xs);
+  border-bottom: 1px solid var(--rule);
+}
+
+.tab {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--neutral);
+  padding: 0 var(--space-md);
+  min-height: var(--control-h);
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: color var(--dur-micro) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .tab:hover:not(:disabled) {
+    color: var(--ink);
+  }
+}
+.tab:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--radius-xs);
+}
+
+.tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.tab:disabled {
+  color: var(--muted);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.preview-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 520px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  /* Warm paper, not cold #fff — the sermon doc fills this frame, but its edges
+     and pre-load state should read as the same warm-oat chrome. */
+  background: var(--paper);
+}
+
+/* Placeholder surfaces — flat paper, one hairline, no gradient or glow. */
+.placeholder {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
+  color: var(--neutral);
+  padding: var(--space-xl);
+  min-height: 520px;
+}
+
+.placeholder p {
+  max-width: 42ch;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--neutral);
+}
+.placeholder p strong {
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+
+/* Empty state — a quiet hairline ring around the cross mark. */
+.empty-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius-full);
+  color: var(--neutral);
+}
+
+/* Busy state — one accent spinner ring around a static cross. A loading
+   spinner is the one sanctioned infinite loop. */
+.busy-emblem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-md);
+  color: var(--neutral);
+}
+.busy-emblem .ico-lg {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+}
+.busy-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--rule-2);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+.busy-ring-inner {
+  display: none;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .busy-ring {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------- status / callouts ---- */
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.status-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--neutral);
+}
+
+.status-text {
+  flex: 1;
+}
+
+/* Working indicator — a small spinner, not a pulsing dot. */
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--rule-2);
+  border-top-color: var(--accent);
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-dot {
+    animation: none;
+  }
+}
+
+.status.working {
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.status.working .status-icon {
+  color: var(--accent);
+}
+
+/* Label stays ink-2 for AA on the tinted wash; the semantic colour is carried
+   by the icon (Hearth: status = icon + colour + label). */
+.status.error {
+  background: var(--error-wash);
+  border-color: transparent;
+}
+.status.error .status-icon {
+  color: var(--error);
+}
+
+.status.done {
+  background: var(--success-wash);
+  border-color: transparent;
+}
+.status.done .status-icon {
+  color: var(--success);
+}
+
+.elapsed {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.translate-row {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+}
+.translate-row .btn {
+  flex: 1;
+}
+
+.foot {
+  text-align: center;
+  font-family: var(--font-body);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  max-width: var(--measure);
+  margin: var(--space-xl) auto 0;
+}
+
+/* -------------------------------------------------- utility panels ------- */
+.util-panels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+
+/* Collapsible secondary surface — same flat paper card, quieter. */
+.panel-secondary {
+  padding: 0;
+  margin: 0;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--dur-short) var(--ease-out);
+}
+.panel-secondary[open] {
+  border-color: var(--rule-2);
+}
+
+.panel-secondary > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  list-style: none;
+  cursor: pointer;
+  padding: var(--space-md) var(--space-lg);
+  min-height: var(--control-h);
+  font-family: var(--font-body);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-base);
+  color: var(--ink-2);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-micro) var(--ease-out);
+}
+.panel-secondary > summary::-webkit-details-marker {
+  display: none;
+}
+.panel-secondary > summary::marker {
+  content: "";
+}
+@media (hover: hover) {
+  .panel-secondary > summary:hover {
+    background: var(--paper-2);
+  }
+}
+.panel-secondary > summary:focus-visible {
+  outline-offset: -2px;
+}
+.panel-secondary > summary .ico:first-child {
+  color: var(--neutral);
+}
+.panel-secondary[open] > summary {
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Small chevron — rotates on open (transform only). */
+.sum-chev {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--neutral);
+  transition: transform var(--dur-short) var(--ease-out);
+}
+.panel-secondary[open] .sum-chev {
+  transform: rotate(180deg);
+}
+
+/* Animated open/close via a 0fr → 1fr grid row (author rule overrides the
+   UA `details:not([open]) > *` hide). */
+.panel-secondary > .panel-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows var(--dur-short) var(--ease-out),
+    visibility 0s linear var(--dur-short);
+}
+.panel-secondary[open] > .panel-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows var(--dur-short) var(--ease-out);
+}
+.panel-body-inner {
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-md) var(--space-lg) var(--space-lg);
+}
+
+.ico {
+  flex: 0 0 auto;
+}
+
+.hist-note {
+  margin: 0 0 var(--space-md);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  max-width: var(--measure);
+}
+
+/* -------------------------------------------------- history list --------- */
+.hist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.hist-list li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .hist-list li:hover {
+    border-color: var(--ink-2);
+  }
+}
+
+.hist-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  min-width: 0;
+}
+.hist-title {
+  max-width: 100%;
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hist-date {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.hist-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+.hist-btns {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Small secondary buttons for the per-row actions. */
+.hist-dl,
+.hist-tr {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-sm);
+  min-height: var(--control-h);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-micro) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out);
+}
+.hist-dl {
+  border: 1px solid var(--rule-2);
+  background: var(--paper);
+  color: var(--ink-2);
+}
+@media (hover: hover) {
+  .hist-dl:hover {
+    background: var(--paper-2);
+    border-color: var(--ink-2);
+  }
+}
+.hist-tr {
+  border: 1px dashed var(--rule-2);
+  background: transparent;
+  color: var(--neutral);
+}
+@media (hover: hover) {
+  .hist-tr:hover:not(:disabled) {
+    color: var(--accent-strong);
+    border-color: var(--accent);
+  }
+}
+.hist-tr:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hist-tag {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+}
+
+.hist-del {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--neutral);
+  cursor: pointer;
+  min-width: var(--control-h);
+  min-height: var(--control-h);
+  border-radius: var(--radius-md);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .hist-del:hover {
+    color: var(--error);
+    background: var(--error-wash);
+  }
+}
+
+/* -------------------------------------------------- make-a-book ---------- */
+.book .hist-note {
+  margin-bottom: var(--space-2xs);
+}
+.book-body {
+  padding: 0;
+}
+.book-select-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+  margin: var(--space-md) 0 var(--space-xs);
+}
+.link-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  padding: var(--space-2xs) var(--space-xs);
+  min-height: var(--control-h);
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .link-btn:hover {
+    color: var(--accent-strong);
+    background: var(--accent-wash);
+  }
+}
+
+/* Language segmented control (book) — a neutral toggle; the selected segment
+   lifts to paper, no accent spent here. */
+.lang-tabs {
+  display: flex;
+  gap: var(--space-3xs);
+  padding: var(--space-3xs);
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+}
+.lang-tab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--neutral);
+  border-radius: var(--radius-sm);
+  min-height: var(--control-h);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .lang-tab:hover:not(.active) {
+    color: var(--ink-2);
+  }
+}
+.lang-tab.active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-whisper);
+}
+
+.book-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+.book-list li {
+  border-top: 1px solid var(--rule);
+}
+.book-list li:first-child {
+  border-top: none;
+}
+.book-list label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  transition: background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .book-list label:hover {
+    background: var(--paper-2);
+  }
+}
+.book-list input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-strong);
+}
+.book-list .bl-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.book-list .bl-warn {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--error);
+}
+.book-list label.missing {
+  opacity: 0.65;
+}
+.book-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+/* -------------------------------------------------- cost panel ----------- */
+.cost-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-md);
+}
+.cost-card {
+  flex: 1 1 calc(50% - var(--space-sm));
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+/* The current-month figure is the number the user opens this panel for — one
+   quiet accent wash singles it out. */
+/* The current-month card is singled out by its accent wash alone; the figure
+   stays ink so it clears AA on the tint (accent-strong on the wash is ~4.3:1). */
+.cost-card-primary {
+  background: var(--accent-wash);
+  border-color: transparent;
+}
+.cost-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cost-amount {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.cost-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--rule);
+}
+.cost-list li {
+  padding: var(--space-sm) var(--space-2xs);
+  border-bottom: 1px solid var(--rule);
+  transition: background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .cost-list li:hover {
+    background: var(--paper-2);
+  }
+}
+.cost-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+.cost-title {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cost-amt {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+}
+.cost-sub {
+  margin-top: var(--space-3xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------- import --------------- */
+.panel.import code,
+.hist-note code,
+.auth-hint code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--paper-3);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+}
+
+/* -------------------------------------------------- proofread toggle ----- */
+.lead-in {
+  margin-top: var(--space-2xs);
+}
+.proofread-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  margin: var(--space-2xs) 0 var(--space-md);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
+  cursor: pointer;
+  transition: border-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .proofread-toggle:hover {
+    border-color: var(--rule-2);
+  }
+}
+.proofread-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  accent-color: var(--accent-strong);
+}
+.proofread-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+.proofread-toggle strong {
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+.proofread-toggle small {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+/* -------------------------------------------------- step panels ---------- */
+.steps {
+  display: flex;
+  flex-direction: column;
+}
+
+.step-panel {
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.step-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* The step number — a small ink marker; digit in mono for a data register. */
+.step-num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.step-panel .hint {
+  margin-top: var(--space-2xs);
+}
+.step-panel .field {
+  margin-bottom: var(--space-md);
+}
+.step-panel > .field:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .step-panel {
+    padding: var(--space-md);
+  }
+}
+
+/* -------------------------------------------------- theme swatches ------- */
+/* The dot previews an OUTPUT liturgical theme's palette (data, not chrome), so
+   its gradient is intentional; the control itself is Hearth-neutral. */
+.theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+.theme-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: var(--control-h);
+  padding: 0 var(--space-sm) 0 var(--space-2xs);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius-full);
+  background: var(--paper);
+  color: var(--neutral);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--dur-micro) var(--ease-out),
+    color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .theme-swatch:hover {
+    border-color: var(--ink-2);
+  }
+}
+.theme-swatch .dot {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  border: 1px solid oklch(0% 0 0 / 0.12);
+}
+.theme-swatch[aria-pressed="true"] {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+@media (max-width: 640px) {
+  .theme-swatch {
+    font-size: var(--text-xs);
+  }
+}
+
+/* ============================================================ auth ======= */
+.auth-shell {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-md);
+  background: var(--paper-2);
+}
+
+.auth-card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  box-shadow: var(--shadow-overlay);
+  animation: card-rise var(--dur-long) var(--ease-out);
+}
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card {
+    animation: none;
+  }
+}
+
+/* The Hearth wordmark mark, standing in for the old sunburst crest. */
+.auth-mark {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 var(--space-sm);
+}
+.auth-mark span {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+.auth-spinner {
+  width: 30px;
+  height: 30px;
+  margin: var(--space-2xs) auto;
+  border-radius: var(--radius-full);
+  border: 2.5px solid var(--rule-2);
+  border-top-color: var(--accent);
+  animation: spin 0.75s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-spinner {
+    animation: none;
+  }
+}
+
+.auth-card h1 {
+  margin: 0 0 var(--space-2xs);
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  font-size: var(--text-xl);
+  letter-spacing: var(--tracking-tight);
+  text-align: center;
+  text-wrap: balance;
+}
+.auth-sub {
+  margin: 0 0 var(--space-lg);
+  font-family: var(--font-body);
+  color: var(--neutral);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  text-align: center;
+  text-wrap: pretty;
+}
+.auth-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--neutral);
+  margin: var(--space-md) 0 var(--space-xs);
+}
+.auth-input {
+  display: block;
+  width: 100%;
+  height: var(--control-h);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  padding: 0 var(--space-md);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+.auth-input::placeholder {
+  color: var(--muted);
+}
+.auth-input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: var(--ink-2);
+}
+
+.auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  width: 100%;
+  min-height: var(--control-h);
+  margin-top: var(--space-md);
+  padding: 0 var(--space-lg);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-micro) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out);
+}
+.auth-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.auth-btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+@media (hover: hover) {
+  .auth-btn-primary:not(:disabled):hover {
+    background: var(--ink-2);
+  }
+}
+.auth-btn-ghost {
+  background: var(--paper);
+  color: var(--ink-2);
+  border-color: var(--rule-2);
+}
+@media (hover: hover) {
+  .auth-btn-ghost:not(:disabled):hover {
+    background: var(--paper-2);
+    border-color: var(--ink-2);
+  }
+}
+.auth-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: oklch(100% 0 0 / 0.14);
+}
+.auth-err {
+  margin: var(--space-sm) 0 0;
+  color: var(--error);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+.auth-hint {
+  margin: var(--space-md) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  text-align: center;
+  margin: var(--space-lg) 0 var(--space-2xs);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+.auth-divider span {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------- session bar ---------- */
+.session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  margin: var(--space-sm) auto 0;
+  padding: var(--space-sm) var(--space-md);
+  max-width: 1180px;
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--neutral);
+}
+.session-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-3xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+}
+.session-tag .ico {
+  color: var(--neutral);
+}
+.session-spacer {
+  flex: 1;
+}
+.session-btn {
+  background: var(--paper);
+  border: 1px solid var(--rule-2);
+  color: var(--ink-2);
+  padding: 0 var(--space-md);
+  min-height: var(--control-h);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur-micro) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) {
+  .session-btn:not(:disabled):hover {
+    background: var(--paper-2);
+    border-color: var(--ink-2);
+  }
+}
+.session-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.session-msg {
+  flex-basis: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--paper-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+/* ============================================================ hero ======= */
+/* The one orchestrated page-load moment: a warm-toned, full-bleed photographic
+   scene (Sermon on the Mount) that reveals on scroll. Hearth permits genuine
+   full-bleed photography in a kit; the light, rays and bloom are diegetic
+   sunlight from the scene, not decorative gradient orbs. Driven by CSS vars
+   --p (reveal 0..1), --sy (scroll px), --tx/--ty (device tilt). */
+.scene-hero {
+  --gold: #e7c477;
+  --gold-hi: #fbe6b6;
+  --p: 0;
+  --sy: 0px;
+  --tx: 0deg;
+  --ty: 0deg;
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #160b04;
+  color: #f6ecd2;
+  isolation: isolate;
+}
+.scene-hero .sh-photo {
+  position: absolute;
+  inset: -5%;
+  z-index: 0;
+  background: url("/scene/sermon-on-the-mount.jpg") 50% 34% / cover no-repeat;
+  transform: translateY(calc(var(--sy) * -1)) scale(calc(1.12 - 0.1 * var(--p)))
+    translate(calc(var(--ty) * 0.6), calc(var(--tx) * -0.5));
+  filter: brightness(calc(0.5 + 0.6 * var(--p)))
+    saturate(calc(0.82 + 0.3 * var(--p))) contrast(1.03);
+  animation: sh-kb 26s ease-in-out infinite alternate;
+  will-change: transform, filter;
+}
+@keyframes sh-kb {
+  from {
+    background-position: 50% 32%;
+  }
+  to {
+    background-position: 52% 40%;
+  }
+}
+.scene-hero .sh-rays {
+  position: absolute;
+  left: 30%;
+  top: 20%;
+  width: 200vmax;
+  height: 200vmax;
+  translate: -50% -50%;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 200deg,
+    rgba(255, 238, 196, calc(0.15 * var(--p))) 0deg 1.2deg,
+    transparent 1.2deg 13deg
+  );
+  -webkit-mask: radial-gradient(
+    closest-side,
+    #000 6%,
+    rgba(0, 0, 0, 0.4) 34%,
+    transparent 62%
+  );
+  mask: radial-gradient(
+    closest-side,
+    #000 6%,
+    rgba(0, 0, 0, 0.4) 34%,
+    transparent 62%
+  );
+  opacity: calc(0.2 + 0.8 * var(--p));
+  mix-blend-mode: screen;
+  animation: sh-spin 120s linear infinite;
+}
+@keyframes sh-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.scene-hero .sh-bloom {
+  position: absolute;
+  left: 30%;
+  top: 20%;
+  width: 150vmax;
+  height: 150vmax;
+  translate: -50% -50%;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 251, 235, 0.9),
+    rgba(255, 226, 160, 0.45) 20%,
+    rgba(255, 200, 120, 0) 55%
+  );
+  opacity: calc(max(0, (var(--p) - 0.4)) * 1.7);
+  scale: calc(0.35 + var(--p) * 1);
+  mix-blend-mode: screen;
+  transform: translate(calc(var(--ty) * 1.4), calc(var(--tx) * -1.2));
+}
+.scene-hero .sh-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 10, 4, 0.28) 0%,
+    rgba(20, 10, 4, 0) 26%,
+    rgba(20, 10, 4, 0) 52%,
+    rgba(20, 10, 4, 0.55) 82%,
+    rgba(16, 8, 3, 0.86) 100%
+  );
+}
+.scene-hero .sh-vig {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: inset 0 0 160px 40px rgba(12, 6, 2, 0.6);
+}
+.scene-hero .sh-top {
+  position: absolute;
+  top: calc(20px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  z-index: 3;
+  text-align: center;
+  padding: 0 20px;
+  opacity: calc(0.9 - 0.25 * var(--p));
+}
+/* Solid warm-light wordmark (no gradient-clipped text) — the sun's own light. */
+.scene-hero .sh-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 1.6rem;
+  letter-spacing: var(--tracking-tight);
+  color: var(--gold-hi);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.5);
+}
+.scene-hero .sh-wordmark::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px rgba(236, 81, 0, 0.5);
+}
+.scene-hero .sh-purpose {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--gold-hi);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+.scene-hero .sh-purpose-en {
+  display: inline-block;
+  margin-top: 3px;
+  font-style: italic;
+  font-size: 0.84rem;
+  color: #ecdcb2;
+  opacity: 0.9;
+}
+.scene-hero .sh-verse {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  z-index: 3;
+  text-align: center;
+  padding: 0 28px;
+  margin: 0;
+  opacity: calc(max(0, (var(--p) - 0.32)) * 1.9);
+  transform: translateY(calc((1 - var(--p)) * 22px));
+}
+.scene-hero .sh-ref {
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--gold-hi);
+  margin-bottom: 10px;
+}
+.scene-hero .sh-ko {
+  font-family: var(--font-display);
+  font-size: 1.16rem;
+  line-height: 1.75;
+  color: #fdf4dd;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+  margin: 0;
+}
+.scene-hero .sh-en {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1rem;
+  color: #ecdcb2;
+  margin: 9px 0 0;
+  opacity: 0.92;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+.scene-hero .sh-pull {
+  position: absolute;
+  left: 50%;
+  bottom: calc(120px + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  z-index: 3;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #f3e2b8;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  opacity: calc(max(0, 0.92 - var(--p) * 1.7));
+}
+.scene-hero .sh-arrow {
+  display: block;
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-top: 2px;
+  animation: sh-bob 1.8s ease-in-out infinite;
+}
+@keyframes sh-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-hero .sh-photo,
+  .scene-hero .sh-rays,
+  .scene-hero .sh-arrow {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------- responsive ----------- */
 @media (max-width: 640px) {
   .wrap {
-    /* Keep the safe-area insets on phones (notch/punch-hole/home indicator) —
-       these widths are exactly where they matter in the installed PWA. */
     padding: max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
       max(56px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
   .app-header {
-    padding: 4px 0 14px;
-  }
-  .app-header h1.wordmark {
-    font-size: 0.92rem;
-    letter-spacing: 0.13em;
-  }
-  .app-header p {
-    font-size: 0.86rem;
+    padding: 6px 0 16px;
   }
   .panel {
-    padding: 16px;
-    border-radius: 12px;
+    padding: var(--space-md);
   }
-  /* Paired inputs (preacher/scripture, date/type) stack on narrow screens. */
   .row {
     grid-template-columns: 1fr;
     gap: 0;
@@ -226,12 +2003,8 @@ body {
     min-height: 72vh;
   }
   .placeholder {
-    padding: 32px 22px;
+    padding: var(--space-lg) var(--space-md);
   }
-  .preview-bar {
-    gap: 7px;
-  }
-  /* Tabs span the full row, download button takes its own line below. */
   .tabs {
     flex: 1;
   }
@@ -246,2014 +2019,5 @@ body {
   }
   .translate-row {
     flex-direction: column;
-  }
-  .files li {
-    font-size: 0.88rem;
-    padding: 9px 11px;
-  }
-  .files li button {
-    font-size: 1.15rem;
-    padding: 4px 10px;
-  }
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 22px;
-}
-
-.panel h2 {
-  font-family: var(--font-display);
-  font-size: 1.18rem;
-  font-weight: 700;
-  letter-spacing: -0.008em;
-  margin: 0 0 4px;
-  color: var(--brand-deep);
-}
-
-.panel .hint {
-  font-family: var(--font-body);
-  color: var(--ink-soft);
-  font-size: 0.88rem;
-  line-height: 1.55;
-  margin: 0 0 16px;
-}
-
-.field {
-  margin-bottom: 14px;
-}
-
-.field label {
-  display: block;
-  font-family: var(--font-ui);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 5px;
-  color: var(--ink-soft);
-}
-
-.field .opt {
-  font-family: var(--font-body);
-  text-transform: none;
-  letter-spacing: 0;
-  font-style: italic;
-  color: var(--ink-faint);
-  font-weight: 400;
-}
-
-input[type="text"],
-select {
-  width: 100%;
-  padding: 11px 13px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: #fdfaf0;
-  color: var(--ink);
-  font-family: var(--font-body);
-  /* 16px keeps iOS Safari from zooming in when a field is focused */
-  font-size: 1rem;
-}
-
-input[type="text"]:focus,
-select:focus {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 0;
-  border-color: var(--accent-soft);
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-/* Ornamental section divider. Renders as three CSS background layers — a
-   hairline, an inline SVG fleuron, another hairline — instead of a
-   font-glyph character (❦), which was rendering as tofu/an incorrect glyph
-   on several platforms since font coverage for that character isn't
-   guaranteed. Background-image SVG has no such dependency. */
-.section-divider {
-  border: none;
-  height: 20px;
-  margin: 30px 0;
-  overflow: visible;
-  background-repeat: no-repeat;
-  background-position:
-    left center,
-    right center,
-    center center;
-  background-size:
-    calc(50% - 20px) 1px,
-    calc(50% - 20px) 1px,
-    16px 16px;
-  background-image: linear-gradient(
-      to right,
-      transparent,
-      var(--rule) 25%,
-      var(--rule) 75%,
-      transparent
-    ),
-    linear-gradient(
-      to right,
-      transparent,
-      var(--rule) 25%,
-      var(--rule) 75%,
-      transparent
-    ),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.4 L14.3 9 L22.4 12 L14.3 15 L12 22.6 L9.7 15 L1.6 12 L9.7 9 Z' fill='none' stroke='%23b8893f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%23b8893f'/%3E%3C/svg%3E");
-}
-
-.drop {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 1px dashed var(--rule);
-  border-radius: 8px;
-  padding: 20px 16px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
-  background: linear-gradient(180deg, #fbf6e8, #f6efd9);
-}
-
-.drop:hover {
-  border-color: var(--brand-soft);
-  background: linear-gradient(180deg, #faf3e0, #f1e9cf);
-}
-
-.drop:focus-visible {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 2px;
-}
-
-/* Visual-only drag-over feedback — toggled by onDragOver/onDragLeave/onDrop
-   handlers in page.tsx that set no state beyond this className; the actual
-   file intake is unchanged and still happens via the hidden file input. */
-.drop.drop-active {
-  border-style: solid;
-  border-color: var(--gilt);
-  background: linear-gradient(180deg, #fbf1da, #f5e6c0);
-  box-shadow: 0 0 0 4px rgba(184, 137, 63, 0.14), 0 6px 18px -10px rgba(124, 74, 50, 0.35);
-  transform: translateY(-1px);
-}
-
-.drop strong {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--brand-deep);
-  font-size: 1rem;
-  letter-spacing: -0.005em;
-}
-
-.drop span {
-  font-family: var(--font-ui);
-  color: var(--ink-faint);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-}
-
-.files {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-}
-
-.files li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-family: var(--font-ui);
-  font-size: 0.84rem;
-  padding: 7px 11px;
-  background: var(--paper-tint);
-  border: 1px solid var(--rule-soft);
-  border-radius: 6px;
-  margin-bottom: 5px;
-}
-
-.files li button {
-  border: none;
-  background: transparent;
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  min-width: 44px;
-  min-height: 44px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: none;
-  border-radius: 9px;
-  padding: 12px 18px;
-  min-height: 46px;
-  font-family: var(--font-ui);
-  font-size: 0.97rem;
-  font-weight: 600;
-  letter-spacing: 0.005em;
-  cursor: pointer;
-  transition: filter 0.15s, opacity 0.15s;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-/* Generate CTA — the commitment moment. Same gilt-on-brand vocabulary as the
-   hero's wordmark/crest (deep brand fill, a thin gilt hairline, a slow sheen
-   sweep on interaction) instead of a flat filled button. */
-.btn-primary {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  background: linear-gradient(180deg, var(--brand-soft) 0%, var(--brand) 42%, var(--brand-deep) 130%);
-  color: var(--accent-ink);
-  width: 100%;
-  padding: 13px 18px;
-  min-height: 50px;
-  font-size: 1rem;
-  letter-spacing: 0.012em;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 1px 0 rgba(224, 199, 154, 0.55),
-    0 12px 26px -14px rgba(47, 27, 16, 0.55),
-    0 2px 0 var(--brand-deep);
-  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
-}
-
-/* Slender gilt rule across the top edge, echoing .auth-card::before. */
-.btn-primary::before {
-  content: "";
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  top: 1px;
-  height: 2px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gilt) 22%,
-    var(--gilt-soft) 50%,
-    var(--gilt) 78%,
-    transparent
-  );
-  z-index: 1;
-}
-
-/* Sheen sweep — a single restrained pass on hover/focus, not a loop. */
-.btn-primary::after {
-  content: "";
-  position: absolute;
-  top: -20%;
-  bottom: -20%;
-  left: -35%;
-  width: 30%;
-  background: linear-gradient(
-    100deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
-  transform: skewX(-14deg);
-  pointer-events: none;
-}
-
-.btn-primary:hover:not(:disabled)::after,
-.btn-primary:focus-visible::after {
-  animation: cta-sheen 1.05s cubic-bezier(0.2, 0.7, 0.15, 1);
-}
-
-.btn-cta-label {
-  position: relative;
-  z-index: 2;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-@keyframes cta-sheen {
-  from {
-    left: -35%;
-  }
-  to {
-    left: 135%;
-  }
-}
-
-.btn-primary:hover:not(:disabled) {
-  filter: brightness(1.05);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 1px 0 var(--brand-deep);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btn-primary::after {
-    display: none;
-  }
-  .btn-primary:active:not(:disabled) {
-    transform: none;
-  }
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn:focus-visible,
-.tab:focus-visible {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 2px;
-}
-
-.btn-ghost {
-  background: #fefbf2;
-  color: var(--brand);
-  border: 1px solid var(--rule);
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: #faf3e0;
-  border-color: var(--brand-soft);
-}
-
-.preview-panel {
-  position: sticky;
-  top: 20px;
-  min-height: 520px;
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.tab {
-  position: relative;
-  border: 1px solid var(--rule);
-  background: #fefbf2;
-  color: var(--ink-soft);
-  border-radius: 8px;
-  padding: 10px 14px;
-  min-height: 44px;
-  font-family: var(--font-ui);
-  font-size: 0.83rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
-}
-
-.tab.active {
-  background: var(--brand);
-  color: var(--accent-ink);
-  border-color: var(--brand);
-  box-shadow: inset 0 -2px 0 var(--gilt);
-}
-
-.tab:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.preview-frame {
-  flex: 1;
-  width: 100%;
-  min-height: 520px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fff;
-}
-
-.placeholder {
-  position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background:
-    radial-gradient(120% 90% at 50% -10%, var(--paper-tint) 0%, transparent 60%),
-    var(--panel);
-  color: var(--muted);
-  padding: 40px;
-  min-height: 520px;
-}
-
-/* Gilt rule across the top edge, the same quiet flourish as .auth-card. */
-.placeholder::before {
-  content: "";
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  top: 0;
-  height: 2px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gilt-soft) 25%,
-    var(--gilt-soft) 75%,
-    transparent
-  );
-}
-
-.placeholder p {
-  max-width: 40ch;
-  font-family: var(--font-body);
-  font-size: 0.94rem;
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
-
-.placeholder-empty .empty-emblem {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 84px;
-  height: 84px;
-  margin-bottom: 18px;
-  color: var(--gilt);
-}
-
-.empty-emblem::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, var(--gilt-soft) 0%, transparent 72%);
-  opacity: 0.5;
-}
-
-.empty-emblem .ico-lg {
-  position: relative;
-  z-index: 1;
-}
-
-/* Busy emblem — a slow breathing gilt ring around the cross, in place of a
-   plain hourglass/spinner. Two rings drift in and out of phase, matching the
-   restraint of the hero's own bloom pulse. */
-.placeholder-busy .busy-emblem {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 84px;
-  height: 84px;
-  margin-bottom: 18px;
-  color: var(--gilt);
-}
-
-.busy-emblem .ico-lg {
-  position: relative;
-  z-index: 1;
-  width: 34px;
-  height: 34px;
-  filter: drop-shadow(0 0 7px rgba(184, 137, 63, 0.35));
-}
-
-.busy-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1px solid var(--gilt-soft);
-  animation: bz-breathe 3.2s ease-in-out infinite;
-}
-
-.busy-ring-inner {
-  inset: 14px;
-  border-color: var(--gilt);
-  opacity: 0.6;
-  animation-delay: -1.6s;
-}
-
-@keyframes bz-breathe {
-  0%,
-  100% {
-    transform: scale(0.94);
-    opacity: 0.35;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 0.9;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .busy-ring {
-    animation: none;
-    opacity: 0.55;
-  }
-  .busy-ring-inner {
-    opacity: 0.75;
-  }
-}
-
-.status {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--font-ui);
-  font-size: 0.84rem;
-  padding: 11px 14px 11px 13px;
-  border-radius: 9px;
-  margin-bottom: 12px;
-  letter-spacing: 0.01em;
-  background: var(--paper-card);
-  border: 1px solid var(--rule);
-  box-shadow: 0 1px 0 rgba(124, 74, 50, 0.04), 0 8px 20px -16px rgba(124, 74, 50, 0.3);
-  overflow: hidden;
-}
-
-/* Top-edge accent instead of a side stripe — same gilt/rust hairline motif
-   used on .auth-card and .placeholder, just recolored per status. */
-.status::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 3px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--status-accent, var(--gilt)) 15%,
-    var(--status-accent, var(--gilt)) 85%,
-    transparent
-  );
-}
-
-.status-icon {
-  flex: 0 0 auto;
-  display: inline-flex;
-  color: var(--status-accent, var(--brand));
-}
-
-.status-text {
-  flex: 1;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--gilt);
-  display: inline-block;
-  animation: status-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes status-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(0.85);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .status-dot {
-    animation: none;
-    opacity: 0.85;
-  }
-}
-
-.status.working {
-  --status-accent: var(--gilt);
-  color: var(--brand-deep);
-}
-
-.status.error {
-  --status-accent: var(--danger);
-  background: #fbf3f1;
-  color: var(--danger);
-}
-
-.status.done {
-  --status-accent: var(--ok);
-  background: #f2f7f0;
-  color: var(--ok);
-  animation: done-pulse 0.6s ease;
-}
-
-@keyframes done-pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(63, 111, 74, 0.35);
-  }
-  35% {
-    transform: scale(1.015);
-    box-shadow: 0 0 0 6px rgba(63, 111, 74, 0);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .status.done {
-    animation: none;
-  }
-}
-
-.elapsed {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
-}
-
-.translate-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.translate-row .btn {
-  flex: 1;
-}
-
-.foot {
-  text-align: center;
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--ink-faint);
-  font-size: 0.85rem;
-  margin-top: 36px;
-}
-
-/* ---- Utility panel group (history, import, cost, book) ---- */
-/* A quiet flex column so the four collapsible panels read as one coherent
-   "housekeeping" cluster with even rhythm, distinct from the main two-column
-   form below it. */
-.util-panels {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-bottom: 28px;
-}
-
-/* ---- Secondary panels + inline icons (Phase 2E) ---- */
-/* The input + preview panels keep the paper-card fill and full shadow; the
-   collapsible utility panels (history, cost, import, book) get the same
-   paper-grain material and a lighter twin shadow, so they read as the same
-   illuminated-manuscript world at a quieter volume rather than a flat,
-   unrelated accordion bar. */
-.panel-secondary {
-  padding: 0;
-  margin: 0;
-  background-color: var(--paper-card);
-  background-image: var(--grain);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
-  overflow: hidden;
-  transition: box-shadow 0.25s ease, border-color 0.25s ease;
-}
-
-.panel-secondary[open] {
-  box-shadow: var(--shadow);
-  border-color: var(--rule-soft);
-}
-
-.panel-secondary > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  list-style: none;
-  cursor: pointer;
-  padding: 16px 20px;
-  font-family: var(--font-ui);
-  font-weight: 600;
-  letter-spacing: 0.005em;
-  color: var(--accent);
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.2s ease;
-}
-
-.panel-secondary > summary::-webkit-details-marker {
-  display: none;
-}
-
-/* Firefox draws its own disclosure marker via ::marker rather than the
-   webkit pseudo-element above; blank it the same way. */
-.panel-secondary > summary::marker {
-  content: "";
-}
-
-.panel-secondary > summary:hover,
-.panel-secondary > summary:focus-visible {
-  background-color: var(--paper-tint);
-}
-
-.panel-secondary > summary:focus-visible {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: -2px;
-}
-
-.panel-secondary[open] > summary {
-  border-bottom: 1px solid var(--rule-soft);
-  background-image: linear-gradient(180deg, var(--paper-tint), transparent);
-}
-
-/* Small gilt disclosure chevron — replaces the mismatched native marker /
-   plain-text ▾▴ characters that made the four panels feel inconsistent. */
-.sum-chev {
-  margin-left: auto;
-  flex: 0 0 auto;
-  color: var(--ink-faint);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
-}
-
-.panel-secondary[open] .sum-chev {
-  transform: rotate(180deg);
-  color: var(--gilt);
-}
-
-/* Animated open/close — the collapsible content is always in the DOM as a
-   single .panel-body wrapper; the rule below overrides the browser's own
-   `details:not([open]) > *:not(summary){display:none}` (author origin always
-   wins over user-agent origin, regardless of specificity), and the actual
-   collapse is done visually via a 0fr → 1fr grid-row + visibility, which
-   animates smoothly and avoids the layout jank of height:auto transitions. */
-.panel-secondary > .panel-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  visibility: hidden;
-  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0s linear 0.4s;
-}
-
-.panel-secondary[open] > .panel-body {
-  grid-template-rows: 1fr;
-  visibility: visible;
-  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.panel-body-inner {
-  min-height: 0;
-  overflow: hidden;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .panel-secondary,
-  .panel-secondary > summary,
-  .panel-secondary > .panel-body,
-  .sum-chev {
-    transition: none !important;
-  }
-}
-
-/* Inline icon glyphs replacing the old emoji. */
-.ico {
-  flex: 0 0 auto;
-}
-.hist-dl,
-.hist-tr,
-.preview-bar .btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.hist-del {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.panel-body-inner {
-  padding: 6px 20px 20px;
-}
-
-.panel-body .hist-note {
-  margin: 0 0 14px;
-  padding: 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.55;
-}
-
-.hist-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hist-list li {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 13px 14px;
-  background: var(--paper-tint);
-  border: 1px solid var(--rule-soft);
-  border-radius: 9px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.hist-list li:hover {
-  border-color: var(--brand-soft);
-  box-shadow: 0 3px 10px -7px rgba(124, 74, 50, 0.4);
-}
-
-.hist-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.hist-title {
-  max-width: 100%;
-  font-family: var(--font-display);
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hist-date {
-  font-family: var(--font-ui);
-  color: var(--ink-faint);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.hist-actions {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-/* Download + translate buttons wrap among themselves; the delete ✕ stays
-   pinned at the end so it can't slide under another button on a narrow phone. */
-.hist-btns {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.hist-dl {
-  border: 1px solid var(--rule);
-  background: #fefbf2;
-  color: var(--brand);
-  border-radius: 6px;
-  padding: 9px 12px;
-  min-height: 44px;
-  font-family: var(--font-ui);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hist-tag {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.hist-tr {
-  border: 1px dashed var(--brand-soft);
-  background: transparent;
-  color: var(--brand);
-  border-radius: 6px;
-  padding: 9px 12px;
-  min-height: 44px;
-  font-family: var(--font-ui);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.hist-tr:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.hist-del {
-  flex: 0 0 auto;
-  border: none;
-  background: transparent;
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 1.1rem;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 10px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Make-a-book panel */
-.book .hist-note {
-  margin-bottom: 4px;
-}
-.book-body {
-  padding: 0;
-}
-.book-select-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 18px 0 8px;
-}
-.link-btn {
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 4px 6px;
-  border-radius: 5px;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-.link-btn:hover {
-  color: var(--brand-deep);
-  background-color: var(--paper-tint);
-}
-
-/* Book language — a small tab group standing in for the old native <select>,
-   matching the .tabs/.tab vocabulary already used by the preview panel so
-   the two language pickers in the app feel like one control. */
-.lang-tabs {
-  display: flex;
-  gap: 6px;
-}
-.lang-tab {
-  flex: 1;
-  border: 1px solid var(--rule);
-  background: #fefbf2;
-  color: var(--ink-soft);
-  border-radius: 8px;
-  padding: 10px 10px;
-  min-height: 44px;
-  font-family: var(--font-ui);
-  font-size: 0.86rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.lang-tab:hover {
-  border-color: var(--brand-soft);
-}
-.lang-tab.active {
-  background: var(--brand);
-  color: var(--accent-ink);
-  border-color: var(--brand);
-}
-
-.book-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 240px;
-  overflow-y: auto;
-  border: 1px solid var(--rule);
-  border-radius: 9px;
-  background: var(--paper-tint);
-}
-.book-list li {
-  border-top: 1px solid var(--rule-soft);
-}
-.book-list li:first-child {
-  border-top: none;
-}
-.book-list label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.15s ease;
-}
-.book-list label:hover {
-  background-color: var(--paper-card);
-}
-.book-list input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  accent-color: var(--brand);
-}
-.book-list .bl-title {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.book-list .bl-warn {
-  flex: 0 0 auto;
-  font-size: 0.72rem;
-  color: var(--danger);
-}
-.book-list label.missing {
-  opacity: 0.7;
-}
-.book-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-/* ---------- Auth screens ---------- */
-/* Illuminated-manuscript treatment, matching the hero: warm parchment,
-   restrained gilt, a faint grain, and a slow god-ray glow behind the card. */
-.auth-shell {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 18px;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 50% -8%, #f9f1dc 0%, transparent 60%),
-    linear-gradient(180deg, #f1e7d2 0%, #e6dab8 100%);
-}
-/* faint parchment grain over the whole scene */
-.auth-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-}
-/* slow rotating god-ray glow behind the card */
-.auth-shell::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 900px;
-  height: 900px;
-  margin: -450px 0 0 -450px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(184, 137, 63, 0.14) 8deg,
-    transparent 22deg,
-    transparent 165deg,
-    rgba(184, 137, 63, 0.1) 178deg,
-    transparent 195deg,
-    transparent 360deg
-  );
-  animation: auth-rays-turn 48s linear infinite;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-shell::after {
-    animation: none;
-  }
-}
-@keyframes auth-rays-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.auth-card {
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-  width: 100%;
-  max-width: 380px;
-  background: var(--paper-card);
-  border: 1px solid var(--rule);
-  border-radius: 14px;
-  padding: 38px 28px 30px;
-  box-shadow:
-    0 30px 70px -20px rgba(76, 46, 28, 0.32),
-    0 6px 16px -6px rgba(76, 46, 28, 0.16),
-    inset 0 0 0 1px rgba(255, 253, 244, 0.6);
-  animation: auth-card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-card {
-    animation: none;
-  }
-}
-@keyframes auth-card-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-/* gilt accent rules across the top and bottom edges — prayer-book detail */
-.auth-card::before,
-.auth-card::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gilt) 20%,
-    var(--gilt) 80%,
-    transparent
-  );
-}
-.auth-card::before {
-  top: 0;
-}
-.auth-card::after {
-  bottom: 0;
-  opacity: 0.55;
-}
-/* corner brackets — an illuminated-page frame, not a side-stripe accent */
-.auth-corner {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  pointer-events: none;
-  opacity: 0.45;
-}
-.auth-corner-tl {
-  top: 11px;
-  left: 11px;
-  border-top: 1.5px solid var(--gilt);
-  border-left: 1.5px solid var(--gilt);
-}
-.auth-corner-tr {
-  top: 11px;
-  right: 11px;
-  border-top: 1.5px solid var(--gilt);
-  border-right: 1.5px solid var(--gilt);
-}
-.auth-corner-bl {
-  bottom: 11px;
-  left: 11px;
-  border-bottom: 1.5px solid var(--gilt);
-  border-left: 1.5px solid var(--gilt);
-}
-.auth-corner-br {
-  bottom: 11px;
-  right: 11px;
-  border-bottom: 1.5px solid var(--gilt);
-  border-right: 1.5px solid var(--gilt);
-}
-/* small sunburst/compass emblem, echoing the hero's god-rays */
-.auth-crest {
-  display: flex;
-  justify-content: center;
-  margin: 0 0 6px;
-  color: var(--gilt);
-  filter: drop-shadow(0 0 7px rgba(184, 137, 63, 0.35));
-  animation: auth-crest-glow 4s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-crest {
-    animation: none;
-  }
-}
-@keyframes auth-crest-glow {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 6px rgba(184, 137, 63, 0.3));
-  }
-  50% {
-    filter: drop-shadow(0 0 11px rgba(184, 137, 63, 0.5));
-  }
-}
-.auth-spinner {
-  width: 32px;
-  height: 32px;
-  margin: 2px auto 4px;
-  border-radius: 50%;
-  border: 2.5px solid var(--rule-soft);
-  border-top-color: var(--gilt);
-  animation: auth-spin 0.85s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-spinner {
-    animation: auth-spin-fade 1.6s ease-in-out infinite;
-  }
-}
-@keyframes auth-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes auth-spin-fade {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-.auth-card h1 {
-  margin: 0 0 4px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--brand-deep);
-  font-size: 1.6rem;
-  letter-spacing: -0.01em;
-  text-align: center;
-  text-wrap: balance;
-}
-.auth-card .auth-sub {
-  margin: 0 0 22px;
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--ink-soft);
-  font-size: 0.95rem;
-  text-align: center;
-  text-wrap: pretty;
-}
-.auth-label {
-  display: block;
-  font-family: var(--font-ui);
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--brand);
-  margin: 14px 0 6px;
-}
-.auth-input {
-  display: block;
-  width: 100%;
-  font-family: var(--font-body);
-  font-size: 1rem;
-  padding: 13px 14px;
-  border: 1px solid var(--rule);
-  border-radius: 9px;
-  background: #fdfaf0;
-  color: var(--ink);
-  box-shadow: inset 0 1px 3px rgba(76, 46, 28, 0.06);
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.auth-input::placeholder {
-  color: var(--ink-faint);
-}
-.auth-input:focus {
-  outline: none;
-  border-color: var(--gilt);
-  box-shadow:
-    inset 0 1px 3px rgba(76, 46, 28, 0.06),
-    0 0 0 3px rgba(184, 137, 63, 0.22);
-}
-.auth-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 44px;
-  margin-top: 14px;
-  padding: 14px 18px;
-  font-family: var(--font-ui);
-  font-size: 0.97rem;
-  font-weight: 600;
-  letter-spacing: 0.005em;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-btn {
-    transition: opacity 0.15s ease;
-  }
-}
-.auth-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.auth-btn-primary {
-  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-deep) 100%);
-  color: var(--accent-ink);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 var(--brand-deep),
-    0 10px 22px -12px rgba(76, 46, 28, 0.55);
-}
-.auth-btn-primary:not(:disabled):active {
-  transform: translateY(1px);
-}
-@media (hover: hover) {
-  .auth-btn-primary:not(:disabled):hover {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 0 var(--brand-deep),
-      0 12px 26px -10px rgba(76, 46, 28, 0.6);
-  }
-}
-.auth-btn-ghost {
-  background: #fefbf2;
-  color: var(--brand);
-  border-color: var(--rule);
-}
-@media (hover: hover) {
-  .auth-btn-ghost:not(:disabled):hover {
-    border-color: var(--brand-soft);
-    background: var(--paper-tint);
-  }
-}
-.auth-btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
-}
-.auth-err {
-  margin: 12px 0 0;
-  color: var(--danger);
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-.auth-hint {
-  margin: 14px 0 0;
-  color: var(--ink-faint);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-.auth-hint code {
-  background: var(--paper-tint);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 0.78rem;
-}
-.auth-divider {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: center;
-  margin: 20px 0 6px;
-}
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--rule), transparent);
-}
-.auth-divider span {
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--gilt);
-  font-size: 0.85rem;
-}
-.session-bar {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin: 12px auto 0;
-  padding: 10px 16px;
-  max-width: 1180px;
-  border: 1px solid var(--rule-soft);
-  background: linear-gradient(180deg, #fffdf5 0%, #fdf7e8 100%);
-  border-radius: 12px;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 8px 20px -16px rgba(76, 46, 28, 0.3);
-  animation: auth-card-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .session-bar {
-    animation: none;
-  }
-}
-.session-bar::before {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: 0;
-  height: 2px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gilt-soft) 25%,
-    var(--gilt-soft) 75%,
-    transparent
-  );
-}
-.session-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px 5px 8px;
-  border-radius: 999px;
-  background: var(--paper-tint);
-  border: 1px solid var(--gilt-soft);
-  font-family: var(--font-ui);
-  font-weight: 600;
-  color: var(--brand-deep);
-}
-.session-tag .ico {
-  color: var(--gilt);
-}
-.session-spacer {
-  flex: 1;
-}
-.session-btn {
-  background: transparent;
-  border: 1px solid var(--accent-soft);
-  color: var(--accent);
-  padding: 10px 14px;
-  min-height: 44px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-@media (hover: hover) {
-  .session-btn:not(:disabled):hover {
-    background: var(--paper-tint);
-    border-color: var(--brand);
-  }
-}
-.session-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.session-msg {
-  flex-basis: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--paper-tint);
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-}
-
-/* ---------- Proofread toggle (immediate lead-in to Generate) ---------- */
-.proofread-toggle {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  margin: 6px 0 16px;
-  border: 1px solid var(--rule-soft);
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--paper-card), var(--paper-tint));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 16px -12px rgba(124, 74, 50, 0.22);
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.proofread-toggle:hover {
-  border-color: var(--gilt-soft);
-}
-
-.proofread-toggle:has(input:focus-visible) {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 2px;
-}
-.proofread-toggle input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  margin-top: 1px;
-  accent-color: var(--accent);
-}
-.proofread-toggle span {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.proofread-toggle strong {
-  color: var(--ink);
-  font-size: 0.95rem;
-}
-.proofread-toggle small {
-  color: #8c7d6b;
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-/* ---------- Cost panel ---------- */
-.cost-totals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 4px 0 16px;
-}
-.cost-card {
-  flex: 1 1 calc(50% - 12px);
-  background: var(--paper-tint);
-  border: 1px solid var(--rule-soft);
-  border-radius: 10px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-/* The current month's spend is the figure the user actually checks this
-   panel for — a restrained gilt wash + gilt figure singles it out from the
-   all-time total beside it, without touching the side-stripe-accent ban. */
-.cost-card-primary {
-  background: linear-gradient(160deg, var(--paper-tint) 40%, #f7ecd2 100%);
-  border-color: var(--gilt-soft);
-}
-.cost-card-primary .cost-amount {
-  color: var(--gilt);
-}
-.cost-label {
-  font-size: 0.78rem;
-  color: var(--ink-faint);
-}
-.cost-amount {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-.cost-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  border-top: 1px solid var(--rule-soft);
-}
-.cost-list li {
-  padding: 11px 6px;
-  margin: 0 -6px;
-  border-bottom: 1px solid var(--rule-soft);
-  border-radius: 6px;
-  transition: background-color 0.15s ease;
-}
-.cost-list li:hover {
-  background-color: var(--paper-tint);
-}
-.cost-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.cost-title {
-  flex: 1;
-  font-size: 0.92rem;
-  color: var(--ink);
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cost-amt {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--accent);
-}
-.cost-sub {
-  margin-top: 2px;
-  font-size: 0.74rem;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---------- Import existing summaries ---------- */
-.panel.import code {
-  background: #f3ecdc;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 0.8em;
-}
-
-/* ================================================================
-   Craft & accessibility polish (ui-ux-pro-max pass)
-   Additive only — reinforces the existing warm-editorial identity.
-   Sources: ux-guidelines (focus, touch, motion), editorial-style craft.
-   ================================================================ */
-
-/* 1) Accessible keyboard focus. Buttons, tabs, links and summaries had no
-   visible focus indicator; give every interactive element a gilt focus ring
-   that appears for keyboard users only (not on mouse/touch press). */
-:where(
-  .btn,
-  .tab,
-  .link-btn,
-  .session-btn,
-  summary,
-  a,
-  [role="button"],
-  input[type="checkbox"]
-):focus-visible {
-  outline: 2px solid var(--gilt);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-/* Text fields already tint their border on focus — keep that, but only ring
-   on keyboard focus so a mouse click doesn't draw a hard outline. */
-input[type="text"]:focus:not(:focus-visible),
-input[inputmode]:focus:not(:focus-visible),
-select:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* 2) Snappier, calmer touch. Kills the 300ms tap delay and the grey/blue tap
-   flash on the interactive surfaces that weren't already covered. */
-.tab,
-.link-btn,
-.session-btn,
-summary,
-a,
-label,
-input[type="checkbox"] {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-/* 3) Gentle tactile feedback — a 1px press on buttons and a hairline lift on
-   hover for the primary action. Subtle, in keeping with the editorial tone. */
-.btn {
-  transition:
-    filter 0.15s ease,
-    opacity 0.15s ease,
-    transform 0.08s ease,
-    box-shadow 0.15s ease;
-}
-.btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-.btn-primary {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 2px 0 var(--brand-deep),
-    0 6px 16px -12px rgba(79, 46, 31, 0.5);
-}
-.btn-primary:active:not(:disabled) {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 1px 0 var(--brand-deep);
-}
-.tab,
-.link-btn,
-.session-btn {
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-/* 4) Comfortable measure for reading text (UX: 65–75 chars/line). The helper
-   and footer prose could otherwise run full panel width on wide screens. */
-.hint,
-.foot,
-.hist-note {
-  max-width: 68ch;
-}
-
-/* 5) Respect the OS "reduce motion" setting — mute the gradient/animated and
-   transition effects for users who opt out. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ================================================================
-   Scene hero — Sermon on the Mount intro (SceneHero.tsx)
-   Full-bleed photo that reveals on scroll: a golden light "flash"
-   over the sun, faint god-rays, and Matthew 5:1-2 rise in.
-   Driven by CSS vars --p (reveal 0..1), --sy (scroll px), --tx/--ty
-   (device tilt) set inline by the component.
-   ================================================================ */
-.scene-hero{
-  --gold:#e7c477; --gold-hi:#fbe6b6; --gold-deep:#b8893f;
-  --p:0; --sy:0px; --tx:0deg; --ty:0deg;
-  position:relative;width:100%;height:100svh;min-height:560px;overflow:hidden;
-  background:#160b04;color:#f6ecd2;isolation:isolate;
-}
-.scene-hero .sh-photo{
-  position:absolute;inset:-5%;z-index:0;
-  background:url('/scene/sermon-on-the-mount.jpg') 50% 34% / cover no-repeat;
-  transform:translateY(calc(var(--sy) * -1))
-            scale(calc(1.12 - .10 * var(--p)))
-            translate(calc(var(--ty) * .6), calc(var(--tx) * -.5));
-  filter:brightness(calc(.5 + .6 * var(--p))) saturate(calc(.82 + .30 * var(--p))) contrast(1.03);
-  animation:sh-kb 26s ease-in-out infinite alternate;
-  will-change:transform,filter;
-}
-@keyframes sh-kb{from{background-position:50% 32%}to{background-position:52% 40%}}
-.scene-hero .sh-rays{
-  position:absolute;left:30%;top:20%;width:200vmax;height:200vmax;translate:-50% -50%;z-index:1;pointer-events:none;
-  background:repeating-conic-gradient(from 200deg, rgba(255,238,196,calc(.18 * var(--p))) 0deg 1.2deg, transparent 1.2deg 13deg);
-  -webkit-mask:radial-gradient(closest-side,#000 6%,rgba(0,0,0,.4) 34%,transparent 62%);
-          mask:radial-gradient(closest-side,#000 6%,rgba(0,0,0,.4) 34%,transparent 62%);
-  opacity:calc(.2 + .8 * var(--p));mix-blend-mode:screen;animation:sh-spin 120s linear infinite;
-}
-@keyframes sh-spin{to{rotate:360deg}}
-.scene-hero .sh-bloom{
-  position:absolute;left:30%;top:20%;width:150vmax;height:150vmax;translate:-50% -50%;z-index:1;pointer-events:none;
-  background:radial-gradient(closest-side, rgba(255,251,235,.9), rgba(255,226,160,.45) 20%, rgba(255,200,120,0) 55%);
-  opacity:calc(max(0,(var(--p) - .4)) * 1.7);scale:calc(.35 + var(--p) * 1.0);mix-blend-mode:screen;
-  transform:translate(calc(var(--ty) * 1.4), calc(var(--tx) * -1.2));
-}
-.scene-hero .sh-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(180deg, rgba(20,10,4,.28) 0%, rgba(20,10,4,0) 26%, rgba(20,10,4,0) 52%, rgba(20,10,4,.55) 82%, rgba(16,8,3,.86) 100%);}
-.scene-hero .sh-vig{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 40px rgba(12,6,2,.6);}
-
-/* Wordmark + purpose line share one top-anchored block so the app's purpose
-   is the first thing read, right under the name -- literally the top of the
-   whole app, seen before any scroll or interaction. */
-.scene-hero .sh-top{
-  position:absolute;top:calc(20px + env(safe-area-inset-top));left:0;right:0;z-index:3;text-align:center;
-  padding:0 20px;opacity:calc(.9 - .25 * var(--p));
-}
-.scene-hero .sh-wordmark{
-  font-family:var(--font-display);font-weight:700;font-size:1.55rem;letter-spacing:.02em;
-  /* impeccable-disable-next-line gradient-text -- intentional gilt wordmark on the hero */
-  background:linear-gradient(180deg,#fbeecb,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 2px 18px rgba(0,0,0,.4);
-}
-.scene-hero .sh-purpose{
-  margin:8px 0 0;font-family:var(--font-display);font-size:.92rem;line-height:1.55;
-  color:var(--gold-hi);text-shadow:0 2px 10px rgba(0,0,0,.55);
-}
-.scene-hero .sh-purpose-en{
-  display:inline-block;margin-top:3px;font-style:italic;font-size:.82rem;color:#ecdcb2;opacity:.9;
-}
-.scene-hero .sh-verse{
-  position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom));z-index:3;text-align:center;padding:0 28px;margin:0;
-  opacity:calc(max(0,(var(--p) - .32)) * 1.9);transform:translateY(calc((1 - var(--p)) * 22px));
-}
-.scene-hero .sh-ref{font-family:var(--font-display);font-style:italic;letter-spacing:.14em;text-transform:uppercase;font-size:.74rem;color:var(--gold-hi);margin-bottom:9px;}
-.scene-hero .sh-ko{font-family:var(--font-display);font-size:1.14rem;line-height:1.75;color:#fdf4dd;text-shadow:0 2px 14px rgba(0,0,0,.7);margin:0;}
-.scene-hero .sh-en{font-family:var(--font-display);font-style:italic;font-size:1rem;color:#ecdcb2;margin:9px 0 0;opacity:.92;text-shadow:0 2px 10px rgba(0,0,0,.6);}
-.scene-hero .sh-pull{
-  position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));translate:-50% 0;z-index:3;text-align:center;
-  font-family:var(--font-body);font-size:.82rem;color:#f3e2b8;text-shadow:0 1px 8px rgba(0,0,0,.7);
-  opacity:calc(max(0,.92 - var(--p) * 1.7));
-}
-.scene-hero .sh-arrow{display:block;font-size:1.5rem;line-height:1;margin-top:2px;animation:sh-bob 1.8s ease-in-out infinite;}
-@keyframes sh-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
-
-@media (prefers-reduced-motion: reduce){
-  .scene-hero .sh-photo,.scene-hero .sh-rays{animation:none;}
-  .scene-hero .sh-arrow{animation:none;}
-}
-
-/* ================================================================
-   Step panels — the 4-step input workspace
-   Each numbered step (was one flat block inside a single .panel) is
-   now its own illuminated card: gilt-tinted hairline border, layered
-   parchment shadow (same depth language as .scene-hero), a gilt
-   medallion step number, and a gentle scroll-reveal as it enters
-   view. The dividers between steps stay — the ornament fix above —
-   now sitting in the seam between two cards rather than inside one.
-   ================================================================ */
-.steps {
-  display: flex;
-  flex-direction: column;
-  /* No flex `gap` here — the ornamental .section-divider between each
-     step-panel already carries its own vertical margin, and doubling up
-     would over-space the stack. */
-}
-
-.lead-in {
-  margin-top: 2px;
-}
-
-.step-panel {
-  position: relative;
-  background: linear-gradient(180deg, var(--paper-card) 0%, var(--paper-tint) 145%);
-  border: 1px solid var(--rule-soft);
-  border-radius: 14px;
-  padding: 24px 22px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    0 1px 2px rgba(124, 74, 50, 0.05),
-    0 14px 32px -22px rgba(124, 74, 50, 0.3),
-    0 30px 60px -36px rgba(79, 46, 31, 0.24);
-}
-
-/* A hairline gilt edge along the top, echoing the hero's restraint —
-   a sliver of illumination, not a bar. */
-.step-panel::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 22px;
-  right: 22px;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gilt-soft) 30%,
-    var(--gilt-soft) 70%,
-    transparent
-  );
-  opacity: 0.85;
-}
-
-.step-panel h2 {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-
-.step-num {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  font-family: var(--font-ui);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--paper-card);
-  background: linear-gradient(155deg, var(--gilt), var(--brand-soft));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 3px 8px -3px rgba(124, 74, 50, 0.45);
-}
-
-.step-panel .hint {
-  margin-top: 2px;
-}
-
-/* Vertical rhythm: a touch more breathing room between label / input /
-   hint than the old flat form gave them. */
-.step-panel .field {
-  margin-bottom: 16px;
-}
-
-.step-panel .field label {
-  margin-bottom: 6px;
-}
-
-.step-panel > .field:last-child {
-  margin-bottom: 0;
-}
-
-/* Scroll-reveal: a restrained rise + sharpen as each step-panel enters view,
-   driven by CSS scroll-driven animations. Deliberately does NOT animate
-   opacity — content must never be invisible by default (a class/timeline
-   that fails to run, or a browser without view() support, would otherwise
-   ship a blank form). @supports scopes it to browsers that implement
-   animation-timeline; everywhere else — and always under reduced motion —
-   the panel is simply static and fully visible. */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .step-panel {
-      animation: step-reveal linear both;
-      animation-timeline: view();
-      animation-range: entry 0% cover 40%;
-    }
-
-    @keyframes step-reveal {
-      from {
-        transform: translateY(16px);
-        filter: blur(1.5px);
-      }
-      to {
-        transform: translateY(0);
-        filter: blur(0);
-      }
-    }
-  }
-}
-
-@media (max-width: 640px) {
-  .step-panel {
-    padding: 18px 16px;
-    border-radius: 12px;
-  }
-}
-
-/* ---------- Theme swatch picker (replaces the native <select>) ---------- */
-.theme-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.theme-swatch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 6px 12px 6px 6px;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  background: var(--paper-card);
-  color: var(--ink-soft);
-  font-family: var(--font-ui);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, color 0.15s, background 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.theme-swatch:hover {
-  border-color: var(--brand-soft);
-}
-
-.theme-swatch:focus-visible {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 2px;
-}
-
-.theme-swatch .dot {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 1px 2px rgba(124, 74, 50, 0.2) inset;
-}
-
-.theme-swatch[aria-pressed="true"] {
-  color: var(--brand-deep);
-  font-weight: 600;
-  border-color: var(--gilt);
-  background: var(--paper-tint);
-  box-shadow: 0 0 0 3px rgba(184, 137, 63, 0.16);
-}
-
-@media (max-width: 640px) {
-  .theme-swatch {
-    font-size: 0.76rem;
-    padding: 5px 10px 5px 5px;
   }
 }

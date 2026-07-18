@@ -1,53 +1,55 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Gowun_Batang,
-  Noto_Serif_KR,
+  Newsreader,
+  Geist,
+  Geist_Mono,
+  Nanum_Myeongjo,
   Noto_Sans_KR,
-  Cormorant_Garamond,
-  Crimson_Pro,
-  Inter,
 } from "next/font/google";
 import "./globals.css";
 
-// Editorial type system — three roles × two scripts. CSS variables are
-// composed in globals.css so Korean glyphs fall through to the KR family
-// before the Latin fallback.
-const displayKR = Gowun_Batang({
-  weight: ["400", "700"],
+// Hearth type system — a committed pairing, not a single font:
+//   • Newsreader (modernized old-style serif) → display & headings
+//   • Geist (modern grotesque)                → all body & UI
+//   • Geist Mono (the one outlier register)   → data, wordmark tag, tabular figures
+// Hearth's faces are Latin-only, so two Korean companions are embedded so
+// Hangul in the UI never falls back to a system face:
+//   • Nanum Myeongjo (한글 세리프) → pairs with Newsreader in the display stack
+//   • Noto Sans KR                → pairs with Geist in the body/UI stack
+// The CSS variables are composed in globals.css so a Korean glyph falls through
+// to its Korean companion while Latin stays on the Hearth face.
+const displayLat = Newsreader({
   subsets: ["latin"],
-  variable: "--font-display-kr",
-  display: "swap",
-});
-const bodyKR = Noto_Serif_KR({
-  weight: ["400", "500", "700"],
-  subsets: ["latin"],
-  variable: "--font-body-kr",
-  display: "swap",
-});
-const uiKR = Noto_Sans_KR({
-  weight: ["400", "500", "700"],
-  subsets: ["latin"],
-  variable: "--font-ui-kr",
-  display: "swap",
-});
-const displayLat = Cormorant_Garamond({
-  weight: ["500", "600"],
   style: ["normal", "italic"],
-  subsets: ["latin"],
-  variable: "--font-display-lat",
+  variable: "--font-newsreader",
   display: "swap",
 });
-const bodyLat = Crimson_Pro({
-  weight: ["400", "600"],
-  style: ["normal", "italic"],
+const bodyLat = Geist({
   subsets: ["latin"],
-  variable: "--font-body-lat",
+  variable: "--font-geist",
   display: "swap",
 });
-const uiLat = Inter({
-  weight: ["400", "500", "600"],
+const monoLat = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-ui-lat",
+  variable: "--font-geist-mono",
+  display: "swap",
+});
+// "korean" is not a named Google-Fonts subset for these families, so we omit
+// `subsets` and set preload:false. next/font then self-hosts the full set of
+// unicode-range-split faces (Latin + every Hangul block) and the browser
+// lazy-loads only the ranges each glyph actually needs. (subsets:["latin"]
+// would ship only ~13 Hangul glyphs and drop the rest to the system face —
+// which would make embedding the Korean serif pointless.)
+const displayKR = Nanum_Myeongjo({
+  weight: ["400", "700", "800"],
+  preload: false,
+  variable: "--font-nanum-myeongjo",
+  display: "swap",
+});
+const bodyKR = Noto_Sans_KR({
+  weight: ["400", "500", "700"],
+  preload: false,
+  variable: "--font-noto-sans-kr",
   display: "swap",
 });
 
@@ -64,7 +66,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4f2e1f",
+  // Warm ink — matches the dark photographic hero that paints first.
+  themeColor: "#1e1712",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -76,12 +79,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const fontVars = [
-    displayKR.variable,
-    bodyKR.variable,
-    uiKR.variable,
     displayLat.variable,
     bodyLat.variable,
-    uiLat.variable,
+    monoLat.variable,
+    displayKR.variable,
+    bodyKR.variable,
   ].join(" ");
   // Korean-first user; affects IME, autocorrect, and a11y tooling.
   return (
