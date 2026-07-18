@@ -77,23 +77,28 @@ const FONT_SWAP: Record<
   "en" | "zh",
   { importUrl: string; displayName: string; bodyName: string }
 > = {
+  // English keeps the Hearth Latin faces: Newsreader (display) + Geist (body).
   en: {
     importUrl:
-      "@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Crimson+Pro:wght@300;400;500;600;700&display=swap');",
-    displayName: "'Cormorant Garamond'",
-    bodyName: "'Crimson Pro'",
+      "@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap');",
+    displayName: "'Newsreader'",
+    bodyName: "'Geist'",
   },
+  // Chinese swaps Hangul for the Simplified-Chinese Noto pair, keeping the
+  // Hearth Latin/mono faces for numerals and Latin fragments.
   zh: {
     importUrl:
-      "@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');",
+      "@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');",
     displayName: "'Noto Serif SC'",
     bodyName: "'Noto Sans SC'",
   },
 };
-// Matches "Gowun Batang" / "Gowun+Batang", quoted or not — however the
-// generation prompt's font-family declarations or @import URL wrote it.
-const KOREAN_DISPLAY_FONT = /['"]?Gowun\s*\+?\s*Batang['"]?/gi;
-const KOREAN_BODY_FONT = /['"]?Noto\s*\+?\s*Serif\s*\+?\s*KR['"]?/gi;
+// The Korean companion faces the Hearth stylesheet pairs with the Latin fonts:
+// Nanum Myeongjo (display) + Noto Sans KR (body). Also match the pre-Hearth
+// pairing (Gowun Batang + Noto Serif KR) so translating an older, already-stored
+// summary still swaps its fonts. Match quoted or not, with an optional "+".
+const KOREAN_DISPLAY_FONT = /['"]?(?:Nanum\s*\+?\s*Myeongjo|Gowun\s*\+?\s*Batang)['"]?/gi;
+const KOREAN_BODY_FONT = /['"]?Noto\s*\+?\s*(?:Sans|Serif)\s*\+?\s*KR['"]?/gi;
 
 /** Deterministically swap the Korean font @import + font-family declarations
  *  for the target language's pairing. Regex-based (matching this codebase's

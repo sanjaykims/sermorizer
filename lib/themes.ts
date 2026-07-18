@@ -88,28 +88,38 @@ export const THEMES: Theme[] = [
   },
 ];
 
+/**
+ * The whole document is now the Hearth design system (warm-oat paper, ink text,
+ * Newsreader + Geist, flat surfaces) supplied by the app. The only thing a theme
+ * still controls is the document's SINGLE accent hue — the highlighter. This
+ * returns the "Accent color" guidance for the generation prompt: either "auto"
+ * (default signal orange) or the season's accent as two hex values the model
+ * echoes into `:root{--doc-accent;--doc-accent-strong}`.
+ */
 export function themeHint(key: string | undefined): string {
   const t = THEMES.find((x) => x.key === key);
   if (!t || t.key === "auto" || !t.palette) {
     return (
-      "Choose a liturgical color theme appropriate to the sermon's occasion and " +
-      "season, then build a cohesive palette around it: a warm parchment page " +
-      "background, near-black warm ink for body text, one brand accent (header " +
-      "gradient, section headings, links) with a deeper shade for gradients and " +
-      "hovers, and a restrained gilt for emphasis (key verse, current TOC tab, " +
-      "the 한눈에 보기 medallions)."
+      "**Pick the colour for THIS sermon** — never leave every summary the same plain " +
+      "oat/white. Choose a palette that fits the sermon's occasion, liturgical season, " +
+      "and scripture:\n" +
+      "- Lent / Palm Sunday → deep purple · Easter → warm gold & amber · Pentecost → red\n" +
+      "- Creation / growth / children → green · water, the well, baptism → teal\n" +
+      "- Advent → blue or violet · Ezra / rebuilding → rust · a calm, reflective text → soft blue\n" +
+      "- an ordinary Sunday with no strong season → warm oat paper with a signal-orange (#FC4C02) accent\n" +
+      "Then echo the four values into ONE line in the <head>:\n" +
+      "`<style>:root{--doc-paper:<a LIGHT, warm-tinted page — never pure #fff>;--doc-ink:<near-black warm ink>;--doc-accent:<the single accent>;--doc-accent-strong:<a darker, AA-safe shade of that accent, for text>}</style>`\n" +
+      "Keep the paper LIGHT and the ink DARK so body text stays highly legible. The app " +
+      "derives every card, border, tint, and wash from these four colours."
     );
   }
   const p = t.palette;
   return (
-    `Use this anchored ${t.hint} palette — build the whole document from these ` +
-    `exact hex values and do not drift to other colors:\n` +
-    `- Page background (parchment): ${p.paper}\n` +
-    `- Body text (ink): ${p.ink}\n` +
-    `- Brand accent — header gradient start, section headings, links: ${p.brand}\n` +
-    `- Deep brand — header gradient end, hovers, strong emphasis: ${p.brandDeep}\n` +
-    `- Gilt — key verse, current TOC tab, summary medallions (use sparingly): ${p.gilt}\n` +
-    `Build the header gradient from the brand and deep-brand colors; reserve the ` +
-    `gilt for small accents only.`
+    `Use this ${t.hint} palette for the whole summary — echo the four values verbatim ` +
+    `into ONE line in the <head>, and use no other colours:\n` +
+    `\`<style>:root{--doc-paper:${p.paper};--doc-ink:${p.ink};--doc-accent:${p.brand};--doc-accent-strong:${p.brandDeep}}</style>\`\n` +
+    `The app derives every card, border, tint, and wash from these four; --doc-paper is ` +
+    `the light page, --doc-ink the dark text, --doc-accent the highlighter, and ` +
+    `--doc-accent-strong its darker AA-safe shade for accent text.`
   );
 }

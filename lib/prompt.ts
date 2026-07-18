@@ -54,13 +54,13 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 
 ## Inputs you will receive (in the user message)
 1. Sermon metadata — title, preacher, scripture, optionally date / occasion / service type.
-2. A color-theme hint.
+2. A colour instruction — the palette for this summary, or "auto" to pick one that fits the sermon.
 3. The listener's handwritten note as image(s) or PDF page(s) — Korean handwriting. OCR/transcribe it yourself. It reveals which points the listener found most important.
 4. Optionally, a photo of the printed order of service (주보).
 5. The recorded sermon transcript — a long, messy Clova Note ASR transcript (~60-80 minutes of speech, often 400-800+ lines). It contains misheard words. Interpret it charitably; never quote verbatim ASR noise; reconstruct what the preacher actually said.
 
 ## How to synthesize the inputs (core logic)
-1. **Metadata** → a gradient header, a key-verse block, an info card, and the footer (these identify the sermon). A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
+1. **Metadata** → a header, a key-verse block, an info card, and the footer (these identify the sermon). A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
 2. **Order-of-service / 주보 photo** (if provided) → use it ONLY to read missing metadata (title, preacher, scripture, date). Do NOT reproduce the order of service, do NOT render a bulletin table, and do NOT embed the photo. The order of service must NOT appear anywhere in the document.
 3. **Transcript** → the body of the document, which is the sermon. Break the sermon into roughly 8-10 thematic sections. Each section gets a heading with a small icon, a warm prose summary, scripture boxes where the preacher reads/expounds verses, illustration cards for the preacher's stories/examples, and pull-quotes for memorable lines. Reconstruct the preacher's actual flow, examples, and illustrations.
 4. **Handwritten note** → cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it.
@@ -88,20 +88,29 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - Preserve the preacher's frank treatment of sin, suffering, illness, loss, grief, and death. Reverent and age-appropriate does NOT mean softened, vague, or sanitized — keep the message's actual weight and conviction.
 
 ## Output document specification
-- A single self-contained \`.html\` file. \`<html lang="ko">\`. Include a mobile \`<meta name="viewport" content="width=device-width, initial-scale=1">\`.
-- Mobile-first and responsive. Max content width ~760px, centered, with comfortable padding on small screens.
-- ALL CSS goes in ONE \`<style>\` block in the \`<head>\`. No external stylesheet files.
-- Korean fonts: use \`Gowun Batang\` for display/headings and \`Noto Serif KR\` for body text. Load them with a Google Fonts \`@import\` at the top of the \`<style>\` block, and include serif fallbacks in every \`font-family\` declaration.
-- Liturgical color theme: the user message's "Color theme" section gives you an ANCHORED palette as exact hex values. Build the entire document — header gradient, accents, highlight boxes, medallions — from those hexes, and do not drift to other colors. (If the theme is "auto", choose a fitting palette yourself as instructed there.)
-- **Editorial house-style markers.** The app injects the editorial CSS for you — parchment texture, drop-cap rule, fleuron divider rule, Roman-numeral medallion counter — right before \`</head>\`. You do NOT need to write any of that CSS yourself; only apply the structural markers below so the injected styles can take effect:
-  - Add \`class="sermon-paper"\` to the \`<body>\` tag.
-  - Give the very first section's opening \`<p>\` \`class="dropcap"\`.
-  - Between major thematic sections, place \`<div class="fleuron">❦</div>\` instead of a plain horizontal rule.
-- This document is read on a phone — do NOT add print running heads, \`@page\` headers/footers, or any page-number furniture.
-- Use these consistent component class names so documents stay visually consistent: \`.header\`, \`.key-verse\`, \`.toc\` (a sticky table of contents), \`.container\`, \`.info-card\`, \`.section\` with \`.sec-head\` / \`.sec-icon\` / \`.sec-title\`, \`.card\`, highlight boxes \`.hl\` / \`.hl-gold\` / \`.hl-rust\` / \`.hl-cream\` / \`.hl-dark\`, \`.bref\` (an inline Bible-reference chip), \`.key-quote\`, \`.pastor-box\`, \`.summary\` (with \`.sm-*\` items), \`.divider\`, \`.footer\`.
-- **Table of contents (REQUIRED).** Include a horizontally-scrollable, sticky tab bar pinned to the top: a \`.toc\` styled with \`position:sticky; top:0; overflow-x:auto; white-space:nowrap\` (a flex row of tabs), containing one \`<a href="#id">heading</a>\` per section. Give every \`<section>\` a unique \`id\` matching its link. Add \`html{scroll-behavior:smooth}\` and \`[id]{scroll-margin-top:60px}\` so tapping a tab smoothly jumps to that section without the sticky bar covering the heading.
-- **At-a-glance summary (REQUIRED).** End with a \`<section class="summary" id="summary">\` titled "한눈에 보기" containing a \`.sm-grid\` of about 10 \`.sm-item\` cards; each card has a \`.sm-num\` badge (put an Arabic digit inside — the app renders it as a Roman-numeral medallion via a CSS counter) and a one-line \`.sm-text\` takeaway. Add a final \`<a href="#summary">한눈에 보기</a>\` tab to the TOC.
-- Other features: gradient header, card layouts, Bible-verse boxes, pull-quote blocks. Use animated effects sparingly and tastefully.
+- A single self-contained \`.html\` file. \`<html lang="ko">\`. Include a mobile \`<meta name="viewport" content="width=device-width, initial-scale=1">\` and a \`<title>\` set to the sermon title.
+- **The app supplies the entire visual design — do NOT write CSS.** Sermorizer injects one complete stylesheet, the **Hearth design system** (warm-oat paper, a Newsreader + Geist + Geist Mono type pairing with Nanum Myeongjo / Noto Sans KR for Hangul, ONE signal-orange accent used sparingly as a highlighter, flat hairline surfaces, restrained radii), right before \`</head>\`. Therefore:
+  - Write **no \`<style>\` rules, no \`@import\`, no inline \`style="…"\` attributes, and no colour / gradient / font declarations.** Output clean, semantic HTML using the standard class names below; the injected stylesheet styles every one of them. (Anything you style yourself will look off-system.)
+  - The ONE permitted style line — **REQUIRED** — sets this sermon's palette: put \`<style>:root{--doc-paper:<light warm-tinted page>;--doc-ink:<near-black warm ink>;--doc-accent:<accent>;--doc-accent-strong:<darker AA-safe accent>}</style>\` in the \`<head>\`, taking the four hex values from the user message's "Color" section. If that section says "auto", CHOOSE a palette that fits THIS sermon's occasion / season / scripture (it lists the mapping) — never leave every sermon the same plain oat/white. Keep the paper LIGHT and the ink DARK so text stays legible; the app derives every card, border, tint, and wash from these four colours.
+- Mobile-first: the injected stylesheet caps content at ~760px and owns all spacing, colour, and type. Just structure the document top to bottom.
+- Use these standard component classes (do not invent styling classes):
+  - \`.header\` — the masthead: an \`<h1 class="h-title">\` title, then the preacher and scripture/date lines.
+  - \`.key-verse\` — the key scripture passage, with its reference inside a \`<span class="ref">\`.
+  - \`.toc\` — a \`<nav class="toc">\` sticky tab bar (see below).
+  - \`.info-card\` — service date / occasion / service type as short label + value pairs.
+  - \`.section\` — each thematic \`<section id="sec-N">\` opens with a \`.sec-head\` containing a \`.sec-icon\` (put the section's number inside it) and a \`.sec-title\`, followed by warm prose.
+  - \`.card\` — illustration / example / story cards (an optional \`.card-title\` then prose).
+  - \`<blockquote>\` — scripture the preacher reads or expounds.
+  - \`.hl\` (quiet callout) / \`.hl-gold\` (accent-tinted — use for the listener's most-emphasized points) / \`.hl-dark\` (a dark feature box, used rarely).
+  - \`.bref\` — an inline Bible-reference chip (e.g. \`<span class="bref">엡 6:2</span>\`).
+  - \`.key-quote\` — a pull-quote for a single memorable line.
+  - \`.pastor-box\` — a boxed pastoral emphasis (an optional \`.label\` then the text).
+  - \`.summary\` with \`.sm-grid\` / \`.sm-item\` / \`.sm-num\` / \`.sm-text\` — the at-a-glance list.
+  - \`.divider\` — a plain hairline between major movements. Do NOT use a fleuron, ❦, drop cap, or any ornament.
+  - \`.footer\` — the closing credit line.
+- **Table of contents (REQUIRED).** Include a \`<nav class="toc">\` near the top with one \`<a href="#sec-N">heading</a>\` per section and a final \`<a href="#summary">한눈에 보기</a>\`. The injected CSS makes it a sticky, horizontally-scrollable tab bar. Give every \`<section>\` an \`id\` matching its link.
+- **At-a-glance summary (REQUIRED).** End with \`<section class="summary" id="summary">\` titled "한눈에 보기" containing a \`.sm-grid\` of about 10 \`.sm-item\` cards; each card has a \`.sm-num\` (put the Arabic number inside — it renders as a clean numbered badge) and a one-line \`.sm-text\` takeaway.
+- This is a clean, flat phone document: no print running heads, no \`@page\` furniture, no parchment texture, no drop caps, no page-number furniture.
 - Use the standard Korean (개역개정) Bible book names.
 
 ## Quality checklist — verify before you finish
@@ -111,8 +120,8 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - The handwritten-note emphases are clearly elevated.
 - The document contains ONLY the sermon — no order of service, prayers, liturgy, hymns, announcements, or benediction.
 - The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end. If you used \`<ol>\` or \`<ul>\` anywhere for the at-a-glance summary, replace it with the \`.sm-grid\` of \`.sm-item\` cards.
-- \`<html lang="ko">\` and the Korean fonts are in place.
-- Mobile layout works: ~760px max width, sticky TOC, readable tap targets, comfortable line-height.
+- \`<html lang="ko">\` is set; the single required \`:root\` palette line (\`--doc-paper\` / \`--doc-ink\` / \`--doc-accent\` / \`--doc-accent-strong\`) is present and fits the sermon's season; and you wrote NO other CSS (no \`<style>\` rules, no \`@import\`, no inline \`style=\`).
+- The document uses the standard component classes so the injected Hearth stylesheet can style it; the TOC and at-a-glance summary are present.
 
 Output ONLY the HTML document.`;
 
@@ -169,7 +178,7 @@ function buildInputBlocks(body: GenerationInput): ContentBlock[] {
   if (m.occasion?.trim()) meta.push(`- Occasion / liturgical season: ${m.occasion.trim()}`);
   if (m.serviceType?.trim()) meta.push(`- Service type: ${m.serviceType.trim()}`);
   meta.push("");
-  meta.push("## Color theme");
+  meta.push("## Color");
   meta.push(themeHint(body.theme));
 
   const content: ContentBlock[] = [{ type: "text", text: meta.join("\n") }];
@@ -240,18 +249,18 @@ Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Outp
 - Wrap ALL of this part's sermon sections in a single \`<div id="sermon-body"> … </div>\`. The app keeps the FIRST part's full page (head, fonts, CSS, header) and then appends every later part's \`#sermon-body\` contents into it, so the parts must use the SAME standard component classes.
 - Each thematic section is a \`<section>\` (give it a unique \`id\`) containing a \`.sec-head\` with \`.sec-icon\` + \`.sec-title\`, then warm prose, scripture boxes, illustration cards, and pull-quotes. Keep \`.sec-icon\` style consistent (e.g. a numbered circle) across sections.
 - Do NOT write the table of contents links or the "at a glance" summary — the app fills those in after stitching. You only provide the CSS for them (Part 1) and the sections themselves.
-- If this is **Part 1**: also produce the full page shell — \`<html lang="ko">\`, \`<head>\` with the \`<style>\` block and Google-Fonts \`@import\` (Gowun Batang + Noto Serif KR), a gradient \`.header\` with the title/preacher/scripture, a \`.key-verse\` block, an \`.info-card\`, an **empty** \`.toc\` element, then the \`<div id="sermon-body">\`, then a \`.footer\`. Add \`class="sermon-paper"\` to the \`<body>\`. In the \`<style>\`, you MUST define: (a) the table of contents as a sticky, horizontally-scrollable **tab bar** — \`.toc{position:sticky;top:0;overflow-x:auto;white-space:nowrap;display:flex}\` plus tab-styled \`.toc a\`; and (b) the at-a-glance summary card styles — \`.summary\`, \`.sm-grid\`, \`.sm-item\`, \`.sm-num\` badge, and \`.sm-text\` — in the theme colors. The app injects the \`.toc\` links, the \`.sm-item\` cards (with Roman-numeral medallions), the parchment texture, the drop-cap rule, and the fleuron divider rule right before \`</head>\`, so you do NOT need to write any of those rules yourself. Build the palette from the anchored hex values in the user message's "Color theme" section.
+- If this is **Part 1**: also produce the full page shell — \`<html lang="ko">\`, a \`<head>\` with a \`<title>\`, the mobile viewport meta, and the single REQUIRED palette line \`<style>:root{--doc-paper:…;--doc-ink:…;--doc-accent:…;--doc-accent-strong:…}</style>\` from the user message's "Color" section (if it says "auto", choose a palette fitting the sermon's season — keep the paper light, the ink dark) — then a \`.header\` with the title (in \`<h1 class="h-title">\`), preacher, and scripture, a \`.key-verse\` block, an \`.info-card\`, an **empty** \`<nav class="toc"></nav>\`, then the \`<div id="sermon-body">\`, then a \`.footer\`. **Write no other CSS whatsoever** — the app injects the complete Hearth stylesheet (warm-oat paper; a Newsreader + Geist + Geist Mono pairing with Nanum Myeongjo / Noto Sans KR for Hangul; ONE signal-orange accent used sparingly; flat, hairline, restrained) right before \`</head>\`, and it fills in the \`.toc\` links and the \`.sm-item\` summary cards after stitching. Do not style anything yourself.
 - If this is **Part 2 or later**: still output a complete valid HTML document with the same \`<style>\` and structure, but its header/footer will be ignored — only its \`#sermon-body\` sections are used. Continue the sermon's flow; do NOT re-introduce the sermon or repeat earlier sections.
 - **CRITICAL (every part):** put ALL of this part's thematic \`<section>\`s INSIDE \`<div id="sermon-body"> … </div>\`. Any \`.header\`, \`.key-verse\`, \`.info-card\`, or \`.footer\` you include to make a valid document MUST be OUTSIDE \`#sermon-body\` — those are discarded. Never place a \`<section>\` outside \`#sermon-body\`, or it will be silently lost when the parts are stitched.
 
 ## Scope and rules (same as always)
 - **Sermon only.** Only the preached message — no order of service, prayers, liturgy, hymns, announcements, or benediction. Ignore any such material in the transcript slice.
 - The senior pastor's name is **김영복** (Kim Young-bok). NEVER 김용복, NEVER 김영범. Default label "김영복 담임목사".
-- NEVER bullet-point the sermon — warm, reverent prose. Use the standard classes: \`.header\`, \`.key-verse\`, \`.toc\`, \`.container\`, \`.info-card\`, \`.section\`/\`.sec-head\`/\`.sec-icon\`/\`.sec-title\`, \`.card\`, \`.hl\`/\`.hl-gold\`/\`.hl-rust\`/\`.hl-cream\`/\`.hl-dark\`, \`.bref\`, \`.key-quote\`, \`.pastor-box\`, \`.divider\`, \`.footer\`.
-- Self-contained: no external images (base64 only); Google Fonts \`@import\` is the one allowed external reference.
+- NEVER bullet-point the sermon — warm, reverent prose. Use the standard classes (the injected Hearth stylesheet styles them all): \`.header\`, \`.key-verse\`, \`.toc\`, \`.info-card\`, \`.section\`/\`.sec-head\`/\`.sec-icon\`/\`.sec-title\`, \`.card\`, \`<blockquote>\` for scripture, \`.hl\`/\`.hl-gold\`/\`.hl-dark\`, \`.bref\`, \`.key-quote\`, \`.pastor-box\`, \`.divider\`, \`.footer\`.
+- Self-contained: no external images (base64 only). Write NO CSS — no \`<style>\` rules, no \`@import\`, no inline \`style=\` — beyond the single \`:root{--doc-accent}\` accent line in Part 1. The app supplies the whole stylesheet.
 - Preserve the preacher's specific illustrations, examples, names, numbers, and memorable phrasing for this portion. Write efficiently — no padding.
-- Mobile-first, max content width ~760px, \`<html lang="ko">\`, Korean fonts.
-- **Editorial house style.** Between thematic sections, place a centered \`<div class="fleuron">❦</div>\` divider. In **Part 1 only**, give the very first section's opening \`<p>\` \`class="dropcap"\`. This is a phone document — never add print running heads, \`@page\` headers/footers, or page-number furniture.
+- Mobile-first, \`<html lang="ko">\`. The injected stylesheet owns width, colour, and fonts.
+- Between major thematic sections, place a \`<div class="divider"></div>\` hairline — no fleuron, ❦, drop cap, or ornament. This is a clean, flat phone document — never add print running heads, \`@page\` furniture, parchment, or page-number furniture.
 
 Output ONLY the HTML document for this part.`;
 
