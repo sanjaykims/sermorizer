@@ -80,12 +80,30 @@ hr,.divider{border:0;height:1px;background:var(--rule);margin:2.4em 0;max-width:
 /* cards + illustrations */
 .card,.illus,.example{background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:18px 20px;margin:18px 0;}
 .card .card-title,.card h3,.card h4,.card .title{font-family:var(--fd);font-size:1.1rem;font-weight:600;margin:0 0 .4em;}
-/* highlight boxes — quiet tonal callouts */
-.hl,.hl-cream,.hl-gold,.hl-rust,.hl-dark{border-radius:12px;padding:16px 20px;margin:18px 0;border:1px solid var(--rule);background:var(--paper-2);}
-.hl-gold{background:var(--accent-wash);border-color:transparent;}
-.hl-rust{background:var(--paper-3);border-color:transparent;}
-.hl-dark{background:var(--ink);border-color:transparent;color:var(--paper);}
-.hl-dark *{color:var(--paper)!important;}
+/* highlighter marks — an inline <span> over a short phrase/clause within
+   running prose (a listener's-note emphasis), like a highlighter pen. MUST
+   stay inline: display is forced so even a malformed <div>/<p> wrapper still
+   renders safely instead of becoming a block box that bleeds into the lines
+   above/below. Padding is small enough to sit inside the paragraph's own
+   line-height, and box-decoration-break:clone keeps the mark's background/
+   radius correct if the phrase wraps onto a second line. (Previously these
+   carried block-box padding/margin sized for a <div> callout, which any
+   <span> usage rendered as a background box overlapping neighboring lines —
+   see CHANGELOG. Never reintroduce vertical padding/margin larger than a
+   fraction of an em here.) */
+.hl,.hl-cream,.hl-gold,.hl-rust,.hl-dark{
+display:inline!important;
+box-decoration-break:clone;-webkit-box-decoration-break:clone;
+padding:.05em .3em;
+margin:0;
+border:0;
+border-radius:4px;
+background:var(--paper-3);
+color:inherit;
+}
+.hl-gold{background:var(--accent-wash);}
+.hl-rust{background:var(--paper-3);}
+.hl-dark{background:var(--accent-strong);color:var(--accent-ink);}
 /* inline Bible-reference chip */
 .bref{display:inline-block;font-family:var(--fm);font-size:.78em;padding:.08em .5em;border-radius:5px;background:var(--paper-3);color:var(--ink-2);white-space:nowrap;text-decoration:none;}
 /* pull quote */
