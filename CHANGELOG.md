@@ -1,5 +1,23 @@
 # Changelog
 
+## Fixes — 2026-07-19
+
+- **Inline highlighter marks no longer overlap surrounding lines.** The `.hl` /
+  `.hl-gold` / `.hl-dark` emphasis spans were rendering as block-like boxes that
+  bled over adjacent text on the phone; they are now forced inline with
+  `box-decoration-break: clone`, so a mark stays on its own words across line
+  wraps. The generation prompt also limits each mark to a short phrase (a whole
+  emphasized sentence becomes a `.key-quote`). Fixed in the injected stylesheet,
+  so it applies to Korean, English, and Chinese alike.
+- **Translations read as natural target-language prose, not calques.** The
+  translation prompt (`lib/prompt.ts`) now requires idiomatic, grammatically
+  correct English / Chinese — recasting Korean sentence shapes (fronted
+  adverbials, topic–comment order, comparatives like "~보다 훨씬 더") into the
+  target language's own grammar instead of mirroring Korean word order. This
+  fixes stranded-comparative output such as "Far more than you yourself know,
+  you are a precious person." → "You are far more precious than you know." The
+  2026-07-19 English and Chinese summaries were corrected to match.
+
 ## Hearth design system — 2026-07-18
 
 Adopted the **Hearth design system** (a warm editorial-tech system: warm-oat

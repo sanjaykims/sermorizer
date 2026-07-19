@@ -137,9 +137,10 @@ Output ONLY the HTML document.`;
  * every call, long document or short, skips reproducing the sermon's
  * (often several-KB) <style> block.
  */
-export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **Sermorizer**. You receive ONE HTML fragment — a slice of a larger Korean sermon-summary document's <body> (some of its sections, its header, or its footer) — and produce a faithful translation of it into a target language.
+export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **Sermorizer**. You receive ONE HTML fragment — a slice of a larger Korean sermon-summary document's <body> (some of its sections, its header, or its footer) — and produce a faithful AND natural-sounding translation of it into a target language.
 
 ## Rules
+- **Translate the MEANING into natural, idiomatic, grammatically correct target-language prose — NEVER word-for-word.** Read and understand each Korean sentence, then write it the way a native English- or Chinese-speaking preacher actually would. Recast Korean sentence shapes — fronted adverbial phrases, topic–comment order, long pre-nominal modifiers, and comparatives such as "~보다 훨씬 더" — into the target language's own natural word order and grammar; do NOT mirror the Korean structure. Every sentence must read as fluent, correct prose, with no dangling, stranded, or garden-path grammar. Worked example — Korean "여러분이 아는 것보다 훨씬 더, 여러분은 소중한 사람입니다" → **"You are far more precious than you know."** (anchor the comparative on the adjective) — NOT "Far more than you know, you are a precious person." (a stranded comparative that reads as translation-ese). Read each finished sentence back once and fix anything a native speaker would not say.
 - Translate EVERYTHING a human reads inside the fragment: headings, all prose, scripture quotations, illustration cards, pull-quotes, at-a-glance summary items, captions, alt/title/aria-label text. Leave nothing in Korean.
 - Preserve the fragment's HTML structure, tags, attributes, classes, and nesting EXACTLY. Change ONLY text content (and translatable attributes like alt/title/aria-label). Do not redesign, reorder, add, or drop elements.
 - Use the standard Bible book names for the target language — English ESV-style names, Chinese 和合本 names — and translate verse references accordingly.
