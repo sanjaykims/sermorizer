@@ -101,7 +101,7 @@ Produce a thorough record of the SERMON — written richly but efficiently.
   - \`.section\` — each thematic \`<section id="sec-N">\` opens with a \`.sec-head\` containing a \`.sec-icon\` (put the section's number inside it) and a \`.sec-title\`, followed by warm prose.
   - \`.card\` — illustration / example / story cards (an optional \`.card-title\` then prose).
   - \`<blockquote>\` — scripture the preacher reads or expounds.
-  - \`.hl\` (quiet callout) / \`.hl-gold\` (accent-tinted — use for the listener's most-emphasized points) / \`.hl-dark\` (a dark feature box, used rarely).
+  - \`.hl\` / \`.hl-gold\` / \`.hl-dark\` — **inline highlighter marks**, like a highlighter pen over a few words. Wrap ONLY a short phrase or clause **inside** a \`<p>\`/\`<blockquote>\` you are already writing, e.g. \`...그 사람을 <span class="hl-gold">축복하고 행복하게 하라</span>고 권면합니다.\` \`.hl\` is a quiet neutral mark, \`.hl-gold\` is accent-tinted (use for the listener's handwritten-note emphasis), \`.hl-dark\` is the boldest — use it rarely, for the single most important phrase. **NEVER** wrap a whole sentence, multiple sentences, or a paragraph in one of these — that renders as an oversized, ugly block. A sentence-level or paragraph-level emphasis belongs in \`.key-quote\` (its own \`<p>\`) instead.
   - \`.bref\` — an inline Bible-reference chip (e.g. \`<span class="bref">엡 6:2</span>\`).
   - \`.key-quote\` — a pull-quote for a single memorable line.
   - \`.pastor-box\` — a boxed pastoral emphasis (an optional \`.label\` then the text).
@@ -122,6 +122,7 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end. If you used \`<ol>\` or \`<ul>\` anywhere for the at-a-glance summary, replace it with the \`.sm-grid\` of \`.sm-item\` cards.
 - \`<html lang="ko">\` is set; the single required \`:root\` palette line (\`--doc-paper\` / \`--doc-ink\` / \`--doc-accent\` / \`--doc-accent-strong\`) is present and fits the sermon's season; and you wrote NO other CSS (no \`<style>\` rules, no \`@import\`, no inline \`style=\`).
 - The document uses the standard component classes so the injected Hearth stylesheet can style it; the TOC and at-a-glance summary are present.
+- Every \`.hl\`/\`.hl-gold\`/\`.hl-dark\` span wraps a SHORT phrase (a few words), never a whole sentence or more — if you emphasized a full sentence, convert it to a \`.key-quote\` paragraph instead.
 
 Output ONLY the HTML document.`;
 
@@ -256,8 +257,8 @@ Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Outp
 ## Scope and rules (same as always)
 - **Sermon only.** Only the preached message — no order of service, prayers, liturgy, hymns, announcements, or benediction. Ignore any such material in the transcript slice.
 - The senior pastor's name is **김영복** (Kim Young-bok). NEVER 김용복, NEVER 김영범. Default label "김영복 담임목사".
-- NEVER bullet-point the sermon — warm, reverent prose. Use the standard classes (the injected Hearth stylesheet styles them all): \`.header\`, \`.key-verse\`, \`.toc\`, \`.info-card\`, \`.section\`/\`.sec-head\`/\`.sec-icon\`/\`.sec-title\`, \`.card\`, \`<blockquote>\` for scripture, \`.hl\`/\`.hl-gold\`/\`.hl-dark\`, \`.bref\`, \`.key-quote\`, \`.pastor-box\`, \`.divider\`, \`.footer\`.
-- Self-contained: no external images (base64 only). Write NO CSS — no \`<style>\` rules, no \`@import\`, no inline \`style=\` — beyond the single \`:root{--doc-accent}\` accent line in Part 1. The app supplies the whole stylesheet.
+- NEVER bullet-point the sermon — warm, reverent prose. Use the standard classes (the injected Hearth stylesheet styles them all): \`.header\`, \`.key-verse\`, \`.toc\`, \`.info-card\`, \`.section\`/\`.sec-head\`/\`.sec-icon\`/\`.sec-title\`, \`.card\`, \`<blockquote>\` for scripture, \`.bref\`, \`.key-quote\`, \`.pastor-box\`, \`.divider\`, \`.footer\`. \`.hl\`/\`.hl-gold\`/\`.hl-dark\` are INLINE highlighter \`<span>\`s wrapping a SHORT phrase or clause inside a \`<p>\`/\`<blockquote>\` you are already writing (like a highlighter pen) — NEVER a whole sentence, multiple sentences, or a paragraph; a sentence-level emphasis belongs in its own \`.key-quote\` paragraph instead.
+- Self-contained: no external images (base64 only). Write NO CSS — no \`<style>\` rules, no \`@import\`, no inline \`style=\` — beyond the single required \`:root\` palette line in Part 1. The app supplies the whole stylesheet.
 - Preserve the preacher's specific illustrations, examples, names, numbers, and memorable phrasing for this portion. Write efficiently — no padding.
 - Mobile-first, \`<html lang="ko">\`. The injected stylesheet owns width, colour, and fonts.
 - Between major thematic sections, place a \`<div class="divider"></div>\` hairline — no fleuron, ❦, drop cap, or ornament. This is a clean, flat phone document — never add print running heads, \`@page\` furniture, parchment, or page-number furniture.
