@@ -1,17 +1,24 @@
 ---
 trigger: always_on
-description: Consult the Graphify knowledge graph at graphify-out/ for codebase and architecture questions.
+description: Mandatory Graphify-first rule for Sermorizer development and architecture work.
 ---
 
 # Graphify First
 
 This project has a Graphify knowledge graph at `graphify-out/`.
 
+Mandatory rule for future development: Codex, Claude, Antigravity, and any
+other coding agent must use Graphify before broad source exploration or making
+a development plan. Start from the graph for codebase questions, architecture
+work, impact analysis, "where is X?" exploration, and any non-trivial repo
+change. Only skip this if `graphify-out/graph.json` is absent/broken or the
+user explicitly says not to use Graphify.
+
 Rules:
 
-- For codebase or architecture questions, when `graphify-out/graph.json`
-  exists, first run `graphify query "<question>"` or the MCP `query_graph`
-  equivalent.
+- For codebase or architecture questions, first run a focused `graphify query
+  "<question>"` or the MCP `query_graph` equivalent when
+  `graphify-out/graph.json` exists.
 - Use `graphify explain "<node>"` / `get_node` for a focused concept and
   `graphify path "<A>" "<B>"` / `shortest_path` for relationships.
 - Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review or

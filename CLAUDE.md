@@ -4,9 +4,14 @@
 
 ## Graphify First
 
-This repo commits a Graphify snapshot in `graphify-out/`. For codebase
-questions, architecture work, impact analysis, and "where is X?" exploration,
-consult Graphify before broad source browsing.
+This repo commits a Graphify snapshot in `graphify-out/`.
+
+**Mandatory rule for future development:** Codex, Claude, Antigravity, and any
+other coding agent must use Graphify before broad source exploration or making
+a development plan. Start from the graph for codebase questions, architecture
+work, impact analysis, "where is X?" exploration, and any non-trivial repo
+change. Only skip this if `graphify-out/graph.json` is absent/broken or the
+user explicitly says not to use Graphify.
 
 If `graphify` is not already on PATH, install it in a temp venv:
 
@@ -19,8 +24,8 @@ export PATH="$GRAPHIFY_VENV/bin:$PATH"
 
 Rules:
 
-- Start with `graphify query "<question>"` when `graphify-out/graph.json`
-  exists.
+- Start each development session by running a focused
+  `graphify query "<question>"` when `graphify-out/graph.json` exists.
 - Use `graphify explain "<node>"` for a focused concept and
   `graphify path "<A>" "<B>"` for relationships between two parts of the app.
 - Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review or

@@ -5,7 +5,10 @@ description: Query or refresh the Sermorizer Graphify knowledge graph
 
 # Workflow: Graphify
 
-Use this workflow before broad manual source exploration.
+Use this workflow at the start of every non-trivial Sermorizer development
+session, before broad manual source exploration or development planning. This
+is mandatory for Codex, Claude, Antigravity, and any other coding agent unless
+the graph is absent/broken or the user explicitly says not to use Graphify.
 
 1. If `graphify` is not on PATH, install it in a temp venv:
 
