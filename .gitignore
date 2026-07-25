@@ -9,3 +9,6 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 .vercel
+graphify-out/cache/
+graphify-out/.graphify_root
+graphify-out/manifest.json
