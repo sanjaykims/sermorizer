@@ -53,9 +53,9 @@ export const GENERATION_SYSTEM_PROMPT = `You are the generation engine for **Ser
 Your task: synthesize the inputs supplied in the user message into ONE complete HTML document. Output ONLY the raw HTML — it must begin with \`<!DOCTYPE html>\` and end with \`</html>\`. No preamble, no commentary, no markdown code fences.
 
 ## Inputs you will receive (in the user message)
-1. Sermon metadata — title, preacher, scripture, optionally date / occasion / service type.
+1. Sermon metadata — preacher and date/time may be the only supplied fields; title, scripture, occasion, and service type may be omitted and inferred.
 2. A colour instruction — the palette for this summary, or "auto" to pick one that fits the sermon.
-3. The listener's handwritten note as image(s) or PDF page(s) — Korean handwriting. OCR/transcribe it yourself. It reveals which points the listener found most important.
+3. Optionally, the listener's handwritten note as image(s) or PDF page(s) — Korean handwriting. OCR/transcribe it yourself when supplied. It reveals which points the listener found most important.
 4. Optionally, a photo of the printed order of service (주보).
 5. The recorded sermon transcript — a long, messy Clova Note ASR transcript (~60-80 minutes of speech, often 400-800+ lines). It contains misheard words. Interpret it charitably; never quote verbatim ASR noise; reconstruct what the preacher actually said.
 
@@ -63,7 +63,7 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 1. **Metadata** → a header, a key-verse block, an info card, and the footer (these identify the sermon). A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
 2. **Order-of-service / 주보 photo** (if provided) → use it ONLY to read missing metadata (title, preacher, scripture, date). Do NOT reproduce the order of service, do NOT render a bulletin table, and do NOT embed the photo. The order of service must NOT appear anywhere in the document.
 3. **Transcript** → the body of the document, which is the sermon. Break the sermon into roughly 8-10 thematic sections. Each section gets a heading with a small icon, a warm prose summary, scripture boxes where the preacher reads/expounds verses, illustration cards for the preacher's stories/examples, and pull-quotes for memorable lines. Reconstruct the preacher's actual flow, examples, and illustrations.
-4. **Handwritten note** → cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it.
+4. **Handwritten note** → if supplied, cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it. If no note is supplied, still produce the full summary from the Clova Note transcript, using the transcript as the source of truth.
 5. End the document with a numbered "한눈에 보기" at-a-glance summary of about 10 points — the key points of the SERMON. (No closing prayer, no order of service.)
 
 This document is the SERMON ONLY — the preached message and nothing else. Include its scripture text and exposition, the introduction, every main point and sub-point, the illustrations/stories, the applications, and the conclusion. The recording often contains non-sermon parts at the start or end (call to worship, hymns, responsive readings, the offering, announcements, the pastoral / opening / closing prayers, the benediction) — IGNORE every one of these. Do NOT include prayers, liturgy, the order of service, hymns, announcements, or any worship element that is not the sermon itself.
@@ -117,7 +117,7 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - Every \`<div>\` is balanced (open/close counts match).
 - The pastor's name renders as 김영복.
 - Zero external \`<img src>\` references — images are base64 \`data:\` URIs or absent.
-- The handwritten-note emphases are clearly elevated.
+- If handwritten notes were supplied, their emphases are clearly elevated; if not, the summary still works from the transcript alone.
 - The document contains ONLY the sermon — no order of service, prayers, liturgy, hymns, announcements, or benediction.
 - The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end. If you used \`<ol>\` or \`<ul>\` anywhere for the at-a-glance summary, replace it with the \`.sm-grid\` of \`.sm-item\` cards.
 - \`<html lang="ko">\` is set; the single required \`:root\` palette line (\`--doc-paper\` / \`--doc-ink\` / \`--doc-accent\` / \`--doc-accent-strong\`) is present and fits the sermon's season; and you wrote NO other CSS (no \`<style>\` rules, no \`@import\`, no inline \`style=\`).

@@ -4,13 +4,18 @@ Turns a week of church sermon materials into **one polished, self-contained,
 mobile-friendly HTML summary document**. Built for a layperson at Galilee
 Church (갈릴리교회) in Dobong-gu, Seoul.
 
-Upload three things → get one beautiful HTML file:
+Upload the core sermon text plus a little context → get one beautiful HTML file:
 
-1. **Sermon metadata** — title, preacher, scripture (+ optional date / occasion / service type)
-2. **Handwritten note** — photo(s) of your notes; the app OCRs the Korean handwriting
-3. **Recorded sermon transcript** — a `.txt` file (e.g. from Clova Note)
+1. **Recorded sermon transcript** — a `.txt` file (e.g. from Clova Note); this is the core input.
+2. **Service date / time** — the date and time of the sermon.
+3. **Preacher** — who preached (default: 김영복 담임목사).
 
-Optional: a photo of the printed order of service (주보) → rendered as an HTML table.
+Optional but helpful: sermon title, scripture passage, occasion / service type,
+and photo(s) or a PDF of handwritten notes. If title or scripture are blank, the
+app asks Claude to infer them from the transcript.
+
+Optional: a photo of the printed order of service (주보) → used only to fill in
+missing sermon metadata; it is not reproduced in the summary.
 
 The Korean document can be translated into **English** and **Simplified Chinese**
 on demand, preserving the design.
@@ -19,8 +24,8 @@ on demand, preserving the design.
 
 - Next.js (App Router) + TypeScript
 - Anthropic Messages API — `claude-opus-4-8`, streamed
-- The note/bulletin images and the transcript are sent to the model; it returns
-  one complete HTML document.
+- The transcript plus any optional note/bulletin images are sent to the model;
+  it returns one complete HTML document.
 
 ## Setup
 
@@ -72,7 +77,7 @@ because synthesizing a long transcript takes time.
 
 ## How it works
 
-- `app/page.tsx` — the single-page UI: metadata form, image dropzones,
+- `app/page.tsx` — the single-page UI: metadata form, optional image dropzones,
   transcript upload, theme picker, live preview, download, translate.
 - `app/api/generate/route.ts` — streams the generated HTML back. Handles both
   `mode: "generate"` (Korean) and `mode: "translate"` (EN/ZH).

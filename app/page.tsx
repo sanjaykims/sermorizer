@@ -1019,22 +1019,6 @@ function Sermorizer() {
       setStatusMsg("Please upload the recorded sermon transcript (.txt file).");
       return;
     }
-    const hasBulletin = bulletinFiles.length > 0;
-    if (!hasBulletin && !meta.title.trim()) {
-      setStatus("error");
-      setStatusMsg(
-        "Enter a sermon title — or add the order-of-service photo in step 4, and it will be read from there.",
-      );
-      return;
-    }
-    if (!hasBulletin && !meta.scripture.trim()) {
-      setStatus("error");
-      setStatusMsg(
-        "Enter the scripture passage — or add the order-of-service photo in step 4, and it will be read from there.",
-      );
-      return;
-    }
-
     primeAlerts();
     stopPolling();
     setStatus("generating");
@@ -1821,17 +1805,19 @@ function Sermorizer() {
             Sermon details
           </h2>
           <p className="hint">
-            Enter the sermon&apos;s basic information. You can leave the title and
-            scripture blank if you add the order-of-service photo in step 4 —
-            they will be read from it.
+            The transcript is the core input. Date/time and preacher are enough;
+            leave the title and scripture blank when they should be inferred
+            from the Clova Note text.
           </p>
 
           <div className="field">
-            <label>Sermon title</label>
+            <label>
+              Sermon title <span className="opt">(optional)</span>
+            </label>
             <input
               type="text"
               value={meta.title}
-              placeholder="The title of the sermon"
+              placeholder="Optional — inferred from the transcript if blank"
               autoCapitalize="none"
               spellCheck={false}
               onChange={(e) => setField("title", e.target.value)}
@@ -1849,11 +1835,13 @@ function Sermorizer() {
               />
             </div>
             <div className="field">
-              <label>Scripture passage</label>
+              <label>
+                Scripture passage <span className="opt">(optional)</span>
+              </label>
               <input
                 type="text"
                 value={meta.scripture}
-                placeholder="e.g. 출애굽기 20:12"
+                placeholder="Optional — inferred from the transcript if blank"
                 autoCapitalize="none"
                 spellCheck={false}
                 onChange={(e) => setField("scripture", e.target.value)}
@@ -1862,13 +1850,11 @@ function Sermorizer() {
           </div>
           <div className="row">
             <div className="field">
-              <label>
-                Service date <span className="opt">(optional)</span>
-              </label>
+              <label>Service date / time</label>
               <input
                 type="text"
                 value={meta.date}
-                placeholder="2026-05-17 (또는 2026.05.17)"
+                placeholder="2026-05-17 11:00 (또는 2026.05.17)"
                 inputMode="numeric"
                 onChange={(e) => setField("date", e.target.value)}
               />
@@ -2201,9 +2187,9 @@ function Sermorizer() {
                 <IconCross />
               </div>
               <p>
-                Fill in the sermon details, handwritten note, and transcript on
-                the left, then tap <strong>Generate summary</strong> — the
-                preview will appear here.
+                Upload the Clova Note transcript, add the date/time and preacher,
+                then tap <strong>Generate summary</strong> — the preview will
+                appear here.
               </p>
             </div>
           )}

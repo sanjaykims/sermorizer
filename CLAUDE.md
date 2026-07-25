@@ -52,19 +52,25 @@ hand with Claude for months. Sermorizer productizes that workflow.
 **One-line goal:** upload three inputs → get one beautiful, self-contained,
 mobile-optimized HTML sermon summary.
 
-## The three inputs (always exactly these)
+## Minimum inputs
 
-1. **Sermon metadata** — short structured fields the user types in:
-   - `title` — the sermon title (e.g. "당연한 사랑은 없습니다")
-   - `preacher` — who preached (default: 김영복 담임목사)
-   - `scripture` — the Bible passage (e.g. "출애굽기 20:12")
-   - Optional: service date, occasion/liturgical season, service type
-2. **User's handwritten note** — uploaded as image(s) (JPG/PNG). The app must
-   OCR/transcribe Korean handwriting. These are the user's own emphases and
-   should be treated as high-priority signal for what mattered in the sermon.
-3. **Recorded sermon transcript** — a `.txt` file (transcribed via Clova Note).
+Sermorizer must be able to generate a summary from only:
+
+1. **Recorded sermon transcript** — a `.txt` file (transcribed via Clova Note).
    Long: typically 400-800+ lines, ~60-80 min of speech. Messy ASR output with
    misheard words — interpret charitably, don't quote verbatim noise.
+2. **Service date / time** — the date and time of the sermon.
+3. **Preacher** — who preached (default: 김영복 담임목사).
+
+Optional helpful inputs:
+
+- `title` — the sermon title (e.g. "당연한 사랑은 없습니다")
+- `scripture` — the Bible passage (e.g. "출애굽기 20:12")
+- Occasion/liturgical season and service type
+- **User's handwritten note** — uploaded as image(s) or PDF. The app OCRs /
+  transcribes Korean handwriting. These are the user's own emphases and should
+  be treated as high-priority signal when supplied, but the app must still work
+  without them.
 
 Optional fourth input seen in practice: a **photo of the printed order of
 service (주보)**. If provided, use it ONLY to read sermon metadata (title,
@@ -96,7 +102,7 @@ A **single self-contained `.html` file**:
    thematic sections, each with a heading, prose summary, scripture boxes,
    illustration cards, and pull-quotes. Reconstruct the preacher's actual flow
    and examples. Ignore any non-sermon portions of the recording.
-4. **Handwritten note** → cross-reference against the transcript. The note
+4. **Handwritten note** → when supplied, cross-reference against the transcript. The note
    reveals which points the listener found most important — elevate those
    (pull-quotes, highlight boxes). Notes also catch things like exact poem
    names, dates, foreign-word glosses. If the note conflicts with the

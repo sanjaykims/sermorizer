@@ -516,17 +516,6 @@ export async function POST(req: Request): Promise<Response> {
     if (!body.transcript || body.transcript.trim().length < 20) {
       throw new Error("A sermon transcript (.txt) is required.");
     }
-    const hasBulletin = (body.bulletinImages?.length ?? 0) > 0;
-    if (!hasBulletin && !m.title?.trim()) {
-      throw new Error(
-        "A sermon title is required unless an order-of-service (주보) photo is provided.",
-      );
-    }
-    if (!hasBulletin && !m.scripture?.trim()) {
-      throw new Error(
-        "A scripture passage is required unless an order-of-service (주보) photo is provided.",
-      );
-    }
 
     const rawTranscript = body.transcript;
     // The optional proofread pass adds a SECOND sequential Opus pass to the
