@@ -236,6 +236,16 @@ structure-preserving translation with the font/lang swaps above.
   transcript files.
 - **담임목사** — senior pastor (김영복).
 - **개역개정 / 和合본** — standard Korean / Chinese Bible translations.
+- **총동원 전도주일** — the all-church evangelism outreach Sunday. Clova Note
+  reliably mishears it as **청정원** (a food brand) — never let that reach a
+  document. English: "All-Church Mobilization Evangelism Sunday"; Chinese:
+  "总动员传道主日".
+- **출정예배** — the commissioning/sending service held before an outreach.
+
+Church vocabulary the ASR garbles lives in one place — `CHURCH_GLOSSARY` in
+`lib/prompt.ts`, which is injected into the generation, split-part, AND
+proofreading prompts (the proofreading pass is optional and off by default, so
+a glossary that only reached it would miss most runs). Add new terms there.
 
 ## Implementation notes (this repo)
 

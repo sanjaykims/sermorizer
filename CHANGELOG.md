@@ -1,5 +1,23 @@
 # Changelog
 
+## Fixes — 2026-08-09
+
+- **Church vocabulary is no longer mangled by the ASR.** Clova Note transcribed
+  the 2026-08-09 sermon's **총동원 전도주일** (all-church evangelism Sunday) as
+  **청정원** — a supermarket food brand — and it reached all three language
+  versions. A new `CHURCH_GLOSSARY` (`lib/prompt.ts`) lists the church terms the
+  ASR reliably garbles (총동원 전도주일, 출정예배, 속회, 감리회, service names,
+  church offices, 개역개정 book names) plus a general rule: when the transcript
+  yields a brand name, a celebrity's name, or nonsense where a Korean church
+  term is obviously meant, choose the church term.
+
+  The glossary is injected into the **generation**, **split-part**, AND
+  **proofreading** prompts — not just the proofreader, which is optional and
+  **off by default** and so would have missed this run entirely.
+
+  The 2026-08-09 Korean, English, and Chinese summaries were corrected
+  (청정원 → 총동원 / All-Church Mobilization / 总动员).
+
 ## Fixes — 2026-07-19
 
 - **Inline highlighter marks no longer overlap surrounding lines.** The `.hl` /

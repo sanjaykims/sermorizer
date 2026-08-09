@@ -44,9 +44,51 @@ function mediaBlock(p: ImagePayload): ContentBlock {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Galilee Church vocabulary that the Clova Note ASR reliably garbles, shared by
+ * every prompt that reads the raw transcript.
+ *
+ * Why it lives in the GENERATION prompts too, not just the proofreading one:
+ * the proofreading pre-pass is OPTIONAL and OFF by default, so a glossary that
+ * only reached the proofreader would miss most real runs. (A real miss: the
+ * 2026-08-09 sermon's "총동원 전도주일" came through as "청정원 전도주일" —
+ * 청정원 is a supermarket food brand, which is exactly the kind of phonetically
+ * close but contextually absurd substitution the ASR makes with church terms.)
+ *
+ * The list is deliberately short and specific; the closing rule is the part
+ * that generalizes beyond these entries.
+ */
+const CHURCH_GLOSSARY = `## Galilee Church vocabulary (correct the ASR against this)
+Clova Note frequently mishears church-specific Korean terms, replacing them with
+phonetically similar everyday words — brand names, place names, or plain
+nonsense. Whenever a word in the transcript is phonetically close to one of
+these but makes no sense in a sermon, it IS the church term. Restore it:
+
+- **총동원 전도주일** — the all-church evangelism outreach Sunday. Frequently
+  misheard as "청정원" (a food brand), "총동원령", or "청정한". English:
+  "All-Church Mobilization Evangelism Sunday"; Chinese: "总动员传道主日".
+  NEVER leave 청정원 in a document.
+- **출정예배** — the commissioning/sending service held before an outreach.
+  Misheard as "출전예배", "출정 예매".
+- **갈릴리교회** — the church. Misheard as "갈릴래교회", "칼릴리교회".
+- **김영복 담임목사** — the senior pastor. NEVER 김용복, NEVER 김영범.
+- **속회 / 구역예배** — the Methodist small-group meeting.
+- **기독교대한감리회 / 감리회** — the denomination.
+- **새벽기도회, 수요예배, 금요철야, 부흥회, 헌신예배, 임직식, 성찬식, 세례식,
+  학습, 심방** — regular services and rites; restore the standard spelling.
+- **권사, 집사, 장로, 전도사, 부목사, 담임목사** — church offices.
+- Bible book names, chapter:verse numbers, and hymn titles → the standard
+  Korean 개역개정 forms.
+
+**General rule (applies beyond this list):** when the transcript yields a
+commercial brand, a celebrity's name, or a nonsense phrase in a context where a
+Korean church term is obviously meant, choose the church term. Never carry a
+brand name into the document just because the ASR produced it.`;
+
+/**
  * Generation system prompt. Fully static so it can be prompt-cached — all
  * per-request detail (metadata, theme, transcript, images) goes in the user
- * message.
+ * message. (CHURCH_GLOSSARY is a module constant, so the string stays static
+ * and the prompt cache still hits.)
  */
 export const GENERATION_SYSTEM_PROMPT = `You are the generation engine for **Sermorizer**, an app that turns the weekly sermon materials of Galilee Church (갈릴리교회) — a Korean Methodist church in Dobong-gu, Seoul — into a single, polished, mobile-friendly, fully self-contained HTML summary document.
 
@@ -77,6 +119,8 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - When the messy ASR makes a word ambiguous, infer the most sensible meaning from context rather than dropping it — but never invent theology or facts that are not in the sources.
 - The document MUST be complete: develop the message through to its conclusion and end with a valid closing </html> tag. Never stop partway.
 - Before you output, silently run the quality checklist below and fix anything that fails.
+
+${CHURCH_GLOSSARY}
 
 ## Non-negotiable rules
 - **Sermon only.** The document contains the sermon and nothing else — no order of service, no prayers or liturgy, no hymns, no announcements, no benediction. If the transcript includes those, leave them out.
@@ -255,6 +299,8 @@ Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Outp
 - If this is **Part 2 or later**: still output a complete valid HTML document with the same \`<style>\` and structure, but its header/footer will be ignored — only its \`#sermon-body\` sections are used. Continue the sermon's flow; do NOT re-introduce the sermon or repeat earlier sections.
 - **CRITICAL (every part):** put ALL of this part's thematic \`<section>\`s INSIDE \`<div id="sermon-body"> … </div>\`. Any \`.header\`, \`.key-verse\`, \`.info-card\`, or \`.footer\` you include to make a valid document MUST be OUTSIDE \`#sermon-body\` — those are discarded. Never place a \`<section>\` outside \`#sermon-body\`, or it will be silently lost when the parts are stitched.
 
+${CHURCH_GLOSSARY}
+
 ## Scope and rules (same as always)
 - **Sermon only.** Only the preached message — no order of service, prayers, liturgy, hymns, announcements, or benediction. Ignore any such material in the transcript slice.
 - The senior pastor's name is **김영복** (Kim Young-bok). NEVER 김용복, NEVER 김영범. Default label "김영복 담임목사".
@@ -310,6 +356,8 @@ Your job: return a CORRECTED, cleaned version of the SAME transcript — this is
 - Garbled proper nouns: the preacher's name is **김영복** (NEVER 김용복, NEVER 김영범); the church is **갈릴리교회**. Restore Bible book names and chapter:verse numbers to the standard Korean 개역개정 form. Fix hymn titles, place names, and people's names where the intended word is clear.
 - Spacing, line breaks, and punctuation, for readability.
 - Use the supplied sermon metadata (title, main scripture, preacher) as GROUND TRUTH — if the ASR misheard the central passage or a key term, correct it to agree with the metadata.
+
+${CHURCH_GLOSSARY}
 
 ## Hard rules
 - DO NOT summarize, shorten, paraphrase, reorder, translate, or omit anything. Preserve the FULL spoken content and the preacher's actual wording and flow.
