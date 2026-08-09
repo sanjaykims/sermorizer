@@ -23,7 +23,7 @@ on demand, preserving the design.
 ## Stack
 
 - Next.js (App Router) + TypeScript
-- Anthropic Messages API — `claude-opus-4-8`, streamed
+- Anthropic Messages API — `claude-opus-5`, streamed
 - The transcript plus any optional note/bulletin images are sent to the model;
   it returns one complete HTML document.
 
@@ -42,7 +42,7 @@ Open http://localhost:3000.
 | Variable                       | Required           | Purpose                                                                 |
 | ------------------------------ | ------------------ | ----------------------------------------------------------------------- |
 | `ANTHROPIC_API_KEY`            | yes                | Server-side Claude API key. Never exposed to browser.                   |
-| `ANTHROPIC_MODEL`              | no                 | Emergency override for the model. Defaults to `claude-opus-4-8`; set only if that model is retired/renamed. |
+| `ANTHROPIC_MODEL`              | no                 | Emergency override for the model. Defaults to `claude-opus-5`; set only if that model is retired/renamed. |
 | `SUPABASE_SERVICE_ROLE_KEY`    | yes                | Server-side Supabase admin key. All DB access is brokered through API routes. |
 | `NEXT_PUBLIC_SUPABASE_URL`     | for forks / dev    | Override the baked-in Sermorizer Supabase project URL.                  |
 | `VAPID_PRIVATE_KEY`            | for push           | Web Push private key. Without it, push is a graceful no-op (in-app chime still fires). |

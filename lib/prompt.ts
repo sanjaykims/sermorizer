@@ -168,7 +168,7 @@ ${CHURCH_GLOSSARY}
 - The document uses the standard component classes so the injected Hearth stylesheet can style it; the TOC and at-a-glance summary are present.
 - Every \`.hl\`/\`.hl-gold\`/\`.hl-dark\` span wraps a SHORT phrase (a few words), never a whole sentence or more — if you emphasized a full sentence, convert it to a \`.key-quote\` paragraph instead.
 
-Output ONLY the HTML document.`;
+Output ONLY the HTML document. Do not include internal or system XML tags in your response.`;
 
 /**
  * Fragment-translation system prompt. Static, prompt-cacheable.
@@ -193,7 +193,7 @@ export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **S
 - Keep all base64 \`data:\` URIs and any CSS/style attribute values unchanged.
 - Keep the tone warm, reverent, and appropriate for all ages.
 
-Output ONLY the translated HTML fragment — no \`<html>\`/\`<head>\`/\`<body>\` wrapper, no preamble, no commentary, no markdown code fences. The fragment must remain valid HTML.`;
+Output ONLY the translated HTML fragment — no \`<html>\`/\`<head>\`/\`<body>\` wrapper, no preamble, no commentary, no markdown code fences, and no internal or system XML tags. The fragment must remain valid HTML.`;
 
 /* ------------------------------------------------------------------ */
 /* User-message builders                                              */
@@ -310,7 +310,7 @@ ${CHURCH_GLOSSARY}
 - Mobile-first, \`<html lang="ko">\`. The injected stylesheet owns width, colour, and fonts.
 - Between major thematic sections, place a \`<div class="divider"></div>\` hairline — no fleuron, ❦, drop cap, or ornament. This is a clean, flat phone document — never add print running heads, \`@page\` furniture, parchment, or page-number furniture.
 
-Output ONLY the HTML document for this part.`;
+Output ONLY the HTML document for this part. Do not include internal or system XML tags in your response.`;
 
 export type PartInput = GenerationInput & { partIndex: number; partCount: number };
 
@@ -364,7 +364,7 @@ ${CHURCH_GLOSSARY}
 - DO NOT add headings, commentary, bullet points, or anything the speaker did not say.
 - Only correct errors. When a passage is too garbled to recover with confidence, keep the closest sensible reading rather than dropping it.
 - This may be one slice of a longer sermon; just clean the text you are given without trying to introduce or conclude it.
-- Output ONLY the corrected transcript text — no preamble, no notes, no markdown code fences.`;
+- Output ONLY the corrected transcript text — no preamble, no notes, no markdown code fences, and no internal or system XML tags.`;
 
 /** Build the user message for the proofreading pass: metadata anchors + raw text. */
 export function buildProofreadUserContent(

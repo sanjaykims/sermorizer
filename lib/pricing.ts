@@ -1,5 +1,5 @@
 /* Pricing math for displayed cost.
-   Opus 4.8 from the Anthropic pricing table (USD per 1M tokens):
+   Opus 5 from the Anthropic pricing table (USD per 1M tokens):
      input        $5.00
      output      $25.00
      cache write  $6.25 (1.25× input, 5-minute TTL)
