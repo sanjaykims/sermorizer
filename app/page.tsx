@@ -220,6 +220,30 @@ const EMPTY_META: Metadata = {
   serviceType: "Sunday Worship Service",
 };
 
+// Higher resolution = more accurate OCR of the Korean handwriting (a key
+// quality input). Capped at 2048px / q0.85 to stay under the upload limit.
+const MAX_EDGE = 2048;
+const JPEG_QUALITY = 0.85;
+
+/** Downscale an already-decoded page/photo to a base64 JPEG for the API. */
+function canvasToPayload(
+  source: CanvasImageSource,
+  srcW: number,
+  srcH: number,
+): ImagePayload {
+  const scale = Math.min(1, MAX_EDGE / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not available in this browser.");
+  ctx.drawImage(source, 0, 0, w, h);
+  const out = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+  return { media_type: "image/jpeg", data: out.split(",")[1] ?? "" };
+}
+
 /** Load an image File, downscale it, and return base64 JPEG for the API. */
 async function imageToBase64(file: File): Promise<ImagePayload> {
   const dataUrl: string = await new Promise((resolve, reject) => {
@@ -234,46 +258,74 @@ async function imageToBase64(file: File): Promise<ImagePayload> {
     i.onerror = () => reject(new Error(`Could not decode ${file.name}`));
     i.src = dataUrl;
   });
-  // Higher resolution = more accurate OCR of the Korean handwriting (a key
-  // quality input). Capped at 2048px / q0.85 to stay under the upload limit.
-  const MAX = 2048;
-  const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-  const w = Math.max(1, Math.round(img.width * scale));
-  const h = Math.max(1, Math.round(img.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas is not available in this browser.");
-  ctx.drawImage(img, 0, 0, w, h);
-  const out = canvas.toDataURL("image/jpeg", 0.85);
-  return { media_type: "image/jpeg", data: out.split(",")[1] ?? "" };
+  return canvasToPayload(img, img.width, img.height);
 }
 
-// Largest PDF note we'll send inline (base64). A handwritten-note scan is tiny;
-// this just guards against someone attaching a huge document.
-const MAX_PDF_BYTES = 20 * 1024 * 1024;
+// A note PDF is rendered to one downscaled JPEG per page rather than sent as a
+// raw `document` block. Sending the file itself looked simpler but did not
+// actually work: a phone-scanned note PDF is routinely 5-15 MB, base64 inflates
+// it by ~33%, and Vercel rejects any request body over 4.5 MB — so the upload
+// failed at the platform before reaching this code, with no useful error.
+// Rasterizing puts PDFs through the exact same downscale path as photos (which
+// is the proven OCR path), so page count, not file size, is what matters.
+const MAX_NOTE_IMAGES = 8; // must match MAX_IMAGES in app/api/generate/route.ts
+const MAX_PDF_PAGES = MAX_NOTE_IMAGES;
 
-/** Read a PDF File as base64 for a Claude `document` block (no downscaling). */
-async function pdfToBase64(file: File): Promise<ImagePayload> {
-  if (file.size > MAX_PDF_BYTES) {
-    throw new Error(
-      `${file.name} is too large (max 20 MB). Please attach a smaller PDF or photos.`,
-    );
+/** Render each page of a PDF to a downscaled JPEG. Runs entirely in the
+ *  browser; pdf.js is imported dynamically so it stays out of the initial
+ *  bundle, and its worker is bundled same-origin to satisfy the CSP. */
+async function pdfToImages(file: File): Promise<ImagePayload[]> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).toString();
+
+  const buf = await file.arrayBuffer();
+  // Tear-down lives on the loading task, not the document — destroying the
+  // task is what actually terminates the worker.
+  const task = pdfjs.getDocument({ data: new Uint8Array(buf) });
+  const doc = await task.promise;
+  try {
+    if (doc.numPages > MAX_PDF_PAGES) {
+      throw new Error(
+        `${file.name} has ${doc.numPages} pages (max ${MAX_PDF_PAGES}). Please attach a shorter PDF or the pages as photos.`,
+      );
+    }
+    const out: ImagePayload[] = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n);
+      // Render at the target resolution directly — rendering at scale 1 first
+      // and downscaling after would throw away detail the handwriting needs.
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({
+        scale: Math.min(3, MAX_EDGE / Math.max(base.width, base.height)),
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(viewport.width));
+      canvas.height = Math.max(1, Math.round(viewport.height));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas is not available in this browser.");
+      // Scanned pages can carry transparency; flatten onto white so the
+      // handwriting doesn't render on a black background in the JPEG.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      page.cleanup();
+      out.push(canvasToPayload(canvas, canvas.width, canvas.height));
+    }
+    return out;
+  } finally {
+    await task.destroy();
   }
-  const dataUrl: string = await new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result as string);
-    fr.onerror = () => reject(new Error(`Could not read ${file.name}`));
-    fr.readAsDataURL(file);
-  });
-  return { media_type: "application/pdf", data: dataUrl.split(",")[1] ?? "" };
 }
 
-/** Convert a note/bulletin File to a payload — PDFs go through as documents,
- *  everything else is treated as a (downscaled) image. */
-async function fileToPayload(file: File): Promise<ImagePayload> {
-  return file.type === "application/pdf" ? pdfToBase64(file) : imageToBase64(file);
+/** Convert one note/bulletin File to API payloads. A PDF yields one payload per
+ *  page; anything else yields a single downscaled image. */
+async function fileToPayloads(file: File): Promise<ImagePayload[]> {
+  const isPdf =
+    file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  return isPdf ? pdfToImages(file) : [await imageToBase64(file)];
 }
 
 function fileName(
@@ -1030,7 +1082,18 @@ function Sermorizer() {
     revealPreview();
 
     try {
-      const noteImages = await Promise.all(noteFiles.map(fileToPayload));
+      // One PDF can contribute several pages, so flatten per-file results.
+      const noteImages = (
+        await Promise.all(noteFiles.map(fileToPayloads))
+      ).flat();
+      // Caught here rather than at the server, which only knows the flattened
+      // count and would report "too many images" for what the user sees as a
+      // single PDF plus a photo.
+      if (noteImages.length > MAX_NOTE_IMAGES) {
+        throw new Error(
+          `The note attachments come to ${noteImages.length} pages (max ${MAX_NOTE_IMAGES}). Please remove a photo or attach a shorter PDF.`,
+        );
+      }
       const bulletinImages = await Promise.all(bulletinFiles.map(imageToBase64));
 
       // One token identifies THIS generation attempt. Every request of the

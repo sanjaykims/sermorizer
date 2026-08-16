@@ -277,4 +277,9 @@ that would be wrong for a multi-tenant SaaS:
 - The Claude API key is read server-side from the `ANTHROPIC_API_KEY`
   environment variable. It is never exposed to the browser.
 - Note/bulletin images are downscaled in the browser before upload to keep
-  request payloads within platform limits.
+  request payloads within platform limits. **Note PDFs are rasterized in the
+  browser too** (`pdfToImages` in `app/page.tsx`, pdf.js): each page becomes one
+  downscaled JPEG and rides the same path as a photo. Sending the PDF as a
+  Claude `document` block is not viable here — a scanned note PDF is routinely
+  5-15 MB and Vercel rejects any request body over 4.5 MB. Page count (max 8,
+  matching `MAX_IMAGES` in the generate route), not file size, is the limit.

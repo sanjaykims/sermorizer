@@ -1,10 +1,10 @@
-# Graph Report - .  (2026-08-09)
+# Graph Report - .  (2026-08-16)
 
 ## Corpus Check
 - cluster-only mode — file stats not available
 
 ## Summary
-- 375 nodes · 802 edges · 19 communities (17 shown, 2 thin omitted)
+- 378 nodes · 807 edges · 23 communities (21 shown, 2 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -30,6 +30,10 @@
 - Community 13
 - Community 14
 - Community 15
+- Community 16
+- Community 17
+- Community 18
+- Community 19
 
 ## God Nodes (most connected - your core abstractions)
 1. `getSupabaseAdmin()` - 30 edges
@@ -52,89 +56,105 @@
   app/api/auth/passcode/route.ts → lib/supabase-server.ts
 - `clearAttempt()` --calls--> `withSupabaseRetry()`  [EXTRACTED]
   app/api/auth/passcode/route.ts → lib/supabase-server.ts
-- `POST()` --calls--> `supabaseAdminAvailable()`  [EXTRACTED]
-  app/api/auth/passcode/route.ts → lib/supabase-server.ts
+- `POST()` --calls--> `getAuthConfig()`  [EXTRACTED]
+  app/api/auth/passcode/route.ts → lib/auth/server.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (19 total, 2 thin omitted)
+## Communities (23 total, 2 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.06
-Nodes (31): announce(), BookPanel, EMPTY_META, fileToPayload(), formatEntryDate(), ImagePayload, imageToBase64(), Job (+23 more)
+Cohesion: 0.10
+Nodes (45): POST(), POST(), POST(), POST(), POST(), POST(), GET(), Body (+37 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.10
 Nodes (32): LANG_LABEL, LANG_ORDER, fileName(), stitchParts(), BookLabels, BookMeta, buildBookHtml(), Chapter (+24 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.13
-Nodes (28): POST(), POST(), POST(), POST(), Body, POST(), POST(), GET() (+20 more)
-
-### Community 3 - "Community 3"
-Cohesion: 0.13
-Nodes (27): POST(), bumpAttempt(), clearAttempt(), clientIp(), POST(), POST(), GET(), hashPasscode() (+19 more)
-
-### Community 4 - "Community 4"
 Cohesion: 0.09
 Nodes (31): cleanTranscript(), RequestBody, runAnthropic(), RunResult, stripFences(), UserContent, ensureEnhanceCss(), buildGenerationUserContent() (+23 more)
 
-### Community 5 - "Community 5"
+### Community 3 - "Community 3"
 Cohesion: 0.06
 Nodes (32): eslint, eslint-config-next, @eslint/eslintrc, devDependencies, eslint, eslint-config-next, @eslint/eslintrc, @types/node (+24 more)
 
-### Community 6 - "Community 6"
-Cohesion: 0.22
-Nodes (25): POST(), ALLOWED_STATUS, Ctx, DELETE(), gate(), GET(), PATCH(), PatchBody (+17 more)
+### Community 4 - "Community 4"
+Cohesion: 0.21
+Nodes (26): POST(), ALLOWED_STATUS, Ctx, DELETE(), gate(), GET(), PATCH(), PatchBody (+18 more)
 
-### Community 7 - "Community 7"
+### Community 5 - "Community 5"
 Cohesion: 0.07
 Nodes (26): dom, dom.iterable, esnext, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts, **/*.tsx (+18 more)
 
-### Community 8 - "Community 8"
-Cohesion: 0.10
-Nodes (21): @anthropic-ai/sdk, jszip, next, node-html-parser, dependencies, @anthropic-ai/sdk, jszip, next (+13 more)
+### Community 6 - "Community 6"
+Cohesion: 0.09
+Nodes (11): BookPanel, EMPTY_META, ImagePayload, Job, LANG_LABEL, Metadata, primeAlerts(), registerPush() (+3 more)
 
-### Community 9 - "Community 9"
+### Community 7 - "Community 7"
+Cohesion: 0.09
+Nodes (23): @anthropic-ai/sdk, jszip, next, node-html-parser, dependencies, @anthropic-ai/sdk, jszip, next (+15 more)
+
+### Community 8 - "Community 8"
 Cohesion: 0.28
 Nodes (11): bestTitle(), Body, Item, Parsed, parseItem(), POST(), detectLang(), importGroupKey() (+3 more)
 
-### Community 10 - "Community 10"
+### Community 9 - "Community 9"
 Cohesion: 0.18
 Nodes (4): Phase, SetupScreen(), Status, apiFetch()
 
-### Community 11 - "Community 11"
+### Community 10 - "Community 10"
 Cohesion: 0.29
 Nodes (7): AppleIcon(), size, GET(), GET(), Icon(), size, iconArt()
 
+### Community 11 - "Community 11"
+Cohesion: 0.20
+Nodes (11): announce(), formatEntryDate(), playChime(), Sermorizer(), upsert(), waitForRow(), cloudDelete(), cloudGet() (+3 more)
+
 ### Community 12 - "Community 12"
+Cohesion: 0.40
+Nodes (7): bumpAttempt(), clearAttempt(), clientIp(), POST(), hashPasscode(), scryptAsync, verifyPasscode()
+
+### Community 13 - "Community 13"
 Cohesion: 0.22
 Nodes (7): bodyKR, bodyLat, displayKR, displayLat, metadata, monoLat, viewport
 
-### Community 13 - "Community 13"
+### Community 14 - "Community 14"
+Cohesion: 0.43
+Nodes (5): formatCost(), PER_M, totalTokens(), usageToCost(), SummaryUsage
+
+### Community 15 - "Community 15"
+Cohesion: 0.40
+Nodes (3): ensureConfigured(), sendPushToAll(), StoredSub
+
+### Community 16 - "Community 16"
+Cohesion: 0.67
+Nodes (4): canvasToPayload(), fileToPayloads(), imageToBase64(), pdfToImages()
+
+### Community 17 - "Community 17"
 Cohesion: 0.50
 Nodes (3): cspDirectives, nextConfig, securityHeaders
 
 ## Knowledge Gaps
-- **106 isolated node(s):** `Status`, `Phase`, `LANG_LABEL`, `LANG_ORDER`, `RequestBody` (+101 more)
+- **107 isolated node(s):** `Status`, `Phase`, `LANG_LABEL`, `LANG_ORDER`, `RequestBody` (+102 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Community 8` to `Community 5`?**
-  _High betweenness centrality (0.201) - this node is a cross-community bridge._
-- **Why does `buildEpub()` connect `Community 1` to `Community 8`?**
-  _High betweenness centrality (0.201) - this node is a cross-community bridge._
-- **Why does `jszip` connect `Community 8` to `Community 1`?**
-  _High betweenness centrality (0.198) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Community 7` to `Community 3`?**
+  _High betweenness centrality (0.208) - this node is a cross-community bridge._
+- **Why does `buildEpub()` connect `Community 1` to `Community 7`?**
+  _High betweenness centrality (0.205) - this node is a cross-community bridge._
+- **Why does `jszip` connect `Community 7` to `Community 1`?**
+  _High betweenness centrality (0.203) - this node is a cross-community bridge._
 - **What connects `Status`, `Phase`, `LANG_LABEL` to the rest of the system?**
-  _106 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _107 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.06292517006802721 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10225988700564972 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.10077519379844961 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.13076923076923078 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09206349206349207 - nodes in this community are weakly interconnected._
