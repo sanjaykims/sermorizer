@@ -1,0 +1,67 @@
+name: Graphify
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".agents/**"
+      - ".github/workflows/graphify.yml"
+      - ".graphifyignore"
+      - "app/**"
+      - "lib/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "next.config.mjs"
+      - "eslint.config.mjs"
+      - "vitest.config.ts"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: graphify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Graphify
+        run: python -m pip install --upgrade pip graphifyy==0.9.26
+
+      - name: Refresh graph
+        run: |
+          graphify extract . --code-only --out .
+          graphify cluster-only . --graph graphify-out/graph.json --no-label
+          graphify tree --graph graphify-out/graph.json --output graphify-out/GRAPH_TREE.html --root . --label Sermorizer
+          graphify god-nodes --top 12 --graph graphify-out/graph.json
+
+      - name: Commit graph snapshot
+        run: |
+          git add graphify-out
+          if git diff --cached --quiet -- graphify-out; then
+            echo "Graphify snapshot is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update Graphify snapshot"
+          git push

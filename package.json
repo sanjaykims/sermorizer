@@ -19,6 +19,7 @@
     "jszip": "^3.10.1",
     "next": "^15.1.6",
     "node-html-parser": "^7.1.0",
+    "pdfjs-dist": "^6.2.108",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "web-push": "^3.6.7"
