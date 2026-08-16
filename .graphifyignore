@@ -1,0 +1,13 @@
+graphify-out/
+.git/
+.next/
+node_modules/
+out/
+build/
+coverage/
+.vercel/
+.env
+.env.*
+*.local
+*.tsbuildinfo
+.DS_Store

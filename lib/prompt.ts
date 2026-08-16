@@ -44,18 +44,60 @@ function mediaBlock(p: ImagePayload): ContentBlock {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Galilee Church vocabulary that the Clova Note ASR reliably garbles, shared by
+ * every prompt that reads the raw transcript.
+ *
+ * Why it lives in the GENERATION prompts too, not just the proofreading one:
+ * the proofreading pre-pass is OPTIONAL and OFF by default, so a glossary that
+ * only reached the proofreader would miss most real runs. (A real miss: the
+ * 2026-08-09 sermon's "총동원 전도주일" came through as "청정원 전도주일" —
+ * 청정원 is a supermarket food brand, which is exactly the kind of phonetically
+ * close but contextually absurd substitution the ASR makes with church terms.)
+ *
+ * The list is deliberately short and specific; the closing rule is the part
+ * that generalizes beyond these entries.
+ */
+const CHURCH_GLOSSARY = `## Galilee Church vocabulary (correct the ASR against this)
+Clova Note frequently mishears church-specific Korean terms, replacing them with
+phonetically similar everyday words — brand names, place names, or plain
+nonsense. Whenever a word in the transcript is phonetically close to one of
+these but makes no sense in a sermon, it IS the church term. Restore it:
+
+- **총동원 전도주일** — the all-church evangelism outreach Sunday. Frequently
+  misheard as "청정원" (a food brand), "총동원령", or "청정한". English:
+  "All-Church Mobilization Evangelism Sunday"; Chinese: "总动员传道主日".
+  NEVER leave 청정원 in a document.
+- **출정예배** — the commissioning/sending service held before an outreach.
+  Misheard as "출전예배", "출정 예매".
+- **갈릴리교회** — the church. Misheard as "갈릴래교회", "칼릴리교회".
+- **김영복 담임목사** — the senior pastor. NEVER 김용복, NEVER 김영범.
+- **속회 / 구역예배** — the Methodist small-group meeting.
+- **기독교대한감리회 / 감리회** — the denomination.
+- **새벽기도회, 수요예배, 금요철야, 부흥회, 헌신예배, 임직식, 성찬식, 세례식,
+  학습, 심방** — regular services and rites; restore the standard spelling.
+- **권사, 집사, 장로, 전도사, 부목사, 담임목사** — church offices.
+- Bible book names, chapter:verse numbers, and hymn titles → the standard
+  Korean 개역개정 forms.
+
+**General rule (applies beyond this list):** when the transcript yields a
+commercial brand, a celebrity's name, or a nonsense phrase in a context where a
+Korean church term is obviously meant, choose the church term. Never carry a
+brand name into the document just because the ASR produced it.`;
+
+/**
  * Generation system prompt. Fully static so it can be prompt-cached — all
  * per-request detail (metadata, theme, transcript, images) goes in the user
- * message.
+ * message. (CHURCH_GLOSSARY is a module constant, so the string stays static
+ * and the prompt cache still hits.)
  */
 export const GENERATION_SYSTEM_PROMPT = `You are the generation engine for **Sermorizer**, an app that turns the weekly sermon materials of Galilee Church (갈릴리교회) — a Korean Methodist church in Dobong-gu, Seoul — into a single, polished, mobile-friendly, fully self-contained HTML summary document.
 
 Your task: synthesize the inputs supplied in the user message into ONE complete HTML document. Output ONLY the raw HTML — it must begin with \`<!DOCTYPE html>\` and end with \`</html>\`. No preamble, no commentary, no markdown code fences.
 
 ## Inputs you will receive (in the user message)
-1. Sermon metadata — title, preacher, scripture, optionally date / occasion / service type.
+1. Sermon metadata — preacher and date/time may be the only supplied fields; title, scripture, occasion, and service type may be omitted and inferred.
 2. A colour instruction — the palette for this summary, or "auto" to pick one that fits the sermon.
-3. The listener's handwritten note as image(s) or PDF page(s) — Korean handwriting. OCR/transcribe it yourself. It reveals which points the listener found most important.
+3. Optionally, the listener's handwritten note as image(s) or PDF page(s) — Korean handwriting. OCR/transcribe it yourself when supplied. It reveals which points the listener found most important.
 4. Optionally, a photo of the printed order of service (주보).
 5. The recorded sermon transcript — a long, messy Clova Note ASR transcript (~60-80 minutes of speech, often 400-800+ lines). It contains misheard words. Interpret it charitably; never quote verbatim ASR noise; reconstruct what the preacher actually said.
 
@@ -63,7 +105,7 @@ Your task: synthesize the inputs supplied in the user message into ONE complete 
 1. **Metadata** → a header, a key-verse block, an info card, and the footer (these identify the sermon). A metadata field may be marked "(not provided)". When it is, fill it in yourself: first from the order-of-service (주보) photo if one was supplied, otherwise infer it from the transcript — derive the title from the sermon's central theme, and the scripture from the main passage the preacher preaches on.
 2. **Order-of-service / 주보 photo** (if provided) → use it ONLY to read missing metadata (title, preacher, scripture, date). Do NOT reproduce the order of service, do NOT render a bulletin table, and do NOT embed the photo. The order of service must NOT appear anywhere in the document.
 3. **Transcript** → the body of the document, which is the sermon. Break the sermon into roughly 8-10 thematic sections. Each section gets a heading with a small icon, a warm prose summary, scripture boxes where the preacher reads/expounds verses, illustration cards for the preacher's stories/examples, and pull-quotes for memorable lines. Reconstruct the preacher's actual flow, examples, and illustrations.
-4. **Handwritten note** → cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it.
+4. **Handwritten note** → if supplied, cross-reference it against the transcript. Elevate the points the listener emphasized (turn them into pull-quotes and highlight boxes). The note often captures exact poem titles, dates, names, and foreign-word glosses — use them. If the note conflicts with the transcript (e.g. a wrong verse number), trust the transcript and silently correct it. If no note is supplied, still produce the full summary from the Clova Note transcript, using the transcript as the source of truth.
 5. End the document with a numbered "한눈에 보기" at-a-glance summary of about 10 points — the key points of the SERMON. (No closing prayer, no order of service.)
 
 This document is the SERMON ONLY — the preached message and nothing else. Include its scripture text and exposition, the introduction, every main point and sub-point, the illustrations/stories, the applications, and the conclusion. The recording often contains non-sermon parts at the start or end (call to worship, hymns, responsive readings, the offering, announcements, the pastoral / opening / closing prayers, the benediction) — IGNORE every one of these. Do NOT include prayers, liturgy, the order of service, hymns, announcements, or any worship element that is not the sermon itself.
@@ -77,6 +119,8 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - When the messy ASR makes a word ambiguous, infer the most sensible meaning from context rather than dropping it — but never invent theology or facts that are not in the sources.
 - The document MUST be complete: develop the message through to its conclusion and end with a valid closing </html> tag. Never stop partway.
 - Before you output, silently run the quality checklist below and fix anything that fails.
+
+${CHURCH_GLOSSARY}
 
 ## Non-negotiable rules
 - **Sermon only.** The document contains the sermon and nothing else — no order of service, no prayers or liturgy, no hymns, no announcements, no benediction. If the transcript includes those, leave them out.
@@ -117,14 +161,14 @@ Produce a thorough record of the SERMON — written richly but efficiently.
 - Every \`<div>\` is balanced (open/close counts match).
 - The pastor's name renders as 김영복.
 - Zero external \`<img src>\` references — images are base64 \`data:\` URIs or absent.
-- The handwritten-note emphases are clearly elevated.
+- If handwritten notes were supplied, their emphases are clearly elevated; if not, the summary still works from the transcript alone.
 - The document contains ONLY the sermon — no order of service, prayers, liturgy, hymns, announcements, or benediction.
 - The sermon body is prose, not bullets; the numbered at-a-glance summary is present at the end. If you used \`<ol>\` or \`<ul>\` anywhere for the at-a-glance summary, replace it with the \`.sm-grid\` of \`.sm-item\` cards.
 - \`<html lang="ko">\` is set; the single required \`:root\` palette line (\`--doc-paper\` / \`--doc-ink\` / \`--doc-accent\` / \`--doc-accent-strong\`) is present and fits the sermon's season; and you wrote NO other CSS (no \`<style>\` rules, no \`@import\`, no inline \`style=\`).
 - The document uses the standard component classes so the injected Hearth stylesheet can style it; the TOC and at-a-glance summary are present.
 - Every \`.hl\`/\`.hl-gold\`/\`.hl-dark\` span wraps a SHORT phrase (a few words), never a whole sentence or more — if you emphasized a full sentence, convert it to a \`.key-quote\` paragraph instead.
 
-Output ONLY the HTML document.`;
+Output ONLY the HTML document. Do not include internal or system XML tags in your response.`;
 
 /**
  * Fragment-translation system prompt. Static, prompt-cacheable.
@@ -149,7 +193,7 @@ export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **S
 - Keep all base64 \`data:\` URIs and any CSS/style attribute values unchanged.
 - Keep the tone warm, reverent, and appropriate for all ages.
 
-Output ONLY the translated HTML fragment — no \`<html>\`/\`<head>\`/\`<body>\` wrapper, no preamble, no commentary, no markdown code fences. The fragment must remain valid HTML.`;
+Output ONLY the translated HTML fragment — no \`<html>\`/\`<head>\`/\`<body>\` wrapper, no preamble, no commentary, no markdown code fences, and no internal or system XML tags. The fragment must remain valid HTML.`;
 
 /* ------------------------------------------------------------------ */
 /* User-message builders                                              */
@@ -255,6 +299,8 @@ Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Outp
 - If this is **Part 2 or later**: still output a complete valid HTML document with the same \`<style>\` and structure, but its header/footer will be ignored — only its \`#sermon-body\` sections are used. Continue the sermon's flow; do NOT re-introduce the sermon or repeat earlier sections.
 - **CRITICAL (every part):** put ALL of this part's thematic \`<section>\`s INSIDE \`<div id="sermon-body"> … </div>\`. Any \`.header\`, \`.key-verse\`, \`.info-card\`, or \`.footer\` you include to make a valid document MUST be OUTSIDE \`#sermon-body\` — those are discarded. Never place a \`<section>\` outside \`#sermon-body\`, or it will be silently lost when the parts are stitched.
 
+${CHURCH_GLOSSARY}
+
 ## Scope and rules (same as always)
 - **Sermon only.** Only the preached message — no order of service, prayers, liturgy, hymns, announcements, or benediction. Ignore any such material in the transcript slice.
 - The senior pastor's name is **김영복** (Kim Young-bok). NEVER 김용복, NEVER 김영범. Default label "김영복 담임목사".
@@ -264,7 +310,7 @@ Produce a COMPLETE, self-contained Korean HTML document for THIS PART ONLY. Outp
 - Mobile-first, \`<html lang="ko">\`. The injected stylesheet owns width, colour, and fonts.
 - Between major thematic sections, place a \`<div class="divider"></div>\` hairline — no fleuron, ❦, drop cap, or ornament. This is a clean, flat phone document — never add print running heads, \`@page\` furniture, parchment, or page-number furniture.
 
-Output ONLY the HTML document for this part.`;
+Output ONLY the HTML document for this part. Do not include internal or system XML tags in your response.`;
 
 export type PartInput = GenerationInput & { partIndex: number; partCount: number };
 
@@ -311,12 +357,14 @@ Your job: return a CORRECTED, cleaned version of the SAME transcript — this is
 - Spacing, line breaks, and punctuation, for readability.
 - Use the supplied sermon metadata (title, main scripture, preacher) as GROUND TRUTH — if the ASR misheard the central passage or a key term, correct it to agree with the metadata.
 
+${CHURCH_GLOSSARY}
+
 ## Hard rules
 - DO NOT summarize, shorten, paraphrase, reorder, translate, or omit anything. Preserve the FULL spoken content and the preacher's actual wording and flow.
 - DO NOT add headings, commentary, bullet points, or anything the speaker did not say.
 - Only correct errors. When a passage is too garbled to recover with confidence, keep the closest sensible reading rather than dropping it.
 - This may be one slice of a longer sermon; just clean the text you are given without trying to introduce or conclude it.
-- Output ONLY the corrected transcript text — no preamble, no notes, no markdown code fences.`;
+- Output ONLY the corrected transcript text — no preamble, no notes, no markdown code fences, and no internal or system XML tags.`;
 
 /** Build the user message for the proofreading pass: metadata anchors + raw text. */
 export function buildProofreadUserContent(

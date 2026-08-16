@@ -2,6 +2,45 @@
 
 > Project memory for Claude Code. Read this first in every session before writing code.
 
+## Graphify First
+
+This repo commits a Graphify snapshot in `graphify-out/`.
+
+**Mandatory rule for future development:** Codex, Claude, Antigravity, and any
+other coding agent must use Graphify before broad source exploration or making
+a development plan. Start from the graph for codebase questions, architecture
+work, impact analysis, "where is X?" exploration, and any non-trivial repo
+change. Only skip this if `graphify-out/graph.json` is absent/broken or the
+user explicitly says not to use Graphify.
+
+If `graphify` is not already on PATH, install it in a temp venv:
+
+```bash
+GRAPHIFY_VENV="${TMPDIR:-/tmp}/graphify-sermorizer-venv"
+python3.14 -m venv "$GRAPHIFY_VENV"
+"$GRAPHIFY_VENV/bin/python" -m pip install --upgrade pip graphifyy==0.9.26
+export PATH="$GRAPHIFY_VENV/bin:$PATH"
+```
+
+Rules:
+
+- Start each development session by running a focused
+  `graphify query "<question>"` when `graphify-out/graph.json` exists.
+- Use `graphify explain "<node>"` for a focused concept and
+  `graphify path "<A>" "<B>"` for relationships between two parts of the app.
+- Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review or
+  when query/path/explain do not return enough context.
+- After modifying code, refresh the snapshot with:
+
+```bash
+graphify extract . --code-only --out .
+graphify cluster-only . --graph graphify-out/graph.json --no-label
+graphify tree --graph graphify-out/graph.json --output graphify-out/GRAPH_TREE.html --root . --label Sermorizer
+```
+
+Dirty `graphify-out/` files are expected after code changes; keep them in the
+same commit when the graph changed.
+
 ## What this project is
 
 **Sermorizer** is a web app that turns weekly church sermon materials into a
@@ -13,19 +52,25 @@ hand with Claude for months. Sermorizer productizes that workflow.
 **One-line goal:** upload three inputs → get one beautiful, self-contained,
 mobile-optimized HTML sermon summary.
 
-## The three inputs (always exactly these)
+## Minimum inputs
 
-1. **Sermon metadata** — short structured fields the user types in:
-   - `title` — the sermon title (e.g. "당연한 사랑은 없습니다")
-   - `preacher` — who preached (default: 김영복 담임목사)
-   - `scripture` — the Bible passage (e.g. "출애굽기 20:12")
-   - Optional: service date, occasion/liturgical season, service type
-2. **User's handwritten note** — uploaded as image(s) (JPG/PNG). The app must
-   OCR/transcribe Korean handwriting. These are the user's own emphases and
-   should be treated as high-priority signal for what mattered in the sermon.
-3. **Recorded sermon transcript** — a `.txt` file (transcribed via Clova Note).
+Sermorizer must be able to generate a summary from only:
+
+1. **Recorded sermon transcript** — a `.txt` file (transcribed via Clova Note).
    Long: typically 400-800+ lines, ~60-80 min of speech. Messy ASR output with
    misheard words — interpret charitably, don't quote verbatim noise.
+2. **Service date / time** — the date and time of the sermon.
+3. **Preacher** — who preached (default: 김영복 담임목사).
+
+Optional helpful inputs:
+
+- `title` — the sermon title (e.g. "당연한 사랑은 없습니다")
+- `scripture` — the Bible passage (e.g. "출애굽기 20:12")
+- Occasion/liturgical season and service type
+- **User's handwritten note** — uploaded as image(s) or PDF. The app OCRs /
+  transcribes Korean handwriting. These are the user's own emphases and should
+  be treated as high-priority signal when supplied, but the app must still work
+  without them.
 
 Optional fourth input seen in practice: a **photo of the printed order of
 service (주보)**. If provided, use it ONLY to read sermon metadata (title,
@@ -57,7 +102,7 @@ A **single self-contained `.html` file**:
    thematic sections, each with a heading, prose summary, scripture boxes,
    illustration cards, and pull-quotes. Reconstruct the preacher's actual flow
    and examples. Ignore any non-sermon portions of the recording.
-4. **Handwritten note** → cross-reference against the transcript. The note
+4. **Handwritten note** → when supplied, cross-reference against the transcript. The note
    reveals which points the listener found most important — elevate those
    (pull-quotes, highlight boxes). Notes also catch things like exact poem
    names, dates, foreign-word glosses. If the note conflicts with the
@@ -151,7 +196,7 @@ Nothing here is mandatory — pick what's simplest — but a sensible default:
 - **Frontend:** a single-page app (plain HTML/JS or a light React build) with
   three input zones: a metadata form, an image dropzone for notes/bulletin,
   and a `.txt` upload for the transcript. A language selector (KO/EN/ZH).
-- **Generation:** call the Anthropic Messages API (`claude-opus-4-8` for best
+- **Generation:** call the Anthropic Messages API (`claude-opus-5` for best
   quality on this long synthesis task). Send the transcript as text, the note
   image(s) as base64 `image` blocks, metadata as text. Ask the model to return
   one complete HTML document.
@@ -191,6 +236,16 @@ structure-preserving translation with the font/lang swaps above.
   transcript files.
 - **담임목사** — senior pastor (김영복).
 - **개역개정 / 和合본** — standard Korean / Chinese Bible translations.
+- **총동원 전도주일** — the all-church evangelism outreach Sunday. Clova Note
+  reliably mishears it as **청정원** (a food brand) — never let that reach a
+  document. English: "All-Church Mobilization Evangelism Sunday"; Chinese:
+  "总动员传道主日".
+- **출정예배** — the commissioning/sending service held before an outreach.
+
+Church vocabulary the ASR garbles lives in one place — `CHURCH_GLOSSARY` in
+`lib/prompt.ts`, which is injected into the generation, split-part, AND
+proofreading prompts (the proofreading pass is optional and off by default, so
+a glossary that only reached it would miss most runs). Add new terms there.
 
 ## Implementation notes (this repo)
 
@@ -222,4 +277,9 @@ that would be wrong for a multi-tenant SaaS:
 - The Claude API key is read server-side from the `ANTHROPIC_API_KEY`
   environment variable. It is never exposed to the browser.
 - Note/bulletin images are downscaled in the browser before upload to keep
-  request payloads within platform limits.
+  request payloads within platform limits. **Note PDFs are rasterized in the
+  browser too** (`pdfToImages` in `app/page.tsx`, pdf.js): each page becomes one
+  downscaled JPEG and rides the same path as a photo. Sending the PDF as a
+  Claude `document` block is not viable here — a scanned note PDF is routinely
+  5-15 MB and Vercel rejects any request body over 4.5 MB. Page count (max 8,
+  matching `MAX_IMAGES` in the generate route), not file size, is the limit.
