@@ -1241,10 +1241,10 @@
       "source_file": "app/page.tsx",
       "source_location": "L376",
       "_origin": "ast",
-      "community": 5,
+      "community": 10,
       "norm_label": "urlbase64touint8array()",
       "id": "app_page_urlbase64touint8array",
-      "community_name": "Community 5"
+      "community_name": "Community 10"
     },
     {
       "label": "registerPush()",
@@ -1252,10 +1252,10 @@
       "source_file": "app/page.tsx",
       "source_location": "L389",
       "_origin": "ast",
-      "community": 5,
+      "community": 10,
       "norm_label": "registerpush()",
       "id": "app_page_registerpush",
-      "community_name": "Community 5"
+      "community_name": "Community 10"
     },
     {
       "label": "primeAlerts()",
@@ -1263,10 +1263,10 @@
       "source_file": "app/page.tsx",
       "source_location": "L428",
       "_origin": "ast",
-      "community": 5,
+      "community": 10,
       "norm_label": "primealerts()",
       "id": "app_page_primealerts",
-      "community_name": "Community 5"
+      "community_name": "Community 10"
     },
     {
       "label": "playChime()",
@@ -1340,10 +1340,10 @@
       "source_file": "app/page.tsx",
       "source_location": "L629",
       "_origin": "ast",
-      "community": 10,
+      "community": 24,
       "norm_label": "waitforrow()",
       "id": "app_page_waitforrow",
-      "community_name": "Community 10"
+      "community_name": "Community 24"
     },
     {
       "label": "Job",
@@ -2803,10 +2803,10 @@
       "source_file": "lib/summaries.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 10,
+      "community": 24,
       "norm_label": "summaries.ts",
       "id": "lib_summaries",
-      "community_name": "Community 10"
+      "community_name": "Community 24"
     },
     {
       "label": "cloudList()",
@@ -2825,10 +2825,10 @@
       "source_file": "lib/summaries.ts",
       "source_location": "L19",
       "_origin": "ast",
-      "community": 10,
+      "community": 24,
       "norm_label": "cloudget()",
       "id": "lib_summaries_cloudget",
-      "community_name": "Community 10"
+      "community_name": "Community 24"
     },
     {
       "label": "cloudUpdate()",
@@ -2836,10 +2836,10 @@
       "source_file": "lib/summaries.ts",
       "source_location": "L30",
       "_origin": "ast",
-      "community": 10,
+      "community": 24,
       "norm_label": "cloudupdate()",
       "id": "lib_summaries_cloudupdate",
-      "community_name": "Community 10"
+      "community_name": "Community 24"
     },
     {
       "label": "cloudDelete()",
@@ -2847,10 +2847,10 @@
       "source_file": "lib/summaries.ts",
       "source_location": "L46",
       "_origin": "ast",
-      "community": 10,
+      "community": 24,
       "norm_label": "clouddelete()",
       "id": "lib_summaries_clouddelete",
-      "community_name": "Community 10"
+      "community_name": "Community 24"
     },
     {
       "label": "supabase-server.ts",
@@ -3067,10 +3067,10 @@
       "source_file": "lib/types.ts",
       "source_location": "L4",
       "_origin": "ast",
-      "community": 10,
+      "community": 24,
       "norm_label": "jobstatus",
       "id": "lib_types_jobstatus",
-      "community_name": "Community 10"
+      "community_name": "Community 24"
     },
     {
       "label": "SummaryUsage",
@@ -13627,5 +13627,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "28ca2e80f4e1b58c4f2759fdb97637a5fe9bbed2"
+  "built_at_commit": "df8d148f54512865c3304a6fc28e65dd80fddf8c"
 }

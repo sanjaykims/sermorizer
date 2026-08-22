@@ -249,12 +249,9 @@
       "app_page_lang_label",
       "app_page_metadata",
       "app_page_page",
-      "app_page_primealerts",
       "app_page_readerr",
-      "app_page_registerpush",
       "app_page_splittranscript",
       "app_page_status",
-      "app_page_urlbase64touint8array",
       "app_scenehero",
       "app_scenehero_scenehero"
     ],
@@ -333,15 +330,12 @@
       "app_page_announce",
       "app_page_formatentrydate",
       "app_page_playchime",
+      "app_page_primealerts",
+      "app_page_registerpush",
       "app_page_sermorizer",
       "app_page_upsert",
-      "app_page_waitforrow",
-      "lib_summaries",
-      "lib_summaries_clouddelete",
-      "lib_summaries_cloudget",
-      "lib_summaries_cloudlist",
-      "lib_summaries_cloudupdate",
-      "lib_types_jobstatus"
+      "app_page_urlbase64touint8array",
+      "lib_summaries_cloudlist"
     ],
     "11": [
       "app_api_auth_passcode_route",
@@ -428,6 +422,14 @@
     ],
     "23": [
       "vitest_config"
+    ],
+    "24": [
+      "app_page_waitforrow",
+      "lib_summaries",
+      "lib_summaries_clouddelete",
+      "lib_summaries_cloudget",
+      "lib_summaries_cloudupdate",
+      "lib_types_jobstatus"
     ]
   },
   "cohesion": {
@@ -436,12 +438,12 @@
     "2": 0.09936575052854123,
     "3": 0.06060606060606061,
     "4": 0.07407407407407407,
-    "5": 0.08615384615384615,
+    "5": 0.09090909090909091,
     "6": 0.08695652173913043,
     "7": 0.2761904761904762,
     "8": 0.1794871794871795,
     "9": 0.2878787878787879,
-    "10": 0.18181818181818182,
+    "10": 0.2222222222222222,
     "11": 0.4,
     "12": 0.2222222222222222,
     "13": 0.39285714285714285,
@@ -454,7 +456,8 @@
     "20": 0.6666666666666666,
     "21": 1.0,
     "22": 1.0,
-    "23": 1.0
+    "23": 1.0,
+    "24": 0.3333333333333333
   },
   "gods": [
     {

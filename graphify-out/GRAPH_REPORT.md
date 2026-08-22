@@ -4,12 +4,12 @@
 - cluster-only mode — file stats not available
 
 ## Summary
-- 381 nodes · 810 edges · 24 communities (21 shown, 3 thin omitted)
+- 381 nodes · 810 edges · 25 communities (22 shown, 3 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `28ca2e80`
+- Built from commit: `df8d148f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -35,6 +35,7 @@
 - Community 18
 - Community 19
 - Community 20
+- Community 24
 
 ## God Nodes (most connected - your core abstractions)
 1. `getSupabaseAdmin()` - 30 edges
@@ -63,7 +64,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (24 total, 3 thin omitted)
+## Communities (25 total, 3 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.11
@@ -87,7 +88,7 @@ Nodes (26): dom, dom.iterable, esnext, next-env.d.ts, .next/types/**/*.ts, node_
 
 ### Community 5 - "Community 5"
 Cohesion: 0.09
-Nodes (11): BookPanel, EMPTY_META, ImagePayload, Job, LANG_LABEL, Metadata, primeAlerts(), registerPush() (+3 more)
+Nodes (8): BookPanel, EMPTY_META, ImagePayload, Job, LANG_LABEL, Metadata, Status, SceneHero()
 
 ### Community 6 - "Community 6"
 Cohesion: 0.09
@@ -106,8 +107,8 @@ Cohesion: 0.29
 Nodes (7): AppleIcon(), size, GET(), GET(), Icon(), size, iconArt()
 
 ### Community 10 - "Community 10"
-Cohesion: 0.18
-Nodes (11): announce(), formatEntryDate(), playChime(), Sermorizer(), upsert(), waitForRow(), cloudDelete(), cloudGet() (+3 more)
+Cohesion: 0.22
+Nodes (9): announce(), formatEntryDate(), playChime(), primeAlerts(), registerPush(), Sermorizer(), upsert(), urlBase64ToUint8Array() (+1 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.40
@@ -136,6 +137,10 @@ Nodes (4): canvasToPayload(), fileToPayloads(), imageToBase64(), pdfToImages()
 ### Community 17 - "Community 17"
 Cohesion: 0.50
 Nodes (3): cspDirectives, nextConfig, securityHeaders
+
+### Community 24 - "Community 24"
+Cohesion: 0.33
+Nodes (5): waitForRow(), cloudDelete(), cloudGet(), cloudUpdate(), JobStatus
 
 ## Knowledge Gaps
 - **108 isolated node(s):** `Status`, `Phase`, `LANG_LABEL`, `LANG_ORDER`, `RequestBody` (+103 more)
