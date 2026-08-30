@@ -16,6 +16,7 @@ type Ctx = { params: Promise<{ id: string }> };
 type PatchBody = {
   docs?: Partial<Record<Lang, string>>;
   title?: string;
+  serviceDate?: string;
   status?: JobStatus;
   error?: string | null;
   parts?: Record<string, string>;
@@ -67,6 +68,9 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
     // through to the DB.
     const patch: PatchBody = {};
     if (typeof raw.title === "string") patch.title = raw.title.slice(0, 500);
+    if (typeof raw.serviceDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.serviceDate)) {
+      patch.serviceDate = raw.serviceDate;
+    }
     if (typeof raw.status === "string" && ALLOWED_STATUS.has(raw.status)) {
       patch.status = raw.status as JobStatus;
     }

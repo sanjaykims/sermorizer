@@ -318,6 +318,7 @@ export async function updateSummaryServer(
   patch: {
     docs?: Partial<Record<Lang, string>>;
     title?: string;
+    serviceDate?: string;
     status?: JobStatus;
     error?: string | null;
     parts?: Record<string, string>;
@@ -325,7 +326,10 @@ export async function updateSummaryServer(
 ): Promise<void> {
   await withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
-    const { error } = await supa.from("summaries").update(patch).eq("id", id);
+    const { serviceDate, ...rest } = patch;
+    const row: Record<string, unknown> = { ...rest };
+    if (serviceDate !== undefined) row.service_date = serviceDate;
+    const { error } = await supa.from("summaries").update(row).eq("id", id);
     if (error) throw new Error(error.message);
   });
 }
