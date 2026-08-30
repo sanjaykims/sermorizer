@@ -211,7 +211,19 @@ export async function claimPendingSummaryServer(input: {
       // CAS lost — the row changed under us; take the safe path.
     }
   }
-  return insertSummaryServer({ ...input, genToken: input.genToken });
+  // A fresh row MUST start at 'generating'. insertSummaryServer defaults to
+  // 'done', and both terminal writes are compare-and-set against the status:
+  // finalizeSummaryIfGeneratingServer requires status='generating' and
+  // markSummaryErrorServer requires status<>'done'. A row born 'done' is
+  // therefore write-locked against BOTH outcomes — the finished document is
+  // silently discarded and the failure can't be recorded either. Every caller
+  // of this function is starting a generation, so the status is not optional
+  // and is deliberately not part of the input type.
+  return insertSummaryServer({
+    ...input,
+    genToken: input.genToken,
+    status: "generating",
+  });
 }
 
 /**
@@ -259,7 +271,7 @@ export async function finalizeSummaryIfGeneratingServer(
   },
   genToken?: string,
 ): Promise<boolean> {
-  return withSupabaseRetry(async () => {
+  const won = await withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
     let q = supa
       .from("summaries")
@@ -273,6 +285,32 @@ export async function finalizeSummaryIfGeneratingServer(
     if (error) throw new Error(error.message);
     return (data ?? []).length > 0;
   });
+  if (!won) {
+    // Losing the compare-and-set is NORMAL when a sibling worker finalized
+    // first — that row already holds the document. It is a BUG when the row is
+    // still empty: a finished summary was just dropped on the floor. That is
+    // precisely how the 2026-07-12 regression hid for six weeks (rows were
+    // being created at status 'done', so this update matched nothing and the
+    // caller only used the result to decide whether to send a push). Never let
+    // that pass silently again.
+    try {
+      const row = await getSummaryServer(id);
+      if (row && !row.docs?.ko) {
+        console.error(
+          "[sermorizer] finalize matched no row but the summary is still empty — generated document discarded",
+          {
+            id,
+            rowStatus: row.status,
+            genToken,
+            discardedChars: patch.docs?.ko?.length ?? 0,
+          },
+        );
+      }
+    } catch {
+      // Diagnostic only — never fail a job because the follow-up read failed.
+    }
+  }
+  return won;
 }
 
 export async function updateSummaryServer(
@@ -280,6 +318,7 @@ export async function updateSummaryServer(
   patch: {
     docs?: Partial<Record<Lang, string>>;
     title?: string;
+    serviceDate?: string;
     status?: JobStatus;
     error?: string | null;
     parts?: Record<string, string>;
@@ -287,7 +326,10 @@ export async function updateSummaryServer(
 ): Promise<void> {
   await withSupabaseRetry(async () => {
     const supa = getSupabaseAdmin();
-    const { error } = await supa.from("summaries").update(patch).eq("id", id);
+    const { serviceDate, ...rest } = patch;
+    const row: Record<string, unknown> = { ...rest };
+    if (serviceDate !== undefined) row.service_date = serviceDate;
+    const { error } = await supa.from("summaries").update(row).eq("id", id);
     if (error) throw new Error(error.message);
   });
 }

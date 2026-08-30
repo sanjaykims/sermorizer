@@ -1,5 +1,44 @@
 # Changelog
 
+## Fixes — 2026-08-22
+
+- **Generated summaries were being silently discarded.** A sermon could finish
+  generating and then vanish: the history row appeared tagged `no file`, with
+  `status='done'`, `error=NULL`, and an empty `docs` — no error surfaced
+  anywhere, though `usage` showed Claude had returned a full document.
+
+  Two changes had quietly combined. `claimPendingSummaryServer` creates the row
+  before the model runs, and since it delegates to `insertSummaryServer` — whose
+  status defaults to `'done'` — a fresh row was born `'done'` instead of
+  `'generating'` (the explicit `status: "generating"` argument was dropped on
+  2026-06-28 when the three call sites moved to the reclaim helper, which has no
+  `status` field). Harmless on its own; the finalize UPDATE was unfenced then.
+  On 2026-07-12 that UPDATE gained a compare-and-set (`status='generating' AND
+  gen_token=…`), and the two met: the finalize matched **zero rows**, returned
+  `won = false`, and the caller used that result only to decide whether to send
+  a push. The finished HTML was dropped with no throw and no log. The failure
+  path was locked too — `markSummaryErrorServer` is guarded by
+  `status <> 'done'` — so the row could neither succeed nor fail.
+
+  `pg_stat_statements` confirms the scope: all **9** executions of the fenced
+  finalize since 2026-07-12 ran in 0.022–0.043 ms (versus 1.4–15.3 ms for the
+  unfenced variant that demonstrably stored 40–50 KB documents) — the signature
+  of an index probe matching nothing. It had never once stored a document.
+
+  It stayed hidden because long sermons dodge it. Over 12,000 characters the
+  client splits the job and, when the server fails to finalize, stitches the
+  parts itself and writes them with an *unconditional* update. Every sermon
+  until now ran 60–80 minutes and took that path. A 21-minute recording
+  (7,995 chars) fell under the threshold onto the single-call path — the one
+  route with no client-side rescue — and was lost.
+
+  Fixed in `claimPendingSummaryServer`: a fresh row now starts at `'generating'`.
+  `finalizeSummaryIfGeneratingServer` additionally logs an error when it matches
+  no row *and* the summary is still empty, so a discarded document can never
+  again pass silently — losing the compare-and-set is normal only when a sibling
+  worker already stored the document. Covered by `lib/__tests__/
+  summaries-server.test.ts`, which fails if the status default regresses.
+
 ## Fixes — 2026-08-16
 
 - **PDF handwritten notes actually work now.** The uploader already accepted
