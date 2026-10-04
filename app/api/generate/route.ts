@@ -53,7 +53,7 @@ export const maxDuration = 300;
 // The whole service runs on the latest, most capable Opus. Hard-coded default
 // (the deliberate quality choice), with an emergency override so a sudden model
 // retirement or rename can be patched via env without a redeploy.
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
 
 type RequestBody = {
   mode?: "generate" | "translate" | "part" | "proofread";
@@ -87,7 +87,8 @@ function stripFences(s: string): string {
 
 /**
  * Run one Anthropic generation to completion and return the cleaned HTML.
- * Cost-bounded (target under $1): no extended thinking, effort medium,
+ * Cost-bounded (target under $1): thinking left on adaptive (can't be
+ * disabled on Claude Opus 5.5) but kept to effort low by default, and
  * max_tokens capped. The system prompt is prompt-cached. Streaming is used
  * only to assemble the full message without hitting the SDK's non-stream
  * timeout guard — nothing is streamed to a client here.
@@ -109,21 +110,18 @@ async function runAnthropic(
     // sticking in 'generating'/'translating' forever. Typical documents are
     // 10-15k tokens, so the cap rarely binds.
     max_tokens: opts?.maxTokens ?? 20000,
-    // Thinking is explicitly OFF, and that is load-bearing here — not a
-    // leftover. On Claude Opus 5 the default flipped: omitting `thinking`
-    // now runs ADAPTIVE thinking (on Opus 4.8 it meant no thinking). Two
-    // things break if it is left on:
-    //   1. max_tokens caps thinking + response TOGETHER, so thinking eats the
-    //      20000-token budget the HTML document needs and the document
-    //      truncates (stop_reason "max_tokens").
+    // Claude Opus 5.5 can't disable thinking at all — `{type: "disabled"}`
+    // 400s at every effort level, so `thinking` is simply omitted (adaptive).
+    // Effort is the only lever left to bound it: default "low" here to keep
+    // thinking's share of the shared max_tokens/maxDuration=300 budget small,
+    // the same reason thinking was fully disabled before. Two things still
+    // break if thinking eats too much of the budget:
+    //   1. max_tokens caps thinking + response TOGETHER, so thinking eating
+    //      into the 20000-token budget truncates the HTML document
+    //      (stop_reason "max_tokens").
     //   2. The extra thinking time pushes past maxDuration=300 — the exact
     //      timeout this service is calibrated around.
-    // Disabling requires effort <= "high"; the `effort` option is typed to
-    // low|medium|high precisely so this can never be paired with xhigh/max
-    // (which would 400). Raise effort past high only by enabling thinking and
-    // re-deriving the max_tokens/duration budget.
-    thinking: { type: "disabled" as const },
-    output_config: { effort: opts?.effort ?? "medium" },
+    output_config: { effort: opts?.effort ?? "low" },
     system: [
       {
         type: "text" as const,

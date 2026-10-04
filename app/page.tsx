@@ -2280,7 +2280,7 @@ function Sermorizer() {
 
       <p className="foot">
         Sermorizer · Sermon summary tool for Galilee Church · Powered by Claude
-        (claude-opus-5)
+        (claude-opus-5-5)
       </p>
       </div>
     </>
