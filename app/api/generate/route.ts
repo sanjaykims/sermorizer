@@ -11,6 +11,8 @@ import {
   buildProofreadUserContent,
   type SermonMetadata,
   type ImagePayload,
+  isSupportedMediaType,
+  SUPPORTED_MEDIA_TYPES,
 } from "@/lib/prompt";
 import {
   claimPendingSummaryServer,
@@ -151,9 +153,7 @@ async function runAnthropic(
     ],
     messages: [{ role: "user" as const, content }],
   };
-  const stream = client.messages.stream(
-    params as Parameters<typeof client.messages.stream>[0],
-  );
+  const stream = client.messages.stream(params);
   const msg = await stream.finalMessage();
   const text = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -266,6 +266,28 @@ export async function POST(req: Request): Promise<Response> {
   }
   if ((body.sourceHtml?.length ?? 0) > MAX_SOURCE_HTML) {
     return Response.json({ error: "Source document is too large." }, { status: 413 });
+  }
+  // `ImagePayload.media_type` is a narrow union, but this body arrived as JSON,
+  // so the type guarantees nothing until it is checked. Without this an
+  // unsupported type (an iPhone "image/heic", say) would travel all the way to
+  // the Messages API and come back a 400 that names no attachment — the kind of
+  // failure this service has been bitten by before. Reject it here instead,
+  // naming the offending value.
+  for (const [label, list] of [
+    ["note", body.noteImages],
+    ["order-of-service", body.bulletinImages],
+  ] as const) {
+    const bad = (list ?? []).find((p) => !isSupportedMediaType(p?.media_type));
+    if (bad) {
+      return Response.json(
+        {
+          error:
+            `A ${label} attachment has an unsupported format ` +
+            `(${String(bad.media_type)}). Supported: ${SUPPORTED_MEDIA_TYPES.join(", ")}.`,
+        },
+        { status: 415 },
+      );
+    }
   }
 
   try {

@@ -57,6 +57,22 @@
   (~240-285s, inside the wall) while still leaving ~4-7k of thinking headroom
   above the measured document size.
 
+- **The request body is now compiler-verified instead of cast away.** The call
+  site passed its params through `as Parameters<typeof client.messages.stream>[0]`,
+  which silenced type checking on the *entire* request — exactly the surface a
+  model migration changes. Removing the cast showed the only real mismatch was
+  our own `ImagePayload.media_type: string` against the SDK's closed union; the
+  new `output_config.effort` shape and the absent `thinking` field both check
+  out clean. `media_type` is now a narrow `MediaType` union, so TypeScript
+  validates model, budgets, effort, cached system prompt and image blocks
+  against the SDK's current schema on every build.
+
+  A union proves nothing at runtime, though — request bodies arrive as JSON —
+  so the route now guards every attachment with `isSupportedMediaType` and
+  returns a 415 naming the offending format. Previously an iPhone `image/heic`
+  would have travelled to the Messages API and come back a 400 that identified
+  no attachment. Covered by `lib/__tests__/prompt.test.ts`.
+
 - Not applicable to this service, but part of the same upgrade: forced
   `tool_choice` now 400s (this app declares no tools), thinking blocks are tied
   to the producing model and conversation (every call here is single-shot and

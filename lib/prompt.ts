@@ -4,7 +4,36 @@ import { themeHint } from "./themes";
 /* Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type ImagePayload = { media_type: string; data: string };
+/** Media types the Messages API accepts for a base64 `image` block. Narrow on
+ *  purpose: the SDK types this as a closed union, so keeping it loose here
+ *  forced a cast at the call site that hid the whole request body from the
+ *  compiler. `isSupportedMediaType` enforces the same set at runtime. */
+export type ImageMediaType =
+  | "image/jpeg"
+  | "image/png"
+  | "image/gif"
+  | "image/webp";
+
+/** Image types plus the one document type Claude reads natively. */
+export type MediaType = ImageMediaType | "application/pdf";
+
+export const SUPPORTED_MEDIA_TYPES: readonly MediaType[] = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+] as const;
+
+/** Runtime counterpart to the `MediaType` union. Request bodies arrive as JSON,
+ *  so the type alone guarantees nothing — without this an unexpected media type
+ *  (an iPhone "image/heic", say) would reach the API and come back a 400 with
+ *  no indication of which attachment caused it. */
+export function isSupportedMediaType(v: unknown): v is MediaType {
+  return typeof v === "string" && (SUPPORTED_MEDIA_TYPES as readonly string[]).includes(v);
+}
+
+export type ImagePayload = { media_type: MediaType; data: string };
 
 export type SermonMetadata = {
   title?: string;
@@ -28,15 +57,26 @@ export type GenerationInput = {
    pages — including handwriting — natively). */
 type ContentBlock =
   | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
-  | { type: "document"; source: { type: "base64"; media_type: string; data: string } };
+  | {
+      type: "image";
+      source: { type: "base64"; media_type: ImageMediaType; data: string };
+    }
+  | {
+      type: "document";
+      source: { type: "base64"; media_type: "application/pdf"; data: string };
+    };
 
 /** Emit the right block for a media payload: a `document` for PDFs, else `image`. */
 function mediaBlock(p: ImagePayload): ContentBlock {
-  const source = { type: "base64" as const, media_type: p.media_type, data: p.data };
   return p.media_type === "application/pdf"
-    ? { type: "document", source }
-    : { type: "image", source };
+    ? {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: p.data },
+      }
+    : {
+        type: "image",
+        source: { type: "base64", media_type: p.media_type, data: p.data },
+      };
 }
 
 /* ------------------------------------------------------------------ */
