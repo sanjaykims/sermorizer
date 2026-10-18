@@ -39,6 +39,24 @@
   than derived, and `lib/__tests__/pricing.test.ts` now pins all four rates so
   a future model swap can't silently re-derive the odd one wrongly.
 
+- **Budgets re-derived for the new model, against production data.** With
+  thinking sharing the output budget, each per-call cap was re-checked rather
+  than carried over. Measured across the last 8 summaries: Korean documents run
+  19.8k-27.3k chars and one generate call emits ~10-13k output tokens, so the
+  split-part (14000), translation (12000, per 9,000-char chunk) and proofread
+  (16000, per <=6,000-char transcript) caps all keep ample headroom and are
+  unchanged.
+
+  The single-call generate cap did change: **20000 -> 17000**. That cap exists
+  so a runaway run truncates with a detectable `stop_reason` *inside*
+  maxDuration=300, instead of the function being killed with the row stuck in
+  'generating'. At ~60-70 output tok/s, 20000 tokens is ~285-330s — past the
+  ceiling, so the invariant the comment claimed did not actually hold. It was
+  survivable only because nothing reached the cap while thinking was off; now
+  that thinking shares the budget the cap is reachable, so it moves to 17000
+  (~240-285s, inside the wall) while still leaving ~4-7k of thinking headroom
+  above the measured document size.
+
 - Not applicable to this service, but part of the same upgrade: forced
   `tool_choice` now 400s (this app declares no tools), thinking blocks are tied
   to the producing model and conversation (every call here is single-shot and

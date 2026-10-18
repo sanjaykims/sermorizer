@@ -11,8 +11,6 @@
       "app_api_auth_passkey_register_begin_route_post",
       "app_api_auth_passkey_register_finish_route",
       "app_api_auth_passkey_register_finish_route_post",
-      "app_api_auth_setup_route",
-      "app_api_auth_setup_route_post",
       "app_api_auth_status_route",
       "app_api_auth_status_route_get",
       "app_api_push_subscribe_route",
@@ -27,26 +25,16 @@
       "lib_auth_server_challengepayload",
       "lib_auth_server_clearchallengecookie",
       "lib_auth_server_clearsessioncookie",
-      "lib_auth_server_getauthconfig",
       "lib_auth_server_isprod",
-      "lib_auth_server_issetupcomplete",
-      "lib_auth_server_persistpasscode",
       "lib_auth_server_readchallengecookie",
       "lib_auth_server_readsession",
       "lib_auth_server_requiresessionorunauthorized",
       "lib_auth_server_rpinfofrom",
       "lib_auth_server_sessionpayload",
       "lib_auth_server_setchallengecookie",
-      "lib_auth_server_setsessioncookie",
-      "lib_auth_session",
-      "lib_auth_session_b64url",
-      "lib_auth_session_fromb64url",
-      "lib_auth_session_newrandomid",
-      "lib_auth_session_newsecret",
-      "lib_auth_session_signtoken",
-      "lib_auth_session_verifytoken",
       "lib_auth_webauthn",
       "lib_auth_webauthn_authenticatortransport",
+      "lib_auth_webauthn_deletepasskey",
       "lib_auth_webauthn_finishauthentication",
       "lib_auth_webauthn_finishregistration",
       "lib_auth_webauthn_hasanypasskey",
@@ -54,71 +42,69 @@
       "lib_auth_webauthn_startauthentication",
       "lib_auth_webauthn_startregistration",
       "lib_auth_webauthn_storedpasskey",
-      "lib_push_deletepushsubscription",
-      "lib_push_savepushsubscription",
-      "lib_supabase_server",
-      "lib_supabase_server_supabaseadminavailable",
-      "lib_tests_session_test",
-      "lib_tests_session_test_p"
-    ],
-    "1": [
-      "app_api_generate_route",
-      "app_api_generate_route_cleantranscript",
-      "app_api_generate_route_post",
-      "app_api_generate_route_requestbody",
-      "app_api_generate_route_runanthropic",
-      "app_api_generate_route_runresult",
-      "app_api_generate_route_stripfences",
-      "app_api_generate_route_usercontent",
-      "lib_auth_webauthn_deletepasskey",
-      "lib_enhance",
-      "lib_enhance_ensureenhancecss",
-      "lib_prompt",
-      "lib_prompt_buildgenerationusercontent",
-      "lib_prompt_buildinputblocks",
-      "lib_prompt_buildpartusercontent",
-      "lib_prompt_buildproofreadusercontent",
-      "lib_prompt_buildtranslationusercontent",
-      "lib_prompt_contentblock",
-      "lib_prompt_fractionword",
-      "lib_prompt_generationinput",
-      "lib_prompt_imagepayload",
-      "lib_prompt_mediablock",
-      "lib_prompt_ordinal",
-      "lib_prompt_partinput",
-      "lib_prompt_sermonmetadata",
       "lib_push",
+      "lib_push_deletepushsubscription",
       "lib_push_ensureconfigured",
       "lib_push_key",
       "lib_push_pushavailable",
+      "lib_push_savepushsubscription",
       "lib_push_sendpushtoall",
       "lib_push_storedsub",
-      "lib_summaries_server",
-      "lib_summaries_server_addusageserver",
-      "lib_summaries_server_claimpendingsummaryserver",
-      "lib_summaries_server_deletesummaryserver",
-      "lib_summaries_server_finalizesummaryifgeneratingserver",
-      "lib_summaries_server_getgentokenserver",
-      "lib_summaries_server_getsummaryserver",
-      "lib_summaries_server_insertsummaryserver",
-      "lib_summaries_server_listsummariesserver",
-      "lib_summaries_server_marksummaryerrorserver",
-      "lib_summaries_server_mergepartserver",
-      "lib_summaries_server_mergeproofreadpartserver",
-      "lib_summaries_server_mergesummarydocserver",
-      "lib_summaries_server_row",
-      "lib_summaries_server_tosummary",
-      "lib_summaries_server_updatesummaryserver",
-      "lib_supabase_server_getsupabaseadmin",
-      "lib_supabase_server_withsupabaseretry",
-      "lib_translate_split",
-      "lib_translate_split_extracttitletext",
-      "lib_translate_split_font_swap",
-      "lib_translate_split_reassembletranslatedhtml",
-      "lib_translate_split_splithtmlfortranslation",
-      "lib_translate_split_splittranslationdoc",
-      "lib_translate_split_swapfonts",
-      "lib_translate_split_withlang"
+      "lib_supabase_server",
+      "lib_supabase_server_supabaseadminavailable"
+    ],
+    "1": [
+      "app_page",
+      "app_page_announce",
+      "app_page_bookpanel",
+      "app_page_canvastopayload",
+      "app_page_elapsedtimer",
+      "app_page_empty_meta",
+      "app_page_filetopayloads",
+      "app_page_formatentrydate",
+      "app_page_iconalert",
+      "app_page_iconcheck",
+      "app_page_iconchevron",
+      "app_page_iconclock",
+      "app_page_iconclose",
+      "app_page_iconcoin",
+      "app_page_iconcross",
+      "app_page_icondownload",
+      "app_page_iconplus",
+      "app_page_imagepayload",
+      "app_page_imagetobase64",
+      "app_page_job",
+      "app_page_lang_label",
+      "app_page_metadata",
+      "app_page_page",
+      "app_page_pdftoimages",
+      "app_page_playchime",
+      "app_page_primealerts",
+      "app_page_readerr",
+      "app_page_registerpush",
+      "app_page_sermorizer",
+      "app_page_splittranscript",
+      "app_page_status",
+      "app_page_upsert",
+      "app_page_urlbase64touint8array",
+      "app_page_waitforrow",
+      "app_scenehero",
+      "app_scenehero_scenehero",
+      "lib_enhance",
+      "lib_enhance_ensureenhancecss",
+      "lib_pricing",
+      "lib_pricing_formatcost",
+      "lib_pricing_per_m",
+      "lib_pricing_totaltokens",
+      "lib_pricing_usagetocost",
+      "lib_summaries",
+      "lib_summaries_clouddelete",
+      "lib_summaries_cloudget",
+      "lib_summaries_cloudlist",
+      "lib_summaries_cloudupdate",
+      "lib_tests_pricing_test",
+      "lib_types_jobstatus",
+      "lib_types_summaryusage"
     ],
     "2": [
       "app_bookpanel",
@@ -231,34 +217,61 @@
       "tsconfig_include"
     ],
     "5": [
-      "app_page",
-      "app_page_bookpanel",
-      "app_page_elapsedtimer",
-      "app_page_empty_meta",
-      "app_page_iconalert",
-      "app_page_iconcheck",
-      "app_page_iconchevron",
-      "app_page_iconclock",
-      "app_page_iconclose",
-      "app_page_iconcoin",
-      "app_page_iconcross",
-      "app_page_icondownload",
-      "app_page_iconplus",
-      "app_page_imagepayload",
-      "app_page_job",
-      "app_page_lang_label",
-      "app_page_metadata",
-      "app_page_page",
-      "app_page_primealerts",
-      "app_page_readerr",
-      "app_page_registerpush",
-      "app_page_splittranscript",
-      "app_page_status",
-      "app_page_urlbase64touint8array",
-      "app_scenehero",
-      "app_scenehero_scenehero"
+      "app_api_summaries_id_route",
+      "app_api_summaries_id_route_allowed_status",
+      "app_api_summaries_id_route_ctx",
+      "app_api_summaries_id_route_delete",
+      "app_api_summaries_id_route_gate",
+      "app_api_summaries_id_route_get",
+      "app_api_summaries_id_route_patch",
+      "app_api_summaries_id_route_patchbody",
+      "lib_summaries_server",
+      "lib_summaries_server_addusageserver",
+      "lib_summaries_server_claimpendingsummaryserver",
+      "lib_summaries_server_deletesummaryserver",
+      "lib_summaries_server_finalizesummaryifgeneratingserver",
+      "lib_summaries_server_getgentokenserver",
+      "lib_summaries_server_getsummaryserver",
+      "lib_summaries_server_insertsummaryserver",
+      "lib_summaries_server_listsummariesserver",
+      "lib_summaries_server_marksummaryerrorserver",
+      "lib_summaries_server_mergepartserver",
+      "lib_summaries_server_mergeproofreadpartserver",
+      "lib_summaries_server_mergesummarydocserver",
+      "lib_summaries_server_row",
+      "lib_summaries_server_tosummary",
+      "lib_summaries_server_updatesummaryserver",
+      "lib_supabase_server_getsupabaseadmin",
+      "lib_supabase_server_withsupabaseretry"
     ],
     "6": [
+      "app_api_auth_passcode_route",
+      "app_api_auth_passcode_route_bumpattempt",
+      "app_api_auth_passcode_route_clearattempt",
+      "app_api_auth_passcode_route_clientip",
+      "app_api_auth_passcode_route_post",
+      "app_api_auth_setup_route",
+      "app_api_auth_setup_route_post",
+      "lib_auth_crypto",
+      "lib_auth_crypto_hashpasscode",
+      "lib_auth_crypto_scryptasync",
+      "lib_auth_crypto_verifypasscode",
+      "lib_auth_server_getauthconfig",
+      "lib_auth_server_issetupcomplete",
+      "lib_auth_server_persistpasscode",
+      "lib_auth_server_setsessioncookie",
+      "lib_auth_session",
+      "lib_auth_session_b64url",
+      "lib_auth_session_fromb64url",
+      "lib_auth_session_newrandomid",
+      "lib_auth_session_newsecret",
+      "lib_auth_session_signtoken",
+      "lib_auth_session_verifytoken",
+      "lib_tests_crypto_test",
+      "lib_tests_session_test",
+      "lib_tests_session_test_p"
+    ],
+    "7": [
       "anthropic_ai_sdk",
       "jszip",
       "next",
@@ -283,7 +296,28 @@
       "supabase_supabase_js",
       "web_push"
     ],
-    "7": [
+    "8": [
+      "lib_prompt",
+      "lib_prompt_buildgenerationusercontent",
+      "lib_prompt_buildinputblocks",
+      "lib_prompt_buildpartusercontent",
+      "lib_prompt_buildproofreadusercontent",
+      "lib_prompt_buildtranslationusercontent",
+      "lib_prompt_contentblock",
+      "lib_prompt_fractionword",
+      "lib_prompt_generationinput",
+      "lib_prompt_imagepayload",
+      "lib_prompt_mediablock",
+      "lib_prompt_ordinal",
+      "lib_prompt_partinput",
+      "lib_prompt_sermonmetadata",
+      "lib_themes",
+      "lib_themes_palette",
+      "lib_themes_theme",
+      "lib_themes_themehint",
+      "lib_themes_themes"
+    ],
+    "9": [
       "app_api_summaries_upload_route",
       "app_api_summaries_upload_route_besttitle",
       "app_api_summaries_upload_route_body",
@@ -300,7 +334,7 @@
       "lib_types",
       "lib_types_lang"
     ],
-    "8": [
+    "10": [
       "app_authgate",
       "app_authgate_authgate",
       "app_authgate_authmark",
@@ -315,7 +349,7 @@
       "lib_api",
       "lib_api_apifetch"
     ],
-    "9": [
+    "11": [
       "app_apple_icon",
       "app_apple_icon_appleicon",
       "app_apple_icon_size",
@@ -329,32 +363,6 @@
       "lib_icon_art",
       "lib_icon_art_iconart"
     ],
-    "10": [
-      "app_page_announce",
-      "app_page_formatentrydate",
-      "app_page_playchime",
-      "app_page_sermorizer",
-      "app_page_upsert",
-      "app_page_waitforrow",
-      "lib_summaries",
-      "lib_summaries_clouddelete",
-      "lib_summaries_cloudget",
-      "lib_summaries_cloudlist",
-      "lib_summaries_cloudupdate",
-      "lib_types_jobstatus"
-    ],
-    "11": [
-      "app_api_auth_passcode_route",
-      "app_api_auth_passcode_route_bumpattempt",
-      "app_api_auth_passcode_route_clearattempt",
-      "app_api_auth_passcode_route_clientip",
-      "app_api_auth_passcode_route_post",
-      "lib_auth_crypto",
-      "lib_auth_crypto_hashpasscode",
-      "lib_auth_crypto_scryptasync",
-      "lib_auth_crypto_verifypasscode",
-      "lib_tests_crypto_test"
-    ],
     "12": [
       "app_layout",
       "app_layout_bodykr",
@@ -367,94 +375,80 @@
       "app_layout_viewport"
     ],
     "13": [
-      "app_api_summaries_id_route",
-      "app_api_summaries_id_route_allowed_status",
-      "app_api_summaries_id_route_ctx",
-      "app_api_summaries_id_route_delete",
-      "app_api_summaries_id_route_gate",
-      "app_api_summaries_id_route_get",
-      "app_api_summaries_id_route_patch",
-      "app_api_summaries_id_route_patchbody"
+      "app_api_generate_route",
+      "app_api_generate_route_cleantranscript",
+      "app_api_generate_route_post",
+      "app_api_generate_route_requestbody",
+      "app_api_generate_route_runanthropic",
+      "app_api_generate_route_runresult",
+      "app_api_generate_route_stripfences",
+      "app_api_generate_route_usercontent"
     ],
     "14": [
-      "lib_pricing",
-      "lib_pricing_formatcost",
-      "lib_pricing_per_m",
-      "lib_pricing_totaltokens",
-      "lib_pricing_usagetocost",
-      "lib_tests_pricing_test",
-      "lib_types_summaryusage"
+      "lib_translate_split",
+      "lib_translate_split_extracttitletext",
+      "lib_translate_split_font_swap",
+      "lib_translate_split_reassembletranslatedhtml",
+      "lib_translate_split_splithtmlfortranslation",
+      "lib_translate_split_splittranslationdoc",
+      "lib_translate_split_swapfonts",
+      "lib_translate_split_withlang"
     ],
     "15": [
-      "lib_themes",
-      "lib_themes_palette",
-      "lib_themes_theme",
-      "lib_themes_themehint",
-      "lib_themes_themes"
-    ],
-    "16": [
-      "app_page_canvastopayload",
-      "app_page_filetopayloads",
-      "app_page_imagetobase64",
-      "app_page_pdftoimages"
-    ],
-    "17": [
       "next_config",
       "next_config_cspdirectives",
       "next_config_nextconfig",
       "next_config_securityheaders"
     ],
-    "18": [
+    "16": [
       "eslint_config",
       "eslint_config_compat",
       "eslint_config_dirname"
     ],
-    "19": [
+    "17": [
       "lib_tests_summaries_server_test",
       "lib_tests_summaries_server_test_captured",
       "lib_tests_summaries_server_test_fakeclient"
     ],
-    "20": [
+    "18": [
       "vercel",
       "vercel_fluid",
       "vercel_schema"
     ],
-    "21": [
+    "19": [
       "app_manifest",
       "app_manifest_manifest"
     ],
-    "22": [
+    "20": [
       "public_sw"
     ],
-    "23": [
+    "21": [
       "vitest_config"
     ]
   },
   "cohesion": {
-    "0": 0.10520163646990065,
-    "1": 0.08834586466165413,
+    "0": 0.10980392156862745,
+    "1": 0.0596078431372549,
     "2": 0.09936575052854123,
     "3": 0.06060606060606061,
     "4": 0.07407407407407407,
-    "5": 0.08615384615384615,
-    "6": 0.08695652173913043,
-    "7": 0.2761904761904762,
-    "8": 0.1794871794871795,
-    "9": 0.2878787878787879,
-    "10": 0.18181818181818182,
-    "11": 0.4,
+    "5": 0.2123076923076923,
+    "6": 0.17,
+    "7": 0.08695652173913043,
+    "8": 0.15204678362573099,
+    "9": 0.2761904761904762,
+    "10": 0.1794871794871795,
+    "11": 0.2878787878787879,
     "12": 0.2222222222222222,
     "13": 0.39285714285714285,
-    "14": 0.42857142857142855,
+    "14": 0.35714285714285715,
     "15": 0.5,
     "16": 0.6666666666666666,
-    "17": 0.5,
+    "17": 0.6666666666666666,
     "18": 0.6666666666666666,
-    "19": 0.6666666666666666,
-    "20": 0.6666666666666666,
-    "21": 1.0,
-    "22": 1.0,
-    "23": 1.0
+    "19": 1.0,
+    "20": 1.0,
+    "21": 1.0
   },
   "gods": [
     {
@@ -465,12 +459,7 @@
     {
       "id": "lib_supabase_server_supabaseadminavailable",
       "label": "supabaseAdminAvailable()",
-      "degree": 27
-    },
-    {
-      "id": "app_api_generate_route_post",
-      "label": "POST()",
-      "degree": 23
+      "degree": 25
     },
     {
       "id": "lib_supabase_server_withsupabaseretry",
@@ -480,7 +469,7 @@
     {
       "id": "lib_auth_server_requiresessionorunauthorized",
       "label": "requireSessionOrUnauthorized()",
-      "degree": 18
+      "degree": 16
     },
     {
       "id": "tsconfig_compileroptions",
@@ -498,13 +487,18 @@
       "degree": 13
     },
     {
-      "id": "lib_types_lang",
-      "label": "Lang",
-      "degree": 11
-    },
-    {
       "id": "app_page_sermorizer",
       "label": "Sermorizer()",
+      "degree": 10
+    },
+    {
+      "id": "lib_auth_server_setsessioncookie",
+      "label": "setSessionCookie()",
+      "degree": 10
+    },
+    {
+      "id": "lib_types_lang",
+      "label": "Lang",
       "degree": 10
     }
   ],
@@ -555,10 +549,10 @@
     },
     {
       "source": "POST()",
-      "target": "getAuthConfig()",
+      "target": "supabaseAdminAvailable()",
       "source_files": [
         "app/api/auth/passcode/route.ts",
-        "lib/auth/server.ts"
+        "lib/supabase-server.ts"
       ],
       "confidence": "EXTRACTED",
       "relation": "calls",
@@ -568,33 +562,33 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `dependencies` connect `Community 6` to `Community 3`?",
-      "why": "High betweenness centrality (0.204) - this node is a cross-community bridge."
+      "question": "Why does `dependencies` connect `Community 7` to `Community 3`?",
+      "why": "High betweenness centrality (0.193) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `buildEpub()` connect `Community 2` to `Community 6`?",
-      "why": "High betweenness centrality (0.202) - this node is a cross-community bridge."
+      "question": "Why does `buildEpub()` connect `Community 2` to `Community 7`?",
+      "why": "High betweenness centrality (0.190) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `jszip` connect `Community 6` to `Community 2`?",
-      "why": "High betweenness centrality (0.199) - this node is a cross-community bridge."
+      "question": "Why does `jszip` connect `Community 7` to `Community 2`?",
+      "why": "High betweenness centrality (0.187) - this node is a cross-community bridge."
     },
     {
       "type": "isolated_nodes",
       "question": "What connects `Status`, `Phase`, `LANG_LABEL` to the rest of the system?",
-      "why": "108 weakly-connected nodes found - possible documentation gaps or missing edges."
+      "why": "110 weakly-connected nodes found - possible documentation gaps or missing edges."
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 0` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.10520163646990065 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.10980392156862745 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 1` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.08834586466165413 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.0596078431372549 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",

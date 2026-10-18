@@ -102,16 +102,25 @@ async function runAnthropic(
   const client = new Anthropic();
   const params = {
     model: opts?.model ?? MODEL,
-    // Default output cap: 20000 tokens ≈ 280-330s at Opus's typical rate.
-    // Deliberately close to (not far past) maxDuration=300 — a run that would
-    // exceed the budget truncates with a detectable stop_reason and fails
-    // CLEANLY, instead of the function being killed mid-flight and the row
-    // sticking in 'generating'/'translating' forever. This cap is bounded by
-    // TIME, not by token appetite: raising it does not buy a longer document,
-    // it only moves the failure from a clean truncation to the function being
-    // killed. On Opus 5.5 the budget now has to cover thinking AND the
-    // document (see below); typical documents are 10-15k tokens, so it fits.
-    max_tokens: opts?.maxTokens ?? 20000,
+    // Default output cap. This cap is bounded by TIME, not token appetite:
+    // raising it does not buy a longer document, it only moves the failure
+    // from a clean truncation to the function being killed mid-flight with the
+    // row stuck in 'generating'/'translating' forever.
+    //
+    // 17000 is derived, not guessed. At Opus's typical ~60-70 output tok/s a
+    // run that actually reaches this cap takes ~240-285s, which lands inside
+    // maxDuration=300 — so hitting the cap produces a detectable
+    // stop_reason:"max_tokens" and fails CLEANLY. The previous 20000 did NOT
+    // hold that invariant (~285-330s, i.e. past the ceiling); it was survivable
+    // only because nothing reached the cap while thinking was off. On Opus 5.5
+    // thinking is always on and shares this budget, so the cap became reachable
+    // and had to be brought back under the wall.
+    //
+    // Headroom check against production data (last 8 summaries): Korean
+    // documents measure 19.8k-27.3k chars, and one generate call emits
+    // ~10-13k output tokens. 17000 therefore leaves ~4-7k for thinking at
+    // effort "low" — comfortable, with the cap still below the time ceiling.
+    max_tokens: opts?.maxTokens ?? 17000,
     // There is deliberately no `thinking` field. On Claude Opus 5.5 thinking
     // is ALWAYS ON: `{type:"disabled"}` (and the budget_tokens form) returns a
     // 400 at EVERY effort level, so the previous explicit disable had to go.
