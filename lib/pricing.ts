@@ -1,18 +1,22 @@
 /* Pricing math for displayed cost.
-   Opus 5 from the Anthropic pricing table (USD per 1M tokens):
-     input        $5.00
-     output      $25.00
-     cache write  $6.25 (1.25× input, 5-minute TTL)
-     cache read   $0.50 (0.1× input)
+   Claude Opus 5.5 from the Anthropic pricing table (USD per 1M tokens):
+     input        $4.00
+     output      $20.00
+     cache write  $5.00 (1.25× input, 5-minute TTL — the app never sets a
+                  1-hour TTL, which would be $8.00)
+     cache read   $0.20
+   NOTE: cache read is 0.05× input on Opus 5.5, NOT the 0.1× that applies to
+   most models (it was $0.50 = 0.1× on Opus 5). Do not re-derive it from the
+   usual ratio — read it off the pricing table.
    Update here if you switch the service model. */
 
 import type { SummaryUsage } from "./types";
 
 const PER_M = {
-  input: 5,
-  output: 25,
-  cache_create: 6.25,
-  cache_read: 0.5,
+  input: 4,
+  output: 20,
+  cache_create: 5,
+  cache_read: 0.2,
 } as const;
 
 /** Convert accumulated tokens to a dollar figure. */

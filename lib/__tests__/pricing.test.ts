@@ -2,15 +2,17 @@ import { describe, it, expect } from "vitest";
 import { usageToCost, formatCost, totalTokens } from "../pricing";
 
 describe("usageToCost", () => {
-  it("prices input + output at Opus 4.8 rates", () => {
-    // 1M input ($5) + 1M output ($25) = $30.
-    expect(usageToCost({ input: 1_000_000, output: 1_000_000 })).toBeCloseTo(30, 5);
+  it("prices input + output at Claude Opus 5.5 rates", () => {
+    // 1M input ($4) + 1M output ($20) = $24.
+    expect(usageToCost({ input: 1_000_000, output: 1_000_000 })).toBeCloseTo(24, 5);
   });
   it("prices cache write/read", () => {
-    // 1M cache write ($6.25) + 1M cache read ($0.50) = $6.75.
+    // 1M cache write ($5.00) + 1M cache read ($0.20) = $5.20.
+    // Cache read is 0.05x input on Opus 5.5, not the usual 0.1x — pinning it
+    // here so a future model swap can't silently re-derive it wrongly.
     expect(
       usageToCost({ cache_create: 1_000_000, cache_read: 1_000_000 }),
-    ).toBeCloseTo(6.75, 5);
+    ).toBeCloseTo(5.2, 5);
   });
   it("is zero for empty/undefined usage", () => {
     expect(usageToCost(undefined)).toBe(0);

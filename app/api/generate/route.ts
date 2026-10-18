@@ -53,7 +53,7 @@ export const maxDuration = 300;
 // The whole service runs on the latest, most capable Opus. Hard-coded default
 // (the deliberate quality choice), with an emergency override so a sudden model
 // retirement or rename can be patched via env without a redeploy.
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
 
 type RequestBody = {
   mode?: "generate" | "translate" | "part" | "proofread";
@@ -106,24 +106,33 @@ async function runAnthropic(
     // Deliberately close to (not far past) maxDuration=300 — a run that would
     // exceed the budget truncates with a detectable stop_reason and fails
     // CLEANLY, instead of the function being killed mid-flight and the row
-    // sticking in 'generating'/'translating' forever. Typical documents are
-    // 10-15k tokens, so the cap rarely binds.
+    // sticking in 'generating'/'translating' forever. This cap is bounded by
+    // TIME, not by token appetite: raising it does not buy a longer document,
+    // it only moves the failure from a clean truncation to the function being
+    // killed. On Opus 5.5 the budget now has to cover thinking AND the
+    // document (see below); typical documents are 10-15k tokens, so it fits.
     max_tokens: opts?.maxTokens ?? 20000,
-    // Thinking is explicitly OFF, and that is load-bearing here — not a
-    // leftover. On Claude Opus 5 the default flipped: omitting `thinking`
-    // now runs ADAPTIVE thinking (on Opus 4.8 it meant no thinking). Two
-    // things break if it is left on:
-    //   1. max_tokens caps thinking + response TOGETHER, so thinking eats the
-    //      20000-token budget the HTML document needs and the document
-    //      truncates (stop_reason "max_tokens").
-    //   2. The extra thinking time pushes past maxDuration=300 — the exact
-    //      timeout this service is calibrated around.
-    // Disabling requires effort <= "high"; the `effort` option is typed to
-    // low|medium|high precisely so this can never be paired with xhigh/max
-    // (which would 400). Raise effort past high only by enabling thinking and
-    // re-deriving the max_tokens/duration budget.
-    thinking: { type: "disabled" as const },
-    output_config: { effort: opts?.effort ?? "medium" },
+    // There is deliberately no `thinking` field. On Claude Opus 5.5 thinking
+    // is ALWAYS ON: `{type:"disabled"}` (and the budget_tokens form) returns a
+    // 400 at EVERY effort level, so the previous explicit disable had to go.
+    // Omitting the field is equivalent to `{type:"adaptive"}`. Effort is now
+    // the only control over how much the model thinks — and therefore over
+    // both budgets this service lives inside.
+    //
+    // "low" — NOT the API default of "medium" — is a deliberate, load-bearing
+    // choice. Thinking counts against max_tokens even though its text is never
+    // returned, and it burns wall-clock against maxDuration=300. This service
+    // previously ran with thinking fully off; "low" keeps the thinking short
+    // so the HTML document still fits inside both budgets. Per Anthropic's
+    // testing Opus 5.5 at "low" lands near Opus 5 at "high" on comparable
+    // work, so this should not cost quality — but if documents start
+    // truncating (stop_reason "max_tokens"), the lever is lowering thinking
+    // further or splitting the job, NOT raising max_tokens.
+    //
+    // `effort` stays typed low|medium|high: "xhigh"/"max" are accepted on 5.5
+    // but make it think considerably more per turn, which a 300s ceiling
+    // cannot absorb. Raise it only after re-deriving the token/time budget.
+    output_config: { effort: opts?.effort ?? "low" },
     system: [
       {
         type: "text" as const,
