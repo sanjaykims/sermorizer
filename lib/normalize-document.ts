@@ -95,7 +95,11 @@ function renumberBadges(root: HTMLElement, changes: NormalizationChange[]): void
     if (!badge) continue;
     n++;
     const current = badge.textContent.trim();
-    if (!/^\d+$/.test(current)) continue; // ★ and the like stay as they are
+    // A badge counts as numeric in either notation the corpus actually uses:
+    // ASCII digits, or circled numerals (①-⑳), which two older summaries used
+    // for their second half — and which restarted at ① mid-document. ★,
+    // Chinese numerals and emoji are deliberate styles and are left alone.
+    if (!/^(?:\d+|[\u2460-\u2473])$/.test(current)) continue;
     if (current !== String(n)) {
       badge.set_content(String(n));
       changes.push(`renumbered a section badge from ${current} to ${n}`);

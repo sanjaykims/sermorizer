@@ -147,6 +147,28 @@ describe("normalizeDocument", () => {
       .toEqual(["1", "2"]);
   });
 
+  /* Two older summaries numbered their second half with circled numerals and
+     restarted at ①: "1,2,3,①,②,③" for six sections. A digits-only check left
+     them untouched. */
+  it("renumbers circled numerals, which are a badge notation the corpus uses", () => {
+    const sec = (id: number, badge: string) =>
+      `<section id="sec-${id}"><div class="sec-head"><span class="sec-icon">${badge}</span></div></section>`;
+    const out = normalizeDocument(
+      doc(sec(1, "1") + sec(2, "2") + sec(3, "3") + sec(4, "①") + sec(5, "②") + sec(6, "③")),
+    );
+    const badges = [...out.html.matchAll(/<span class="sec-icon">([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(badges).toEqual(["1", "2", "3", "4", "5", "6"]);
+    expect(findStructuralProblems(out.html)).toEqual([]);
+  });
+
+  it("leaves Chinese numerals and emoji badges alone", () => {
+    // Those are deliberate styles, not a broken numeric sequence.
+    const sec = (id: number, badge: string) =>
+      `<section id="sec-${id}"><div class="sec-head"><span class="sec-icon">${badge}</span></div></section>`;
+    const html = doc(sec(1, "序") + sec(2, "二") + sec(3, "📖"));
+    expect(normalizeDocument(html).html).toBe(html);
+  });
+
   it("handles an empty document without throwing", () => {
     expect(normalizeDocument("")).toEqual({ html: "", changes: [] });
   });

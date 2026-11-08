@@ -98,6 +98,24 @@ describe("findStructuralProblems", () => {
     expect(findStructuralProblems(wrap(body))).toEqual([]);
   });
 
+  /* Found by auditing the stored corpus: documents use BOTH <span
+     class="sec-icon"> and <div class="sec-icon">, and a span-only pattern
+     reported two summaries clean while their badges restarted mid-page. */
+  it("checks badges written as <div class=\"sec-icon\"> too", () => {
+    const body =
+      `<section id="sec-1"><div class="sec-head"><div class="sec-icon">1</div></div></section>` +
+      `<section id="sec-2"><div class="sec-head"><div class="sec-icon">1</div></div></section>`;
+    const problems = findStructuralProblems(wrap(body));
+    expect(problems.some((p) => p.includes("badges read 1,1"))).toBe(true);
+  });
+
+  it("accepts a correct sequence written with div badges", () => {
+    const body =
+      `<section id="sec-1"><div class="sec-head"><div class="sec-icon">1</div></div></section>` +
+      `<section id="sec-2"><div class="sec-head"><div class="sec-icon">2</div></div></section>`;
+    expect(findStructuralProblems(wrap(body))).toEqual([]);
+  });
+
   it("reports an empty document rather than silently passing it", () => {
     expect(findStructuralProblems("")).toEqual(["document is empty"]);
     expect(findStructuralProblems("   ")).toEqual(["document is empty"]);

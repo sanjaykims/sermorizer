@@ -1,5 +1,51 @@
 # Changelog
 
+## Corpus repair — 2026-11-08 (all 30 summaries, all three languages)
+
+Audited every stored summary — 30 sermons, 90 documents — against the checks
+built today, and repaired what they found. All 30 were backed up to
+`public._summary_doc_backup` first.
+
+**Good news first: not one document had broken tag nesting.** Every fault was
+house-style, so every repair was safe.
+
+Repaired across the corpus:
+
+- **section badges restarting mid-document** — the split-stitch bug, present in
+  23 documents. Renumbered 1..N in document order.
+- **`<blockquote>` nested inside `.key-verse`** — the box-inside-a-box.
+- **reference chips stranded inside quotes** — lifted onto their own line as
+  `<p class="bref">`, so every reference takes one form.
+- **tilde verse ranges in reference chips** — `4:6~7` → `4:6–7`, leaving a
+  tilde in Korean running prose ("1~3절") untouched.
+- **the 2026-10-77 service date** — corrected to 2026-10-11, verified against
+  the date printed inside the documents themselves.
+
+### Two blind spots in my own checks, found by running them over real data
+
+Both are now fixed in code and covered by tests:
+
+- **`findStructuralProblems` only looked for `<span class="sec-icon">`.** The
+  corpus also uses `<div class="sec-icon">`, so the first audit reported two
+  summaries clean while their badges restarted mid-page. The badge check is now
+  tag-agnostic.
+- **`normalizeDocument` only recognised ASCII digits as a badge.** Two older
+  summaries numbered their second half with circled numerals and restarted at
+  ① — "1,2,3,①,②,③" for six sections. Circled numerals (①-⑳) now count as a
+  numeric badge; ★, Chinese numerals and emoji stay untouched, since those are
+  deliberate styles rather than a broken sequence.
+
+### Left alone, deliberately
+
+- **Three documents carry one stray `</p>`.** Browsers discard a stray closing
+  `<p>` and `<p>` needs no explicit close in HTML, so nothing renders wrongly;
+  and which `</p>` is the extra one cannot be determined, so an edit would be a
+  guess. Reported rather than repaired.
+- **Mixed badge styles** (Chinese numerals, emoji) in two early summaries —
+  a choice the model made, not a fault.
+
+93 tests.
+
 ## Hardening — 2026-11-08 (takeaway repair: the last gap closed)
 
 The one remaining quality gap depended on the model doing as it was asked. For

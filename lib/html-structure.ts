@@ -51,7 +51,11 @@ function checkNesting(html: string, tag: Tag): StructuralProblem[] {
 /** The visible section badges must agree with the ids and the tab bar. */
 function checkSectionNumbering(html: string): StructuralProblem[] {
   const problems: StructuralProblem[] = [];
-  const badges = [...html.matchAll(/<span class="sec-icon">([^<]*)<\/span>/g)]
+  // Tag-agnostic on purpose. Stored documents use BOTH `<span class="sec-icon">`
+  // and `<div class="sec-icon">`; a span-only pattern silently skipped every
+  // div-badged document, which is how a bulk audit of the corpus reported two
+  // summaries clean while their badges restarted mid-page.
+  const badges = [...html.matchAll(/<\w+ class="sec-icon"[^>]*>([^<]*)<\/\w+>/g)]
     .map((m) => m[1].trim())
     // The at-a-glance heading carries a non-numeric badge; it is not a section.
     .filter((t) => /^\d+$/.test(t))
