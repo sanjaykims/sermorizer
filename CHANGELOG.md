@@ -1,5 +1,50 @@
 # Changelog
 
+## Hardening — 2026-11-08 (takeaway repair: the last gap closed)
+
+The one remaining quality gap depended on the model doing as it was asked. For
+a SPLIT sermon the at-a-glance list is assembled by the stitcher from each
+part's `data-takeaway`; when the parts supply none, it falls back to the
+section headings — which the tab bar already shows. That is how the 2026-11-08
+summary shipped a list that repeated eleven headings.
+
+Code cannot write a takeaway. So instead of hoping, the app now **detects the
+heading echo and asks for exactly the missing thing**: one small call
+(`TAKEAWAY_SYSTEM_PROMPT`, 2000 tokens, effort `low`) that receives each
+section's heading and the opening of its prose and returns one sentence per
+section. `replaceSummaryTakeaways()` writes them into the cards with a parser.
+
+**It runs after the document is stored and the push is sent.** The repair
+happens inside the same function as the last part, already near
+maxDuration=300. Running it *before* the finalize would risk the function being
+killed with the row stranded at `generating` — the precise failure this service
+was bitten by in August. After the save, the worst case is a summary that still
+lists headings; never a lost one.
+
+Every failure path leaves the stored document untouched: a line count that does
+not match the section count is rejected rather than pairing takeaways with the
+wrong sections, model text is HTML-escaped, a blank line is refused, a document
+whose tags do not nest is not rewritten, and any thrown error is caught and
+logged.
+
+21 tests on the normaliser and repair path, 89 in total.
+
+### What is still not mechanical, and cannot be
+
+Two things remain prompt guidance, and no amount of code will change that,
+because both are judgements rather than rules:
+
+- **whether a claim belongs to the preacher** — deciding that "성경 전체에서 …
+  단 하나도 없습니다" is rhetoric needing attribution, while another absolute
+  statement is simply the text's own claim, requires reading the sermon;
+- **whether a paragraph deserves emphasis** — which of two good sentences
+  should be the pull quote is taste.
+
+Both are now *reported* by `findStructuralProblems` when they look wrong, so
+they surface in the logs instead of silently reaching a reader. That is the
+honest limit: the structure of a summary is guaranteed by code; its judgement
+is guided, checked, and visible.
+
 ## Hardening — 2026-11-08 (document normaliser)
 
 The 2026-11-08 preventions were split between things code could guarantee and

@@ -144,3 +144,37 @@ export function normalizeDocument(html: string): {
   const out = /^\s*<!DOCTYPE/i.test(html) ? `<!DOCTYPE html>\n${body}` : body;
   return { html: out, changes };
 }
+
+/**
+ * Rewrite the at-a-glance card text with freshly written takeaways.
+ *
+ * The last step of the repair path: when the stitched summary turned out to be
+ * a copy of the section headings (because the parts supplied no
+ * `data-takeaway`), the app asks the model for one takeaway per section and
+ * puts them here. Returns null — changing nothing — when the document is not
+ * safe to rewrite, or when the number of takeaways does not match the number
+ * of cards, since a partial rewrite would pair takeaways with the wrong
+ * sections.
+ */
+export function replaceSummaryTakeaways(
+  html: string,
+  takeaways: string[],
+): string | null {
+  if (findNestingProblems(html).length) return null;
+  const root = parse(html);
+  const cards = root.querySelectorAll(".sm-text");
+  if (cards.length === 0 || cards.length !== takeaways.length) return null;
+  if (takeaways.some((t) => !t.trim())) return null;
+  cards.forEach((card, i) => card.set_content(escapeText(takeaways[i].trim())));
+  const htmlEl = root.querySelector("html");
+  const body = htmlEl ? htmlEl.toString() : root.toString();
+  return /^\s*<!DOCTYPE/i.test(html) ? `<!DOCTYPE html>\n${body}` : body;
+}
+
+/** The takeaways come back from a model, so they are text, not markup. */
+function escapeText(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}

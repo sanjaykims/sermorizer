@@ -228,6 +228,40 @@ Output ONLY the HTML document. Do not include internal or system XML tags in you
  * every call, long document or short, skips reproducing the sermon's
  * (often several-KB) <style> block.
  */
+/**
+ * Takeaway-repair prompt. Used only when a stitched document's at-a-glance list
+ * came out as a copy of the section headings — i.e. the parts did not supply
+ * `data-takeaway`. One narrow, cheap call that asks for the one thing code
+ * cannot produce: a sentence of meaning per section.
+ */
+export const TAKEAWAY_SYSTEM_PROMPT = `You write the "at a glance" list for a finished sermon summary of Galilee Church (갈릴리교회), a Korean Methodist church.
+
+You receive the sermon's sections in order, each with its heading and the opening of its prose. For EACH section, write ONE short sentence stating what a reader should carry away from it.
+
+Rules:
+- Output EXACTLY one line per section, in the SAME order, and NOTHING else — no numbering, no bullets, no blank lines, no commentary, no markdown.
+- Write in the SAME language as the material you are given.
+- A takeaway is NOT the heading restated. The headings already appear in the document's tab bar, so repeating one tells the reader nothing. Say what the section actually claims or asks of the reader.
+- One sentence, warm and plain, roughly 15-40 characters of Korean (or a short English/Chinese sentence). No scripture references, no quotation marks.
+- Stay faithful to the material. Do not introduce anything that is not in it.
+
+Do not include internal or system XML tags in your response.`;
+
+/** User content for the takeaway-repair call. */
+export function buildTakeawayUserContent(
+  sections: { heading: string; excerpt: string }[],
+): { type: "text"; text: string }[] {
+  const body = sections
+    .map((s, i) => `[${i + 1}] ${s.heading}\n${s.excerpt}`)
+    .join("\n\n");
+  return [
+    {
+      type: "text" as const,
+      text: `${body}\n\nWrite exactly ${sections.length} lines — one takeaway per section, in order.`,
+    },
+  ];
+}
+
 export const TRANSLATION_SYSTEM_PROMPT = `You are the translation engine for **Sermorizer**. You receive ONE HTML fragment — a slice of a larger Korean sermon-summary document's <body> (some of its sections, its header, or its footer) — and produce a faithful AND natural-sounding translation of it into a target language.
 
 ## Rules

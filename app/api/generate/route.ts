@@ -13,6 +13,8 @@ import {
   type ImagePayload,
   isSupportedMediaType,
   SUPPORTED_MEDIA_TYPES,
+  TAKEAWAY_SYSTEM_PROMPT,
+  buildTakeawayUserContent,
 } from "@/lib/prompt";
 import {
   claimPendingSummaryServer,
@@ -31,8 +33,12 @@ import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
 import { splitHtmlForTranslation, reassembleTranslatedHtml } from "@/lib/translate-split";
 import { stitchPartsServer } from "@/lib/stitch";
-import { findStructuralProblems } from "@/lib/html-structure";
-import { normalizeDocument } from "@/lib/normalize-document";
+import {
+  findStructuralProblems,
+  summaryEchoesHeadings,
+  extractSectionDigest,
+} from "@/lib/html-structure";
+import { normalizeDocument, replaceSummaryTakeaways } from "@/lib/normalize-document";
 import { extractHtmlTitle } from "@/lib/util";
 import { requireSessionOrUnauthorized } from "@/lib/auth/server";
 import { supabaseAdminAvailable } from "@/lib/supabase-server";
@@ -58,6 +64,56 @@ export const maxDuration = 300;
 // (the deliberate quality choice), with an emergency override so a sudden model
 // retirement or rename can be patched via env without a redeploy.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
+
+/**
+ * Replace an at-a-glance list that merely repeats the section headings with
+ * real takeaways. Best-effort by design: every failure path leaves the stored
+ * document exactly as it is, because the document is already saved and a worse
+ * outcome than a heading-echo list is no list at all.
+ */
+async function repairHeadingEchoSummary(rowId: string, html: string): Promise<void> {
+  try {
+    if (!summaryEchoesHeadings(html)) return;
+    const digest = extractSectionDigest(html);
+    if (digest.length < 3) return;
+
+    const { text, usage } = await runAnthropic(
+      TAKEAWAY_SYSTEM_PROMPT,
+      buildTakeawayUserContent(digest),
+      // Small and shallow: one short line per section is not a reasoning task,
+      // and this call is spending what is left of the 300s budget.
+      { maxTokens: 2000, effort: "low" },
+    );
+    await addUsageServer(rowId, usage);
+
+    const lines = text
+      .split("\n")
+      .map((l) => l.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, "").trim())
+      .filter(Boolean);
+    // A mismatch would pair takeaways with the wrong sections, which is worse
+    // than leaving the headings in place.
+    const rewritten =
+      lines.length === digest.length ? replaceSummaryTakeaways(html, lines) : null;
+    if (!rewritten) {
+      console.warn("[sermorizer] takeaway repair produced an unusable result", {
+        id: rowId,
+        wanted: digest.length,
+        got: lines.length,
+      });
+      return;
+    }
+    await mergeSummaryDocServer(rowId, "ko", rewritten);
+    console.info("[sermorizer] replaced heading-echo summary with takeaways", {
+      id: rowId,
+      count: lines.length,
+    });
+  } catch (e) {
+    console.warn("[sermorizer] takeaway repair failed; stored document kept as is", {
+      id: rowId,
+      err: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
 
 type RequestBody = {
   mode?: "generate" | "translate" | "part" | "proofread";
@@ -580,6 +636,20 @@ export async function POST(req: Request): Promise<Response> {
                   title: "Sermorizer",
                   body: "Your sermon summary is ready.",
                 });
+                // Last gap closed in code rather than left to the prompt: for a
+                // SPLIT sermon the at-a-glance list is assembled here, from the
+                // parts' `data-takeaway` attributes — and when the parts supply
+                // none it falls back to the section headings, which the tab bar
+                // already shows. Only a model can write a takeaway, so ask for
+                // exactly that, in one small call.
+                //
+                // Deliberately AFTER the document is stored and the push sent.
+                // This runs inside the same function as the last part, already
+                // close to maxDuration=300; if it overran BEFORE the finalize,
+                // the row would be stranded at 'generating' — the exact failure
+                // this service was bitten by. Running it after means the worst
+                // case is a summary that still lists headings, never a lost one.
+                await repairHeadingEchoSummary(rowId, combined);
               }
             } catch (stitchErr) {
               // Leave parts in place and status 'generating' so the client can

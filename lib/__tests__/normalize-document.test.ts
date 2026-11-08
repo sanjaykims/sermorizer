@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeDocument } from "../normalize-document";
-import { findStructuralProblems } from "../html-structure";
+import { normalizeDocument, replaceSummaryTakeaways } from "../normalize-document";
+import {
+  findStructuralProblems,
+  summaryEchoesHeadings,
+  extractSectionDigest,
+} from "../html-structure";
 
 const doc = (body: string) =>
   `<!DOCTYPE html>\n<html lang="ko"><head><title>T</title></head><body>${body}</body></html>`;
@@ -145,5 +149,76 @@ describe("normalizeDocument", () => {
 
   it("handles an empty document without throwing", () => {
     expect(normalizeDocument("")).toEqual({ html: "", changes: [] });
+  });
+});
+
+const summaryDoc = (texts: string[], headings: string[]) =>
+  doc(
+    headings
+      .map(
+        (h, i) =>
+          `<section id="sec-${i + 1}"><div class="sec-head"><span class="sec-icon">${i + 1}</span><span class="sec-title">${h}</span></div><p>${h}에 대한 본문 내용입니다.</p></section>`,
+      )
+      .join("") +
+      `<section class="summary" id="summary"><div class="sm-grid">${texts
+        .map((t) => `<div class="sm-item"><div class="sm-text">${t}</div></div>`)
+        .join("")}</div></section>`,
+  );
+
+const HEADS = ["하나", "둘", "셋", "넷"];
+
+describe("takeaway repair path", () => {
+  it("detects a summary that merely repeats the headings", () => {
+    expect(summaryEchoesHeadings(summaryDoc(HEADS, HEADS))).toBe(true);
+  });
+
+  it("does not flag a summary of real takeaways", () => {
+    const real = HEADS.map((_, i) => `실제 요약 문장 ${i + 1}`);
+    expect(summaryEchoesHeadings(summaryDoc(real, HEADS))).toBe(false);
+  });
+
+  it("digests each section into a heading plus prose, skipping the summary", () => {
+    const digest = extractSectionDigest(summaryDoc(HEADS, HEADS));
+    expect(digest.map((d) => d.heading)).toEqual(HEADS);
+    expect(digest[0].excerpt).toContain("본문 내용입니다");
+    // the heading must not be the whole excerpt, or the model has nothing to work from
+    expect(digest[0].excerpt.length).toBeGreaterThan(HEADS[0].length);
+  });
+
+  it("rewrites the cards with the supplied takeaways", () => {
+    const out = replaceSummaryTakeaways(summaryDoc(HEADS, HEADS), [
+      "곁에 누군가 있다는 것이 은혜입니다.",
+      "기억이 삶의 방향을 정합니다.",
+      "상처를 더 오래 기억하는 편향에서 벗어나십시오.",
+      "받은 은혜를 적어 기념비를 세우십시오.",
+    ]);
+    expect(out).not.toBeNull();
+    expect(out!).toContain("곁에 누군가 있다는 것이 은혜입니다.");
+    expect(summaryEchoesHeadings(out!)).toBe(false);
+    expect(findStructuralProblems(out!)).toEqual([]);
+  });
+
+  it("refuses a count mismatch rather than pairing takeaways with wrong sections", () => {
+    expect(replaceSummaryTakeaways(summaryDoc(HEADS, HEADS), ["only", "two"])).toBeNull();
+  });
+
+  it("refuses to rewrite a document whose tags do not nest", () => {
+    const broken = doc(`<div class="sm-text">x</div><blockquote>unclosed`);
+    expect(replaceSummaryTakeaways(broken, ["a"])).toBeNull();
+  });
+
+  it("escapes a takeaway so model text cannot inject markup", () => {
+    const out = replaceSummaryTakeaways(summaryDoc(HEADS, HEADS), [
+      "<script>alert(1)</script>",
+      "b",
+      "c",
+      "d",
+    ]);
+    expect(out!).not.toContain("<script>");
+    expect(out!).toContain("&lt;script&gt;");
+  });
+
+  it("refuses a blank takeaway", () => {
+    expect(replaceSummaryTakeaways(summaryDoc(HEADS, HEADS), ["a", "  ", "c", "d"])).toBeNull();
   });
 });

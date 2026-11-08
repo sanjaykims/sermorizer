@@ -90,24 +90,64 @@ function checkKeyVerse(html: string): StructuralProblem[] {
     : [];
 }
 
+/** One section, reduced to what a takeaway can be written from. */
+export type SectionDigest = { heading: string; excerpt: string };
+
+/**
+ * True when the at-a-glance list is mostly a copy of the section headings.
+ * The repair path keys off this, so it is exported rather than being buried
+ * inside the problem text.
+ */
+export function summaryEchoesHeadings(html: string): boolean {
+  const headings = [...html.matchAll(/<span class="sec-title">([^<]*)<\/span>/g)].map((m) =>
+    m[1].trim(),
+  );
+  const items = [...html.matchAll(/<div class="sm-text">([^<]*)<\/div>/g)].map((m) => m[1].trim());
+  if (items.length < 3) return false;
+  const echoed = items.filter((t) => headings.includes(t)).length;
+  return echoed >= Math.ceil(items.length / 2);
+}
+
+/**
+ * Heading plus a little of each section's prose — enough for a model to write
+ * one takeaway per section, small enough to keep that call cheap. Tags are
+ * stripped because the model is being asked for a sentence, not for markup.
+ */
+export function extractSectionDigest(html: string, excerptChars = 320): SectionDigest[] {
+  const start = html.indexOf("<body");
+  const body = start >= 0 ? html.slice(start) : html;
+  const out: SectionDigest[] = [];
+  for (const m of body.matchAll(/<section\b(?![^>]*class="[^"]*summary)[^>]*>([\s\S]*?)<\/section>/g)) {
+    const inner = m[1];
+    const heading = (inner.match(/<span class="sec-title">([^<]*)<\/span>/) ??
+      inner.match(/<h[23][^>]*>([^<]*)<\/h[23]>/))?.[1]?.trim();
+    if (!heading) continue;
+    const prose = inner
+      .replace(/<div class="sec-head">[\s\S]*?<\/div>/, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    out.push({ heading, excerpt: prose.slice(0, excerptChars) });
+  }
+  return out;
+}
+
 /** The at-a-glance list exists to add something: a takeaway per section. When
  *  it merely repeats the headings, the reader gets the tab bar twice and learns
  *  nothing. Cannot be auto-fixed — only the model can write a takeaway — so it
  *  is reported. */
 function checkSummaryIsNotHeadingEcho(html: string): StructuralProblem[] {
+  if (!summaryEchoesHeadings(html)) return [];
   const headings = [...html.matchAll(/<span class="sec-title">([^<]*)<\/span>/g)].map((m) =>
     m[1].trim(),
   );
   const items = [...html.matchAll(/<div class="sm-text">([^<]*)<\/div>/g)].map((m) => m[1].trim());
-  if (items.length < 3) return [];
   const echoed = items.filter((t) => headings.includes(t)).length;
-  return echoed >= Math.ceil(items.length / 2)
-    ? [
-        `the at-a-glance list repeats ${echoed} of ${items.length} section headings ` +
-          `verbatim — those headings are already in the tab bar, so the list adds ` +
-          `nothing. Split parts should supply data-takeaway.`,
-      ]
-    : [];
+  return [
+    `the at-a-glance list repeats ${echoed} of ${items.length} section headings ` +
+      `verbatim — those headings are already in the tab bar, so the list adds ` +
+      `nothing. Split parts should supply data-takeaway.`,
+  ];
 }
 
 /** Emphasis only reads as emphasis while it stays scarce. Judging WHICH mark to
