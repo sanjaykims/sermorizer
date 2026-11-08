@@ -87,6 +87,41 @@ describe("stitchPartsServer", () => {
     expect(html).toContain('<div class="divider"></div>');
   });
 
+  /* The at-a-glance list is built by the stitcher, so for a split sermon itは
+     only as good as what the parts hand it. Before data-takeaway it reused the
+     section title, making the list a verbatim echo of the tab bar. */
+  it("builds the at-a-glance list from data-takeaway when a section supplies one", () => {
+    const withTakeaway = `<!DOCTYPE html>
+<html lang="ko"><body><nav class="toc"></nav>
+  <div id="sermon-body">
+    <section data-takeaway="은혜를 기억하는 사람이 감사하며 삽니다."><div class="sec-head"><span class="sec-title">하나를 듣고 열을 아는 지도자</span></div><p>A</p></section>
+  </div>
+</body></html>`;
+    const html = stitchPartsServer({ "0": withTakeaway }, 1);
+
+    expect(html).toContain('<div class="sm-text">은혜를 기억하는 사람이 감사하며 삽니다.</div>');
+    // The heading still drives the tab bar, but must NOT be the summary text.
+    expect(html).toContain('<a href="#sec-1">하나를 듣고 열을 아는 지도자</a>');
+    expect(html).not.toContain('<div class="sm-text">하나를 듣고 열을 아는 지도자</div>');
+  });
+
+  it("falls back to the heading when a section omits data-takeaway", () => {
+    const html = stitchPartsServer({ "0": part0 }, 1);
+    expect(html).toContain('<div class="sm-text">첫 번째 흐름</div>');
+  });
+
+  it("escapes a data-takeaway rather than letting it inject markup", () => {
+    const nasty = `<!DOCTYPE html>
+<html lang="ko"><body><nav class="toc"></nav>
+  <div id="sermon-body">
+    <section data-takeaway="a &lt;script&gt;x&lt;/script&gt; b"><div class="sec-head"><span class="sec-title">T</span></div><p>A</p></section>
+  </div>
+</body></html>`;
+    const html = stitchPartsServer({ "0": nasty }, 1);
+    expect(html).not.toContain("<script>x</script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
   it("salvages thematic sections when a later part omits sermon-body", () => {
     const malformedPart = `<!DOCTYPE html>
 <html lang="ko"><body>

@@ -1,5 +1,52 @@
 # Changelog
 
+## Hardening — 2026-11-08
+
+Follow-up to the review fixes below: every remaining finding that could recur
+on the next sermon is now prevented in code, not just corrected in the three
+stored documents.
+
+- **The at-a-glance list stops echoing the headings.** For a split sermon the
+  stitcher builds that list, and it had nothing to build from but the section
+  titles — so the summary repeated the eleven headings already in the tab bar.
+  The split-part prompt now asks each `<section>` for a `data-takeaway`
+  attribute holding one real takeaway sentence, and both stitchers prefer it,
+  falling back to the heading so a part that omits it still yields a card.
+  A test pins the prompt↔stitcher coupling, which is invisible to the type
+  checker: if the prompt ever stops asking for the attribute, every split
+  sermon would quietly revert to heading-echo summaries.
+
+- **Parts are told not to guess their own numbering.** Each part numbered its
+  sections from its own start, which is what produced the mismatched badges.
+  The prompt now says to number from 1 within the part and that the app
+  renumbers across the whole sermon on stitch.
+
+- **Box-inside-a-box is defended twice.** Both prompts forbid nesting a
+  `<blockquote>` inside `.key-verse`, and the injected stylesheet now flattens
+  any quote wrapper that lands there anyway (`border`/`background`/`padding`
+  stripped). The documents are model-generated, so the CSS has to survive
+  markup the prompt asked against — the same posture as the `.hl` rules.
+
+- **One scripture-reference form.** Both prompts fix it as a `<p class="bref">`
+  on its own line after the `</blockquote>`, never inside the quote, with an en
+  dash in ranges (`4:6–7`, not `4:6~7`). The stylesheet also renders a chip
+  left inside a quote on its own line, so the two forms look alike.
+
+- **An emphasis budget.** About one `.key-quote` every other section and one or
+  two highlighter marks per section, with the reason stated: if nearly every
+  paragraph is marked, none of them reads as emphasis.
+
+- **Two content rules for a written record.** Sweeping claims, numbers the
+  passage does not give, and images carried in from another book must read as
+  the preacher's own ("목사님은 … 강조하셨습니다"), not as statements of the
+  text — the Joshua 5 interval and the Revelation 2:5 lampstand are given as
+  worked examples. And a spoken aside that lands warmly out loud can read as an
+  insult on the page, so it must be recast to include the speaker and reader,
+  or dropped.
+
+Checklists in both prompts gained matching lines, so the model verifies these
+itself before returning a document.
+
 ## Fixes — 2026-11-08
 
 A review of the 2026-11-08 summary ("감사의 기념비", 여호수아 4:1–7) found defects

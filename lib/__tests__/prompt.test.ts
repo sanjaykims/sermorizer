@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   isSupportedMediaType,
   SUPPORTED_MEDIA_TYPES,
+  PART_SYSTEM_PROMPT,
+  GENERATION_SYSTEM_PROMPT,
   type MediaType,
 } from "../prompt";
+import { ENHANCE_LAYOUT_CSS } from "../enhance";
 
 /**
  * `ImagePayload.media_type` is a narrow union so the compiler can check the
@@ -63,5 +66,42 @@ describe("isSupportedMediaType", () => {
     } else {
       throw new Error("expected image/jpeg to be supported");
     }
+  });
+});
+
+/**
+ * These pin couplings that are invisible at the type level: the stitcher reads
+ * an attribute only the prompt can cause to exist, and the stylesheet carries
+ * defenses for markup the model can emit despite the prompt. Each was a real
+ * defect in the 2026-11-08 summary.
+ */
+describe("prompt / stylesheet guards from the 2026-11-08 review", () => {
+  it("asks split parts for the data-takeaway the stitcher consumes", () => {
+    // lib/stitch.ts reads sec.getAttribute("data-takeaway"); if the prompt
+    // stops asking for it, every split sermon silently reverts to a summary
+    // that just echoes the section headings.
+    expect(PART_SYSTEM_PROMPT).toContain("data-takeaway");
+  });
+
+  it("tells parts not to guess their own section offset", () => {
+    expect(PART_SYSTEM_PROMPT).toMatch(/renumbers every badge and id/i);
+  });
+
+  it("forbids nesting a blockquote inside .key-verse in both prompts", () => {
+    expect(GENERATION_SYSTEM_PROMPT).toMatch(/box inside a box/i);
+    expect(PART_SYSTEM_PROMPT).toMatch(/box inside a box/i);
+  });
+
+  it("fixes one scripture-reference form and an en dash in both prompts", () => {
+    for (const p of [GENERATION_SYSTEM_PROMPT, PART_SYSTEM_PROMPT]) {
+      expect(p).toContain('<p class="bref">');
+      expect(p).toContain("4:6–7");
+    }
+  });
+
+  it("keeps the stylesheet defense that flattens a quote nested in .key-verse", () => {
+    // Belt and braces for the prompt rule above: the document is
+    // model-generated, so the CSS must survive a wrapper we did not ask for.
+    expect(ENHANCE_LAYOUT_CSS).toContain(".key-verse>blockquote");
   });
 });

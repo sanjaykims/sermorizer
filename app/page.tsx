@@ -587,7 +587,7 @@ function stitchParts(parts: Record<string, string>, n: number): string {
 
   // Renumber sections and collect the table of contents.
   const sections = Array.from(body.querySelectorAll("section"));
-  const toc: { id: string; title: string }[] = [];
+  const toc: { id: string; title: string; takeaway: string }[] = [];
   sections.forEach((sec, i) => {
     const id = `sec-${i + 1}`;
     sec.id = id;
@@ -600,7 +600,14 @@ function stitchParts(parts: Record<string, string>, n: number): string {
     }
     const titleEl = sec.querySelector(".sec-title") ?? sec.querySelector("h2, h3");
     const title = (titleEl?.textContent ?? `Section ${i + 1}`).trim();
-    toc.push({ id, title });
+    // The at-a-glance list is assembled HERE, not by the model: the stitcher is
+    // the only place that sees every part. It used to reuse the section title,
+    // which made the list a verbatim echo of the tab bar — eleven headings
+    // twice over, telling the reader nothing (2026-11-08 review). Prefer the
+    // section's own data-takeaway, which the split-part prompt now asks for,
+    // and fall back to the heading so a part that omits it still yields a card.
+    const takeaway = (sec.getAttribute("data-takeaway") ?? "").trim();
+    toc.push({ id, title, takeaway });
   });
 
   // Sticky tab bar: one link per section (tap to jump) + the summary.
@@ -617,7 +624,7 @@ function stitchParts(parts: Record<string, string>, n: number): string {
       .map(
         (t, i) =>
           `<div class="sm-item"><div class="sm-num" aria-hidden="true">${i + 1}</div><div class="sm-text">${escapeHtml(
-            t.title,
+            t.takeaway || t.title,
           )}</div></div>`,
       )
       .join("");

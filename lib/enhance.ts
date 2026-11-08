@@ -60,6 +60,22 @@ hr,.divider{border:0;height:1px;background:var(--rule);margin:2.4em 0;max-width:
 /* key verse */
 .key-verse{max-width:var(--maxw);margin:24px auto;padding:22px 24px;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;font-family:var(--fd);font-size:1.25rem;line-height:1.6;color:var(--ink);font-style:italic;}
 .key-verse .ref,.key-verse cite,.key-verse .kv-ref,.key-verse .bref{display:block;margin-top:12px;font-family:var(--fm);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-strong);font-style:normal;}
+/* .key-verse IS already the quotation surface — its own tint, hairline border
+   and italic serif. A <blockquote> (or scripture box) nested inside it paints a
+   SECOND bordered, tinted box inside the first: the "box inside a box" the
+   2026-11-08 review caught in all three languages. Flatten any quote wrapper
+   that lands inside, so a stray nesting degrades to plain text instead of a
+   double frame. Same defensive posture as the .hl rules below: the document is
+   model-generated, so the stylesheet must survive a wrapper we did not ask for. */
+.key-verse>blockquote,.key-verse>.scripture,.key-verse>.verse,.key-verse>.verse-box{
+background:none!important;border:0!important;border-radius:0!important;
+padding:0!important;margin:0!important;font:inherit!important;color:inherit!important;}
+/* A .bref is the reference line belonging to the quotation above it. The house
+   form is a <p class="bref"> on its own line AFTER the </blockquote>, but a
+   model will sometimes leave the chip inside the quote. Render both the same
+   way so neither placement reads as a mistake. */
+blockquote>.bref{display:block;width:fit-content;margin-top:10px;}
+p.bref{margin:-6px 0 18px;}
 /* sticky tab-bar table of contents */
 .toc{position:sticky;top:0;z-index:60;display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:saturate(1.2) blur(6px);border-bottom:1px solid var(--rule);padding:0 12px;margin:8px 0 4px;scrollbar-width:none;}
 .toc::-webkit-scrollbar{display:none;}
