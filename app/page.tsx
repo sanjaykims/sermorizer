@@ -577,6 +577,11 @@ function stitchParts(parts: Record<string, string>, n: number): string {
     if (!html) continue;
     const d = parser.parseFromString(html, "text/html");
     const b = d.querySelector("#sermon-body");
+    // Mirror lib/stitch.ts: give the seam between two parts the same divider
+    // every other section boundary has.
+    if (body.innerHTML.trim()) {
+      body.insertAdjacentHTML("beforeend", '\n\n<div class="divider"></div>\n\n');
+    }
     if (b) body.insertAdjacentHTML("beforeend", b.innerHTML);
   }
 
@@ -586,6 +591,13 @@ function stitchParts(parts: Record<string, string>, n: number): string {
   sections.forEach((sec, i) => {
     const id = `sec-${i + 1}`;
     sec.id = id;
+    // Mirror lib/stitch.ts: renumber the visible badge, not just the id, or a
+    // joined document contradicts its own TOC. Only a purely numeric badge is
+    // rewritten, so ★ / emoji icons survive.
+    const iconEl = sec.querySelector(".sec-icon");
+    if (iconEl && /^\s*\d+\s*$/.test(iconEl.textContent ?? "")) {
+      iconEl.textContent = String(i + 1);
+    }
     const titleEl = sec.querySelector(".sec-title") ?? sec.querySelector("h2, h3");
     const title = (titleEl?.textContent ?? `Section ${i + 1}`).trim();
     toc.push({ id, title });

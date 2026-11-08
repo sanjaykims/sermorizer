@@ -216,7 +216,11 @@ structure-preserving translation with the font/lang swaps above.
 
 ## Quality checklist before returning a document
 
-- [ ] `<div>` open/close counts balanced.
+- [ ] `<div>` open/close counts balanced (count the BODY only — the injected
+      stylesheet's comments mention `<div>` and will skew a whole-file count).
+- [ ] Section `.sec-icon` badges run 1..N and agree with the section ids, the
+      tab bar and the at-a-glance list (a split sermon is stitched from parts
+      that each number their own sections).
 - [ ] Pastor name renders as 김영복 / Rev. Kim Young-bok / 金永福.
 - [ ] Zero external image refs (`<img src>` is base64 or absent).
 - [ ] All three inputs are reflected; handwritten-note emphases are elevated.

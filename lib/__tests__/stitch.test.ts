@@ -35,6 +35,58 @@ describe("stitchPartsServer", () => {
     expect(html).toContain('id="sermorizer-layout"');
   });
 
+  /* Regression: the 2026-11-08 sermon shipped with section ids 1..11 but badges
+     reading 1,2,3,4,5,6,4,5,6,7,8 — each part numbers its own sections, and the
+     stitcher renumbered only the ids, so the document contradicted its own TOC
+     and at-a-glance list in all three languages. */
+  it("renumbers the visible .sec-icon badges, not just the ids", () => {
+    const numbered0 = `<!DOCTYPE html>
+<html lang="ko"><body><nav class="toc"></nav>
+  <div id="sermon-body">
+    <section><div class="sec-head"><span class="sec-icon">1</span><span class="sec-title">하나</span></div><p>A</p></section>
+    <section><div class="sec-head"><span class="sec-icon">2</span><span class="sec-title">둘</span></div><p>B</p></section>
+  </div>
+</body></html>`;
+    // Part 2 restarts its own numbering — exactly what produced the bug.
+    const numbered1 = `<!DOCTYPE html>
+<html lang="ko"><body>
+  <div id="sermon-body">
+    <section><div class="sec-head"><span class="sec-icon">1</span><span class="sec-title">셋</span></div><p>C</p></section>
+    <section><div class="sec-head"><span class="sec-icon">2</span><span class="sec-title">넷</span></div><p>D</p></section>
+  </div>
+</body></html>`;
+
+    const html = stitchPartsServer({ "0": numbered0, "1": numbered1 }, 2);
+    const badges = [...html.matchAll(/<span class="sec-icon">([^<]*)<\/span>/g)].map((m) => m[1]);
+
+    // Four sections numbered 1-4, then the summary's star.
+    expect(badges).toEqual(["1", "2", "3", "4", "★"]);
+    // Badges and ids must agree, which is what actually broke.
+    expect(html).toContain('id="sec-3"');
+    expect(html).toContain('id="sec-4"');
+  });
+
+  it("leaves a non-numeric .sec-icon alone", () => {
+    const iconPart = `<!DOCTYPE html>
+<html lang="ko"><body><nav class="toc"></nav>
+  <div id="sermon-body">
+    <section><div class="sec-head"><span class="sec-icon">✝</span><span class="sec-title">하나</span></div><p>A</p></section>
+  </div>
+</body></html>`;
+    const html = stitchPartsServer({ "0": iconPart }, 1);
+    expect(html).toContain('<span class="sec-icon">✝</span>');
+  });
+
+  it("puts a divider at the seam between two parts", () => {
+    const html = stitchPartsServer({ "0": part0, "1": `<!DOCTYPE html>
+<html lang="ko"><body><div id="sermon-body">
+  <section><div class="sec-head"><span class="sec-title">두 번째</span></div><p>둘째</p></section>
+</div></body></html>` }, 2);
+    // Without this the join was the one section boundary in the document with
+    // no rule, which is how the seam became visible to a reader.
+    expect(html).toContain('<div class="divider"></div>');
+  });
+
   it("salvages thematic sections when a later part omits sermon-body", () => {
     const malformedPart = `<!DOCTYPE html>
 <html lang="ko"><body>

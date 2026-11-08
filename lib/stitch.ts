@@ -27,6 +27,12 @@ export function stitchPartsServer(parts: Record<string, string>, n: number): str
     if (!html) continue;
     const d = parse(html);
     const b = d.querySelector("#sermon-body");
+    // Each part ends its last section without a trailing rule, so joining two
+    // parts leaves the seam with no divider where every other section boundary
+    // has one. Insert it here, at the join, rather than hoping a part emits it.
+    if (body.innerHTML.trim()) {
+      body.insertAdjacentHTML("beforeend", '\n\n<div class="divider"></div>\n\n');
+    }
     if (b) {
       body.insertAdjacentHTML("beforeend", b.innerHTML);
     } else {
@@ -46,6 +52,16 @@ export function stitchPartsServer(parts: Record<string, string>, n: number): str
   sections.forEach((sec, i) => {
     const id = `sec-${i + 1}`;
     sec.setAttribute("id", id);
+    // Renumber the VISIBLE badge too, not just the id. Each part numbers its
+    // own sections from its own starting point, so after a join the ids ran
+    // 1..11 while the badges still read 1..6 then 4..8 — the document openly
+    // contradicted its own TOC (see CHANGELOG 2026-11-08). Only a badge that
+    // already holds a plain number is touched, so a non-numeric icon (★, an
+    // emoji) is left alone.
+    const iconEl = sec.querySelector(".sec-icon");
+    if (iconEl && /^\s*\d+\s*$/.test(iconEl.textContent ?? "")) {
+      iconEl.set_content(String(i + 1));
+    }
     // Match the client stitcher: take the first h2/h3 in document order (not
     // h2-always-before-h3), so server- and client-stitched docs are identical.
     const titleEl = sec.querySelector(".sec-title") ?? sec.querySelector("h2, h3");
