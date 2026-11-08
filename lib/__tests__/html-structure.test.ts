@@ -60,6 +60,44 @@ describe("findStructuralProblems", () => {
     expect(findStructuralProblems(wrap(section(1)))).toEqual([]);
   });
 
+  /* Reported, not auto-fixed: only the model can write a takeaway. This is the
+     shape the 2026-11-08 summary shipped with — eleven headings, twice. */
+  it("reports an at-a-glance list that just repeats the headings", () => {
+    const heads = ["하나", "둘", "셋", "넷"];
+    const body =
+      heads
+        .map((h, i) => `<section id="sec-${i + 1}"><div class="sec-head"><span class="sec-icon">${i + 1}</span><span class="sec-title">${h}</span></div></section>`)
+        .join("") +
+      `<div class="sm-grid">${heads.map((h) => `<div class="sm-text">${h}</div>`).join("")}</div>`;
+    const problems = findStructuralProblems(wrap(body));
+    expect(problems.some((p) => p.includes("repeats 4 of 4 section headings"))).toBe(true);
+  });
+
+  it("accepts an at-a-glance list of real takeaways", () => {
+    const heads = ["하나", "둘", "셋", "넷"];
+    const body =
+      heads
+        .map((h, i) => `<section id="sec-${i + 1}"><div class="sec-head"><span class="sec-icon">${i + 1}</span><span class="sec-title">${h}</span></div></section>`)
+        .join("") +
+      `<div class="sm-grid">${heads.map((_, i) => `<div class="sm-text">실제 요약 문장 ${i + 1}</div>`).join("")}</div>`;
+    expect(findStructuralProblems(wrap(body))).toEqual([]);
+  });
+
+  it("reports emphasis that has stopped being scarce", () => {
+    const body =
+      [1, 2, 3].map((n) => section(n)).join("") +
+      `<p class="key-quote">a</p><p class="key-quote">b</p><p class="key-quote">c</p><p class="key-quote">d</p>`;
+    const problems = findStructuralProblems(wrap(body));
+    expect(problems.some((p) => p.includes("pull quotes"))).toBe(true);
+  });
+
+  it("does not complain about restrained emphasis", () => {
+    const body =
+      [1, 2, 3].map((n) => section(n)).join("") +
+      `<p class="key-quote">a</p><p>x <span class="hl">y</span> z</p>`;
+    expect(findStructuralProblems(wrap(body))).toEqual([]);
+  });
+
   it("reports an empty document rather than silently passing it", () => {
     expect(findStructuralProblems("")).toEqual(["document is empty"]);
     expect(findStructuralProblems("   ")).toEqual(["document is empty"]);

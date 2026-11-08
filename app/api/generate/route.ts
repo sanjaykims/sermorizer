@@ -32,6 +32,7 @@ import { ensureEnhanceCss } from "@/lib/enhance";
 import { splitHtmlForTranslation, reassembleTranslatedHtml } from "@/lib/translate-split";
 import { stitchPartsServer } from "@/lib/stitch";
 import { findStructuralProblems } from "@/lib/html-structure";
+import { normalizeDocument } from "@/lib/normalize-document";
 import { extractHtmlTitle } from "@/lib/util";
 import { requireSessionOrUnauthorized } from "@/lib/auth/server";
 import { supabaseAdminAvailable } from "@/lib/supabase-server";
@@ -330,13 +331,30 @@ export async function POST(req: Request): Promise<Response> {
               "A part of this document is too long to translate in one pass. Please try again.",
             );
           }
-          const html = ensureEnhanceCss(
-            reassembleTranslatedHtml(
-              doc,
-              lang,
-              results.map((r) => r.text),
+          // Translation preserves structure, so a fault in the Korean is
+          // inherited by every translation — which is exactly how all three
+          // 2026-11-08 documents ended up with the same defects. Normalise and
+          // check each one on its own rather than trusting the source.
+          const { html, changes: tfixes } = normalizeDocument(
+            ensureEnhanceCss(
+              reassembleTranslatedHtml(
+                doc,
+                lang,
+                results.map((r) => r.text),
+              ),
             ),
           );
+          if (tfixes.length) {
+            console.info("[sermorizer] normalised translation", { id, lang, changes: tfixes });
+          }
+          const tproblems = findStructuralProblems(html);
+          if (tproblems.length) {
+            console.warn("[sermorizer] translated document has structural problems", {
+              id,
+              lang,
+              problems: tproblems,
+            });
+          }
           // Atomic merge — won't clobber a sibling-language translation that
           // finishes around the same time.
           await mergeSummaryDocServer(id, lang, html);
@@ -512,7 +530,22 @@ export async function POST(req: Request): Promise<Response> {
           }
           if (complete && row && !row.docs?.ko) {
             try {
-              const combined = stitchPartsServer(parts, partCount);
+              const stitched = stitchPartsServer(parts, partCount);
+              // Mechanical repairs BEFORE the structural check, so the check
+              // reports only what code could not fix on its own.
+              const { html: combined, changes, skipped } = normalizeDocument(stitched);
+              if (skipped?.length) {
+                console.warn("[sermorizer] stitched document too malformed to normalise", {
+                  id: rowId,
+                  problems: skipped,
+                });
+              }
+              if (changes.length) {
+                console.info("[sermorizer] normalised stitched document", {
+                  id: rowId,
+                  changes,
+                });
+              }
               const title =
                 m.title?.trim() || extractHtmlTitle(combined) || "Untitled sermon";
               // Structural check before this document is stored. Warn, never discard:
@@ -629,7 +662,21 @@ export async function POST(req: Request): Promise<Response> {
         if (stopReason === "max_tokens" || !raw.toLowerCase().includes("</html>")) {
           throw new Error("Generation stopped early — please try again.");
         }
-        const html = ensureEnhanceCss(raw);
+        const { html, changes: fixes, skipped: unsafe } = normalizeDocument(
+          ensureEnhanceCss(raw),
+        );
+        if (unsafe?.length) {
+          console.warn("[sermorizer] generated document too malformed to normalise", {
+            id: pending.id,
+            problems: unsafe,
+          });
+        }
+        if (fixes.length) {
+          console.info("[sermorizer] normalised generated document", {
+            id: pending.id,
+            changes: fixes,
+          });
+        }
         const title = m.title?.trim() || extractHtmlTitle(html) || "Untitled sermon";
         // Structural check before this document is stored. Warn, never discard:
         // a readable summary with a cosmetic fault is worth far more to the

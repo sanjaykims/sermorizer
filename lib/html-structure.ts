@@ -90,6 +90,62 @@ function checkKeyVerse(html: string): StructuralProblem[] {
     : [];
 }
 
+/** The at-a-glance list exists to add something: a takeaway per section. When
+ *  it merely repeats the headings, the reader gets the tab bar twice and learns
+ *  nothing. Cannot be auto-fixed — only the model can write a takeaway — so it
+ *  is reported. */
+function checkSummaryIsNotHeadingEcho(html: string): StructuralProblem[] {
+  const headings = [...html.matchAll(/<span class="sec-title">([^<]*)<\/span>/g)].map((m) =>
+    m[1].trim(),
+  );
+  const items = [...html.matchAll(/<div class="sm-text">([^<]*)<\/div>/g)].map((m) => m[1].trim());
+  if (items.length < 3) return [];
+  const echoed = items.filter((t) => headings.includes(t)).length;
+  return echoed >= Math.ceil(items.length / 2)
+    ? [
+        `the at-a-glance list repeats ${echoed} of ${items.length} section headings ` +
+          `verbatim — those headings are already in the tab bar, so the list adds ` +
+          `nothing. Split parts should supply data-takeaway.`,
+      ]
+    : [];
+}
+
+/** Emphasis only reads as emphasis while it stays scarce. Judging WHICH mark to
+ *  cut is editorial, so this reports the budget rather than enforcing it. */
+function checkEmphasisBudget(html: string): StructuralProblem[] {
+  const sections = (html.match(/<section(?:[\s>])/g) ?? []).length;
+  if (sections < 3) return [];
+  const problems: StructuralProblem[] = [];
+  const quotes = (html.match(/class="(?:key-quote|pullquote)"/g) ?? []).length;
+  const marks = (html.match(/class="hl(?:-[a-z]+)?"/g) ?? []).length;
+  if (quotes > sections) {
+    problems.push(`${quotes} pull quotes across ${sections} sections — more than one each.`);
+  }
+  if (marks > sections * 3) {
+    problems.push(`${marks} highlighter marks across ${sections} sections — over three each.`);
+  }
+  return problems;
+}
+
+/**
+ * Nesting faults ONLY — unclosed or orphaned tags. Separate from the full
+ * check because it answers a different question: "is this document safe to
+ * parse and rewrite?". An HTML parser recovers from a missing close tag by
+ * relocating the content that follows, so running a rewrite over a document
+ * with a broken tag can scramble it further rather than fix it. Callers that
+ * modify a document must consult this first and refuse when it is non-empty.
+ */
+export function findNestingProblems(html: string): StructuralProblem[] {
+  if (!html || !html.trim()) return ["document is empty"];
+  const start = html.indexOf("<body");
+  const body = start >= 0 ? html.slice(start) : html;
+  return [
+    ...checkNesting(body, "div"),
+    ...checkNesting(body, "section"),
+    ...checkNesting(body, "blockquote"),
+  ];
+}
+
 /**
  * Report every structural fault found in a finished document. Empty array
  * means the document passed. Callers log these; they do NOT discard a
@@ -103,10 +159,10 @@ export function findStructuralProblems(html: string): StructuralProblem[] {
   const start = html.indexOf("<body");
   const body = start >= 0 ? html.slice(start) : html;
   return [
-    ...checkNesting(body, "div"),
-    ...checkNesting(body, "section"),
-    ...checkNesting(body, "blockquote"),
+    ...findNestingProblems(html),
     ...checkSectionNumbering(body),
     ...checkKeyVerse(body),
+    ...checkSummaryIsNotHeadingEcho(body),
+    ...checkEmphasisBudget(body),
   ];
 }

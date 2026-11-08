@@ -1,5 +1,47 @@
 # Changelog
 
+## Hardening — 2026-11-08 (document normaliser)
+
+The 2026-11-08 preventions were split between things code could guarantee and
+things only the prompt could ask for. This moves everything mechanical into
+code, so the model being imperfect can no longer reach a reader.
+
+`lib/normalize-document.ts` runs on every finished document — single-call,
+stitched, and each translation separately, since translation preserves
+structure and therefore inherits every fault in the Korean. It:
+
+- unwraps a `<blockquote>` nested inside `.key-verse` (box inside a box);
+- moves a reference chip sitting at the end of a quote onto its own line as a
+  `<p class="bref">`, leaving one cited mid-sentence alone;
+- normalises `4:6~7` to `4:6–7` **inside reference chips only**, so a tilde in
+  Korean running prose ("1~3절") survives;
+- renumbers section badges 1..N, without touching ids or TOC links so no
+  in-page link can break.
+
+Two constraints are deliberate. It uses a real parser, never regex — hand-
+written regex surgery on these same faults is what left the documents with an
+orphan `</blockquote>` and an unclosed `<blockquote>`, because a pattern that
+removes an opening tag can consume a closing tag belonging to something else.
+And it rewrites only when it actually changed something, so a document the
+model got right is returned byte-for-byte.
+
+**It refuses to touch a document whose tags do not nest.** Found by running it
+against the real broken file: an HTML parser recovers from a missing close tag
+by relocating everything after it, so normalising that document made the parser
+see 10 sections instead of 11, mis-number a badge and leave two `<div>`s
+unclosed — it made a broken document worse. `findNestingProblems()` is now a
+separate export answering "is this safe to rewrite?", and the normaliser bails
+out and reports instead.
+
+What stays guidance, because no rule can decide it: whether a claim belongs to
+the preacher and whether a paragraph deserves emphasis. `findStructuralProblems`
+now *reports* both — an at-a-glance list that repeats the section headings, and
+emphasis past about one pull quote and three marks per section — so they are at
+least visible in the logs rather than silent.
+
+81 tests. The key ones were written against the faults that actually shipped,
+and verified end to end against the real 2026-11-08 file.
+
 ## Fixes — 2026-11-08 (structural validator)
 
 The repair pass earlier today left all three documents malformed, and the

@@ -224,6 +224,11 @@ structure-preserving translation with the font/lang swaps above.
       `lib/html-structure.ts` does this; the generate route runs it on every
       finished document and logs (never discards) what it finds. Count the BODY
       only — the injected stylesheet's comments mention `<div>` in prose.
+      Never repair a document with regex: a pattern that strips an opening tag
+      can consume a closing tag belonging to something else, which is exactly
+      how the orphan above was created. Use `normalizeDocument()`
+      (`lib/normalize-document.ts`), which uses a real parser and refuses to
+      rewrite a document whose tags do not already nest.
 - [ ] Section `.sec-icon` badges run 1..N and agree with the section ids, the
       tab bar and the at-a-glance list (a split sermon is stitched from parts
       that each number their own sections).
