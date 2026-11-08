@@ -31,6 +31,7 @@ import type { Lang } from "@/lib/types";
 import { ensureEnhanceCss } from "@/lib/enhance";
 import { splitHtmlForTranslation, reassembleTranslatedHtml } from "@/lib/translate-split";
 import { stitchPartsServer } from "@/lib/stitch";
+import { findStructuralProblems } from "@/lib/html-structure";
 import { extractHtmlTitle } from "@/lib/util";
 import { requireSessionOrUnauthorized } from "@/lib/auth/server";
 import { supabaseAdminAvailable } from "@/lib/supabase-server";
@@ -514,6 +515,18 @@ export async function POST(req: Request): Promise<Response> {
               const combined = stitchPartsServer(parts, partCount);
               const title =
                 m.title?.trim() || extractHtmlTitle(combined) || "Untitled sermon";
+              // Structural check before this document is stored. Warn, never discard:
+              // a readable summary with a cosmetic fault is worth far more to the
+              // reader than no summary at all, and these faults are repairable after
+              // the fact. Counting tags is not enough — the 2026-11-08 documents had
+              // equal open/close counts and still carried an orphan </blockquote>.
+              const stitchProblems = findStructuralProblems(combined);
+              if (stitchProblems.length) {
+                console.warn("[sermorizer] stitched document has structural problems", {
+                  id: rowId,
+                  problems: stitchProblems,
+                });
+              }
               // Compare-and-set on status='generating': when the last two
               // parts finish in the same instant, both workers reach here —
               // exactly one wins, so the stitch is stored once and only one
@@ -618,6 +631,18 @@ export async function POST(req: Request): Promise<Response> {
         }
         const html = ensureEnhanceCss(raw);
         const title = m.title?.trim() || extractHtmlTitle(html) || "Untitled sermon";
+        // Structural check before this document is stored. Warn, never discard:
+        // a readable summary with a cosmetic fault is worth far more to the
+        // reader than no summary at all, and these faults are repairable after
+        // the fact. Counting tags is not enough — the 2026-11-08 documents had
+        // equal open/close counts and still carried an orphan </blockquote>.
+        const problems = findStructuralProblems(html);
+        if (problems.length) {
+          console.warn("[sermorizer] generated document has structural problems", {
+            id: pending.id,
+            problems,
+          });
+        }
         // Fenced finalize: only publish if this attempt still owns the row and
         // it's still 'generating'. A retry that reclaimed the row (new token)
         // means this straggler shouldn't overwrite the fresh attempt.

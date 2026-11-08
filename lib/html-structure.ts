@@ -1,0 +1,112 @@
+/* Structural checks for a finished sermon document.
+ *
+ * Why this exists: on 2026-11-08 a repair pass left one document with an
+ * orphan `</blockquote>` in the key verse and an unclosed `<blockquote>` in a
+ * later section. Counting opening and closing tags did NOT catch it — the
+ * counts were 4 and 4. Only the ORDER was wrong. A balance check cannot see
+ * that; a depth walk can, because depth dips below zero the moment a closing
+ * tag arrives with nothing open.
+ *
+ * These are cheap string-level checks, deliberately not a full parse: they run
+ * on every generated document, and their job is to catch the structural faults
+ * that actually reach readers (a quote that swallows the rest of the page, a
+ * section badge that disagrees with the tab bar), not to validate HTML.
+ */
+
+/** One structural fault, phrased for a log line. */
+export type StructuralProblem = string;
+
+type Tag = "div" | "section" | "blockquote";
+
+/** Walk one tag's opens/closes in document order and report nesting faults. */
+function checkNesting(html: string, tag: Tag): StructuralProblem[] {
+  // `<div` (not `<div>`) so attributes are matched; the closing form is exact.
+  const re = new RegExp(`<${tag}(?:[\\s>])|</${tag}>`, "g");
+  const problems: StructuralProblem[] = [];
+  let depth = 0;
+  let opens = 0;
+  let closes = 0;
+  for (const m of html.matchAll(re)) {
+    if (m[0].startsWith("</")) {
+      closes++;
+      depth--;
+      if (depth < 0) {
+        problems.push(
+          `<${tag}>: a </${tag}> appears with none open (at character ${m.index}). ` +
+            `This is the fault an open/close COUNT cannot see.`,
+        );
+        depth = 0; // keep walking so we report every fault, not just the first
+      }
+    } else {
+      opens++;
+      depth++;
+    }
+  }
+  if (depth > 0) {
+    problems.push(`<${tag}>: ${depth} unclosed (${opens} opened, ${closes} closed).`);
+  }
+  return problems;
+}
+
+/** The visible section badges must agree with the ids and the tab bar. */
+function checkSectionNumbering(html: string): StructuralProblem[] {
+  const problems: StructuralProblem[] = [];
+  const badges = [...html.matchAll(/<span class="sec-icon">([^<]*)<\/span>/g)]
+    .map((m) => m[1].trim())
+    // The at-a-glance heading carries a non-numeric badge; it is not a section.
+    .filter((t) => /^\d+$/.test(t))
+    .map(Number);
+  if (badges.length === 0) return problems;
+
+  const expected = badges.map((_, i) => i + 1);
+  if (badges.join(",") !== expected.join(",")) {
+    problems.push(
+      `.sec-icon badges read ${badges.join(",")} but should read ` +
+        `${expected.join(",")}. A split sermon is stitched from parts that each ` +
+        `number their own sections, so the badges must be renumbered on stitch.`,
+    );
+  }
+  const ids = [...html.matchAll(/<section id="sec-(\d+)"/g)].map((m) => Number(m[1]));
+  if (ids.length && ids.join(",") !== ids.map((_, i) => i + 1).join(",")) {
+    problems.push(`<section> ids read ${ids.join(",")} but should run 1..${ids.length}.`);
+  }
+  if (ids.length && badges.length && ids.length === badges.length) {
+    const mismatch = ids.findIndex((id, i) => id !== badges[i]);
+    if (mismatch >= 0) {
+      problems.push(
+        `section #${mismatch + 1} has id "sec-${ids[mismatch]}" but badge ` +
+          `"${badges[mismatch]}" — the page contradicts its own tab bar.`,
+      );
+    }
+  }
+  return problems;
+}
+
+/** `.key-verse` is already the quotation surface; a quote nested inside it
+ *  paints a box inside a box (and is how the orphan tag above got created). */
+function checkKeyVerse(html: string): StructuralProblem[] {
+  return /<div class="key-verse">[^<]*<\/?blockquote/.test(html)
+    ? [`.key-verse contains a <blockquote> tag — it is already the quote surface.`]
+    : [];
+}
+
+/**
+ * Report every structural fault found in a finished document. Empty array
+ * means the document passed. Callers log these; they do NOT discard a
+ * document over them — a readable summary with a cosmetic fault is worth far
+ * more to the reader than no summary at all.
+ */
+export function findStructuralProblems(html: string): StructuralProblem[] {
+  if (!html || !html.trim()) return ["document is empty"];
+  // Only the body: the injected stylesheet's comments mention tags like <div>
+  // in prose, which would skew any tag scan over the whole file.
+  const start = html.indexOf("<body");
+  const body = start >= 0 ? html.slice(start) : html;
+  return [
+    ...checkNesting(body, "div"),
+    ...checkNesting(body, "section"),
+    ...checkNesting(body, "blockquote"),
+    ...checkSectionNumbering(body),
+    ...checkKeyVerse(body),
+  ];
+}

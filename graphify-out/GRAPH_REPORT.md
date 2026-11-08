@@ -4,7 +4,11 @@
 - cluster-only mode — file stats not available
 
 ## Summary
+<<<<<<< Updated upstream
 - 386 nodes · 823 edges · 20 communities (17 shown, 3 thin omitted)
+=======
+- 396 nodes · 744 edges · 26 communities (23 shown, 3 thin omitted)
+>>>>>>> Stashed changes
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
@@ -31,9 +35,15 @@
 - Community 14
 - Community 15
 - Community 16
+- Community 17
+- Community 18
+- Community 19
+- Community 20
+- Community 21
 
 ## God Nodes (most connected - your core abstractions)
 1. `getSupabaseAdmin()` - 30 edges
+<<<<<<< Updated upstream
 2. `supabaseAdminAvailable()` - 27 edges
 3. `POST()` - 25 edges
 4. `withSupabaseRetry()` - 22 edges
@@ -43,22 +53,34 @@
 8. `buildEpub()` - 13 edges
 9. `Lang` - 11 edges
 10. `Sermorizer()` - 10 edges
+=======
+2. `supabaseAdminAvailable()` - 25 edges
+3. `withSupabaseRetry()` - 22 edges
+4. `requireSessionOrUnauthorized()` - 16 edges
+5. `compilerOptions` - 16 edges
+6. `getAuthConfig()` - 14 edges
+7. `buildEpub()` - 13 edges
+8. `setSessionCookie()` - 10 edges
+9. `rpInfoFrom()` - 9 edges
+10. `iconArt()` - 9 edges
+>>>>>>> Stashed changes
 
 ## Surprising Connections (you probably didn't know these)
 - `POST()` --calls--> `verifyPasscode()`  [EXTRACTED]
   app/api/auth/passcode/route.ts → lib/auth/crypto.ts
-- `POST()` --calls--> `getAuthConfig()`  [EXTRACTED]
-  app/api/auth/passcode/route.ts → lib/auth/server.ts
-- `POST()` --calls--> `setSessionCookie()`  [EXTRACTED]
-  app/api/auth/passcode/route.ts → lib/auth/server.ts
+- `POST()` --calls--> `hashPasscode()`  [EXTRACTED]
+  app/api/auth/setup/route.ts → lib/auth/crypto.ts
+- `GET()` --calls--> `withSupabaseRetry()`  [EXTRACTED]
+  app/api/auth/status/route.ts → lib/supabase-server.ts
+- `POST()` --calls--> `requireSessionOrUnauthorized()`  [EXTRACTED]
+  app/api/push/subscribe/route.ts → lib/auth/server.ts
 - `POST()` --calls--> `supabaseAdminAvailable()`  [EXTRACTED]
-  app/api/auth/passkey/login-begin/route.ts → lib/supabase-server.ts
-- `POST()` --calls--> `supabaseAdminAvailable()`  [EXTRACTED]
-  app/api/auth/passkey/login-finish/route.ts → lib/supabase-server.ts
+  app/api/push/subscribe/route.ts → lib/supabase-server.ts
 
 ## Import Cycles
 - None detected.
 
+<<<<<<< Updated upstream
 ## Communities (20 total, 3 thin omitted)
 
 ### Community 0 - "Community 0"
@@ -80,62 +102,127 @@ Nodes (32): LANG_LABEL, LANG_ORDER, fileName(), stitchParts(), BookLabels, BookM
 ### Community 4 - "Community 4"
 Cohesion: 0.08
 Nodes (35): cleanTranscript(), RequestBody, runAnthropic(), RunResult, stripFences(), UserContent, ensureEnhanceCss(), buildGenerationUserContent() (+27 more)
+=======
+## Communities (26 total, 3 thin omitted)
 
-### Community 5 - "Community 5"
+### Community 0 - "Community 0"
+Cohesion: 0.11
+Nodes (44): POST(), clientIp(), POST(), POST(), POST(), POST(), POST(), POST() (+36 more)
+
+### Community 1 - "Community 1"
+Cohesion: 0.10
+Nodes (33): LANG_LABEL, LANG_ORDER, BookLabels, BookMeta, buildBookHtml(), Chapter, cleanTitle(), collectScriptureRefs() (+25 more)
+
+### Community 2 - "Community 2"
+Cohesion: 0.07
+Nodes (19): announce(), BookPanel, canvasToPayload(), EMPTY_META, fileToPayloads(), formatEntryDate(), ImagePayload, imageToBase64() (+11 more)
+>>>>>>> Stashed changes
+
+### Community 3 - "Community 3"
 Cohesion: 0.06
 Nodes (32): eslint, eslint-config-next, @eslint/eslintrc, devDependencies, eslint, eslint-config-next, @eslint/eslintrc, @types/node (+24 more)
 
-### Community 6 - "Community 6"
+### Community 4 - "Community 4"
+Cohesion: 0.19
+Nodes (26): bumpAttempt(), clearAttempt(), ALLOWED_STATUS, Ctx, DELETE(), gate(), GET(), PATCH() (+18 more)
+
+### Community 5 - "Community 5"
 Cohesion: 0.07
 Nodes (26): dom, dom.iterable, esnext, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts, **/*.tsx (+18 more)
+
+### Community 6 - "Community 6"
+Cohesion: 0.12
+Nodes (16): buildGenerationUserContent(), buildInputBlocks(), buildPartUserContent(), ContentBlock, fractionWord(), GenerationInput, ImageMediaType, ImagePayload (+8 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.09
 Nodes (23): @anthropic-ai/sdk, jszip, next, node-html-parser, dependencies, @anthropic-ai/sdk, jszip, next (+15 more)
 
 ### Community 8 - "Community 8"
+<<<<<<< Updated upstream
 Cohesion: 0.28
 Nodes (11): bestTitle(), Body, Item, Parsed, parseItem(), POST(), detectLang(), importGroupKey() (+3 more)
+=======
+Cohesion: 0.18
+Nodes (13): cleanTranscript(), POST(), RequestBody, runAnthropic(), RunResult, stripFences(), UserContent, checkKeyVerse() (+5 more)
+>>>>>>> Stashed changes
 
 ### Community 9 - "Community 9"
+Cohesion: 0.31
+Nodes (10): bestTitle(), Body, Item, Parsed, parseItem(), POST(), detectLang(), importGroupKey() (+2 more)
+
+### Community 10 - "Community 10"
 Cohesion: 0.18
 Nodes (4): Phase, SetupScreen(), Status, apiFetch()
 
-### Community 10 - "Community 10"
+### Community 11 - "Community 11"
 Cohesion: 0.29
 Nodes (7): AppleIcon(), size, GET(), GET(), Icon(), size, iconArt()
 
-### Community 11 - "Community 11"
+### Community 12 - "Community 12"
+Cohesion: 0.27
+Nodes (6): Body, POST(), ensureConfigured(), savePushSubscription(), sendPushToAll(), StoredSub
+
+### Community 13 - "Community 13"
 Cohesion: 0.22
 Nodes (7): bodyKR, bodyLat, displayKR, displayLat, metadata, monoLat, viewport
 
-### Community 12 - "Community 12"
+### Community 14 - "Community 14"
+Cohesion: 0.36
+Nodes (6): extractTitleText(), FONT_SWAP, reassembleTranslatedHtml(), SplitTranslationDoc, swapFonts(), withLang()
+
+### Community 15 - "Community 15"
+Cohesion: 0.43
+Nodes (5): formatCost(), PER_M, totalTokens(), usageToCost(), SummaryUsage
+
+### Community 16 - "Community 16"
+Cohesion: 0.80
+Nodes (3): hashPasscode(), scryptAsync, verifyPasscode()
+
+### Community 17 - "Community 17"
 Cohesion: 0.50
 Nodes (5): POST(), hashPasscode(), scryptAsync, verifyPasscode(), persistPasscode()
 
-### Community 13 - "Community 13"
+### Community 18 - "Community 18"
 Cohesion: 0.50
 Nodes (3): cspDirectives, nextConfig, securityHeaders
 
 ## Knowledge Gaps
-- **109 isolated node(s):** `Status`, `Phase`, `LANG_LABEL`, `LANG_ORDER`, `RequestBody` (+104 more)
+- **113 isolated node(s):** `Status`, `Phase`, `LANG_LABEL`, `LANG_ORDER`, `Body` (+108 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **3 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
+<<<<<<< Updated upstream
 - **Why does `dependencies` connect `Community 7` to `Community 5`?**
   _High betweenness centrality (0.203) - this node is a cross-community bridge._
 - **Why does `buildEpub()` connect `Community 3` to `Community 7`?**
   _High betweenness centrality (0.201) - this node is a cross-community bridge._
 - **Why does `jszip` connect `Community 7` to `Community 3`?**
   _High betweenness centrality (0.198) - this node is a cross-community bridge._
+=======
+- **Why does `dependencies` connect `Community 7` to `Community 3`?**
+  _High betweenness centrality (0.136) - this node is a cross-community bridge._
+- **Why does `buildEpub()` connect `Community 1` to `Community 7`?**
+  _High betweenness centrality (0.131) - this node is a cross-community bridge._
+- **Why does `jszip` connect `Community 7` to `Community 1`?**
+  _High betweenness centrality (0.129) - this node is a cross-community bridge._
+>>>>>>> Stashed changes
 - **What connects `Status`, `Phase`, `LANG_LABEL` to the rest of the system?**
-  _109 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _113 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
+<<<<<<< Updated upstream
   _Cohesion score 0.11428571428571428 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.06462585034013606 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.12077294685990338 - nodes in this community are weakly interconnected._
+=======
+  _Cohesion score 0.10637054354178843 - nodes in this community are weakly interconnected._
+- **Should `Community 1` be split into smaller, more focused modules?**
+  _Cohesion score 0.09620721554116558 - nodes in this community are weakly interconnected._
+- **Should `Community 2` be split into smaller, more focused modules?**
+  _Cohesion score 0.07301587301587302 - nodes in this community are weakly interconnected._
+>>>>>>> Stashed changes

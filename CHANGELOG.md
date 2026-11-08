@@ -1,5 +1,31 @@
 # Changelog
 
+## Fixes — 2026-11-08 (structural validator)
+
+The repair pass earlier today left all three documents malformed, and the
+verification missed it: the key verse held an orphan `</blockquote>` whose
+opening tag had been unwrapped, and a later section's `<blockquote>` was never
+closed because the lift that moved its reference out consumed the closing tag.
+
+**The faults had EQUAL opening and closing counts — 4 and 4.** Only the order
+was wrong, so a balance check reported the documents clean. A reader found them
+instead, which is the worst way for this to surface. All three are now
+corrected and validated by tag order (`OCOCOCOC`) and nesting depth rather than
+by counting.
+
+`lib/html-structure.ts` turns that lesson into a check the repo keeps:
+`findStructuralProblems()` walks the depth of `<div>`, `<section>` and
+`<blockquote>` through the body — depth must never go negative and must end at
+zero — and also verifies that the `.sec-icon` badges agree with the section ids.
+The generate route runs it on every finished document, single-call and stitched,
+and **logs what it finds without discarding anything**: a readable summary with
+a cosmetic fault is worth far more to the reader than no summary, and these
+faults are repairable after the fact.
+
+Covered by `lib/__tests__/html-structure.test.ts`, including a case that asserts
+the opening and closing counts are equal and that the checker fails it anyway —
+the precise blind spot that let this reach the documents.
+
 ## Hardening — 2026-11-08
 
 Follow-up to the review fixes below: every remaining finding that could recur

@@ -216,8 +216,14 @@ structure-preserving translation with the font/lang swaps above.
 
 ## Quality checklist before returning a document
 
-- [ ] `<div>` open/close counts balanced (count the BODY only — the injected
-      stylesheet's comments mention `<div>` and will skew a whole-file count).
+- [ ] `<div>` / `<section>` / `<blockquote>` are properly NESTED, not merely
+      balanced. Counting opens and closes is not enough: the 2026-11-08
+      documents had 4 of each `<blockquote>` tag and still carried an orphan
+      `</blockquote>` plus an unclosed one. Walk the depth — it must never go
+      negative and must end at zero. `findStructuralProblems()` in
+      `lib/html-structure.ts` does this; the generate route runs it on every
+      finished document and logs (never discards) what it finds. Count the BODY
+      only — the injected stylesheet's comments mention `<div>` in prose.
 - [ ] Section `.sec-icon` badges run 1..N and agree with the section ids, the
       tab bar and the at-a-glance list (a split sermon is stitched from parts
       that each number their own sections).

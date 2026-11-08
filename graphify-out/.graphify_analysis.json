@@ -1,6 +1,7 @@
 {
   "communities": {
     "0": [
+<<<<<<< Updated upstream
       "app_api_auth_passcode_route",
       "app_api_auth_passcode_route_bumpattempt",
       "app_api_auth_passcode_route_clearattempt",
@@ -106,6 +107,13 @@
     "2": [
       "app_api_auth_logout_route",
       "app_api_auth_logout_route_post",
+=======
+      "app_api_auth_logout_route",
+      "app_api_auth_logout_route_post",
+      "app_api_auth_passcode_route",
+      "app_api_auth_passcode_route_clientip",
+      "app_api_auth_passcode_route_post",
+>>>>>>> Stashed changes
       "app_api_auth_passkey_login_begin_route",
       "app_api_auth_passkey_login_begin_route_post",
       "app_api_auth_passkey_login_finish_route",
@@ -114,8 +122,19 @@
       "app_api_auth_passkey_register_begin_route_post",
       "app_api_auth_passkey_register_finish_route",
       "app_api_auth_passkey_register_finish_route_post",
+<<<<<<< Updated upstream
       "app_api_auth_status_route",
       "app_api_auth_status_route_get",
+=======
+      "app_api_auth_setup_route",
+      "app_api_auth_setup_route_post",
+      "app_api_auth_status_route",
+      "app_api_auth_status_route_get",
+      "app_api_push_unsubscribe_route",
+      "app_api_push_unsubscribe_route_post",
+      "app_api_summaries_route",
+      "app_api_summaries_route_get",
+>>>>>>> Stashed changes
       "lib_auth_server",
       "lib_auth_server_authconfig",
       "lib_auth_server_challengepayload",
@@ -124,6 +143,10 @@
       "lib_auth_server_getauthconfig",
       "lib_auth_server_isprod",
       "lib_auth_server_issetupcomplete",
+<<<<<<< Updated upstream
+=======
+      "lib_auth_server_persistpasscode",
+>>>>>>> Stashed changes
       "lib_auth_server_readchallengecookie",
       "lib_auth_server_readsession",
       "lib_auth_server_requiresessionorunauthorized",
@@ -148,10 +171,20 @@
       "lib_auth_webauthn_startauthentication",
       "lib_auth_webauthn_startregistration",
       "lib_auth_webauthn_storedpasskey",
+<<<<<<< Updated upstream
       "lib_tests_session_test",
       "lib_tests_session_test_p"
     ],
     "3": [
+=======
+      "lib_push_deletepushsubscription",
+      "lib_supabase_server",
+      "lib_supabase_server_supabaseadminavailable",
+      "lib_tests_session_test",
+      "lib_tests_session_test_p"
+    ],
+    "1": [
+>>>>>>> Stashed changes
       "app_bookpanel",
       "app_bookpanel_bookpanel",
       "app_bookpanel_iconbook",
@@ -187,6 +220,13 @@
       "lib_stitch_stitchpartsserver",
       "lib_tests_stitch_test",
       "lib_tests_util_test",
+<<<<<<< Updated upstream
+=======
+      "lib_types",
+      "lib_types_jobstatus",
+      "lib_types_lang",
+      "lib_types_summary",
+>>>>>>> Stashed changes
       "lib_util",
       "lib_util_decodeentities",
       "lib_util_downloadblob",
@@ -196,6 +236,7 @@
       "lib_util_extracthtmltitle",
       "lib_util_slug"
     ],
+<<<<<<< Updated upstream
     "4": [
       "app_api_generate_route",
       "app_api_generate_route_cleantranscript",
@@ -240,6 +281,47 @@
       "lib_translate_split_withlang"
     ],
     "5": [
+=======
+    "2": [
+      "app_page",
+      "app_page_announce",
+      "app_page_bookpanel",
+      "app_page_canvastopayload",
+      "app_page_elapsedtimer",
+      "app_page_empty_meta",
+      "app_page_filename",
+      "app_page_filetopayloads",
+      "app_page_formatentrydate",
+      "app_page_iconalert",
+      "app_page_iconcheck",
+      "app_page_iconchevron",
+      "app_page_iconclock",
+      "app_page_iconclose",
+      "app_page_iconcoin",
+      "app_page_iconcross",
+      "app_page_icondownload",
+      "app_page_iconplus",
+      "app_page_imagepayload",
+      "app_page_imagetobase64",
+      "app_page_job",
+      "app_page_lang_label",
+      "app_page_metadata",
+      "app_page_page",
+      "app_page_pdftoimages",
+      "app_page_playchime",
+      "app_page_primealerts",
+      "app_page_readerr",
+      "app_page_registerpush",
+      "app_page_sermorizer",
+      "app_page_splittranscript",
+      "app_page_status",
+      "app_page_stitchparts",
+      "app_page_upsert",
+      "app_page_urlbase64touint8array",
+      "app_page_waitforrow"
+    ],
+    "3": [
+>>>>>>> Stashed changes
       "eslint",
       "eslint_config_next",
       "eslint_eslintrc",
@@ -274,7 +356,37 @@
       "typescript_eslint",
       "vitest"
     ],
-    "6": [
+    "4": [
+      "app_api_auth_passcode_route_bumpattempt",
+      "app_api_auth_passcode_route_clearattempt",
+      "app_api_summaries_id_route",
+      "app_api_summaries_id_route_allowed_status",
+      "app_api_summaries_id_route_ctx",
+      "app_api_summaries_id_route_delete",
+      "app_api_summaries_id_route_gate",
+      "app_api_summaries_id_route_get",
+      "app_api_summaries_id_route_patch",
+      "app_api_summaries_id_route_patchbody",
+      "lib_summaries_server",
+      "lib_summaries_server_addusageserver",
+      "lib_summaries_server_claimpendingsummaryserver",
+      "lib_summaries_server_deletesummaryserver",
+      "lib_summaries_server_finalizesummaryifgeneratingserver",
+      "lib_summaries_server_getgentokenserver",
+      "lib_summaries_server_getsummaryserver",
+      "lib_summaries_server_insertsummaryserver",
+      "lib_summaries_server_listsummariesserver",
+      "lib_summaries_server_marksummaryerrorserver",
+      "lib_summaries_server_mergepartserver",
+      "lib_summaries_server_mergeproofreadpartserver",
+      "lib_summaries_server_mergesummarydocserver",
+      "lib_summaries_server_row",
+      "lib_summaries_server_tosummary",
+      "lib_summaries_server_updatesummaryserver",
+      "lib_supabase_server_getsupabaseadmin",
+      "lib_supabase_server_withsupabaseretry"
+    ],
+    "5": [
       "ref_dom",
       "ref_dom_iterable",
       "ref_esnext",
@@ -303,6 +415,32 @@
       "tsconfig_exclude",
       "tsconfig_include"
     ],
+    "6": [
+      "lib_enhance",
+      "lib_enhance_ensureenhancecss",
+      "lib_prompt",
+      "lib_prompt_buildgenerationusercontent",
+      "lib_prompt_buildinputblocks",
+      "lib_prompt_buildpartusercontent",
+      "lib_prompt_buildproofreadusercontent",
+      "lib_prompt_buildtranslationusercontent",
+      "lib_prompt_contentblock",
+      "lib_prompt_fractionword",
+      "lib_prompt_generationinput",
+      "lib_prompt_imagemediatype",
+      "lib_prompt_imagepayload",
+      "lib_prompt_issupportedmediatype",
+      "lib_prompt_mediablock",
+      "lib_prompt_mediatype",
+      "lib_prompt_ordinal",
+      "lib_prompt_partinput",
+      "lib_prompt_sermonmetadata",
+      "lib_prompt_supported_media_types",
+      "lib_stitch",
+      "lib_stitch_stitchpartsserver",
+      "lib_tests_prompt_test",
+      "lib_tests_stitch_test"
+    ],
     "7": [
       "anthropic_ai_sdk",
       "jszip",
@@ -329,6 +467,26 @@
       "web_push"
     ],
     "8": [
+      "app_api_generate_route",
+      "app_api_generate_route_cleantranscript",
+      "app_api_generate_route_post",
+      "app_api_generate_route_requestbody",
+      "app_api_generate_route_runanthropic",
+      "app_api_generate_route_runresult",
+      "app_api_generate_route_stripfences",
+      "app_api_generate_route_usercontent",
+      "lib_html_structure",
+      "lib_html_structure_checkkeyverse",
+      "lib_html_structure_checknesting",
+      "lib_html_structure_checksectionnumbering",
+      "lib_html_structure_findstructuralproblems",
+      "lib_html_structure_structuralproblem",
+      "lib_html_structure_tag",
+      "lib_tests_html_structure_test",
+      "lib_tests_html_structure_test_section",
+      "lib_tests_html_structure_test_wrap"
+    ],
+    "9": [
       "app_api_summaries_upload_route",
       "app_api_summaries_upload_route_besttitle",
       "app_api_summaries_upload_route_body",
@@ -341,11 +499,15 @@
       "lib_import_parse_importgroupkey",
       "lib_import_parse_isvalidymd",
       "lib_import_parse_parsefilename",
+<<<<<<< Updated upstream
       "lib_tests_import_parse_test",
       "lib_types",
       "lib_types_lang"
+=======
+      "lib_tests_import_parse_test"
+>>>>>>> Stashed changes
     ],
-    "9": [
+    "10": [
       "app_authgate",
       "app_authgate_authgate",
       "app_authgate_authmark",
@@ -360,7 +522,7 @@
       "lib_api",
       "lib_api_apifetch"
     ],
-    "10": [
+    "11": [
       "app_apple_icon",
       "app_apple_icon_appleicon",
       "app_apple_icon_size",
@@ -374,7 +536,19 @@
       "lib_icon_art",
       "lib_icon_art_iconart"
     ],
-    "11": [
+    "12": [
+      "app_api_push_subscribe_route",
+      "app_api_push_subscribe_route_body",
+      "app_api_push_subscribe_route_post",
+      "lib_push",
+      "lib_push_ensureconfigured",
+      "lib_push_key",
+      "lib_push_pushavailable",
+      "lib_push_savepushsubscription",
+      "lib_push_sendpushtoall",
+      "lib_push_storedsub"
+    ],
+    "13": [
       "app_layout",
       "app_layout_bodykr",
       "app_layout_bodylat",
@@ -385,49 +559,95 @@
       "app_layout_rootlayout",
       "app_layout_viewport"
     ],
+<<<<<<< Updated upstream
     "12": [
       "app_api_auth_setup_route",
       "app_api_auth_setup_route_post",
+=======
+    "14": [
+      "lib_translate_split",
+      "lib_translate_split_extracttitletext",
+      "lib_translate_split_font_swap",
+      "lib_translate_split_reassembletranslatedhtml",
+      "lib_translate_split_splithtmlfortranslation",
+      "lib_translate_split_splittranslationdoc",
+      "lib_translate_split_swapfonts",
+      "lib_translate_split_withlang"
+    ],
+    "15": [
+      "lib_pricing",
+      "lib_pricing_formatcost",
+      "lib_pricing_per_m",
+      "lib_pricing_totaltokens",
+      "lib_pricing_usagetocost",
+      "lib_tests_pricing_test",
+      "lib_types_summaryusage"
+    ],
+    "16": [
+>>>>>>> Stashed changes
       "lib_auth_crypto",
       "lib_auth_crypto_hashpasscode",
       "lib_auth_crypto_scryptasync",
       "lib_auth_crypto_verifypasscode",
+<<<<<<< Updated upstream
       "lib_auth_server_persistpasscode",
       "lib_tests_crypto_test"
+=======
+      "lib_tests_crypto_test"
     ],
-    "13": [
+    "17": [
+      "lib_themes",
+      "lib_themes_palette",
+      "lib_themes_theme",
+      "lib_themes_themehint",
+      "lib_themes_themes"
+>>>>>>> Stashed changes
+    ],
+    "18": [
       "next_config",
       "next_config_cspdirectives",
       "next_config_nextconfig",
       "next_config_securityheaders"
     ],
-    "14": [
+    "19": [
       "eslint_config",
       "eslint_config_compat",
       "eslint_config_dirname"
     ],
-    "15": [
+    "20": [
       "lib_tests_summaries_server_test",
       "lib_tests_summaries_server_test_captured",
       "lib_tests_summaries_server_test_fakeclient"
     ],
-    "16": [
+    "21": [
       "vercel",
       "vercel_fluid",
       "vercel_schema"
     ],
-    "17": [
+    "22": [
       "app_manifest",
       "app_manifest_manifest"
     ],
+<<<<<<< Updated upstream
     "18": [
       "public_sw"
     ],
     "19": [
+=======
+    "23": [
+      "app_scenehero",
+      "app_scenehero_scenehero"
+    ],
+    "24": [
+      "public_sw"
+    ],
+    "25": [
+>>>>>>> Stashed changes
       "vitest_config"
     ]
   },
   "cohesion": {
+<<<<<<< Updated upstream
     "0": 0.11428571428571428,
     "1": 0.06462585034013606,
     "2": 0.12077294685990338,
@@ -448,6 +668,34 @@
     "17": 1.0,
     "18": 1.0,
     "19": 1.0
+=======
+    "0": 0.10637054354178843,
+    "1": 0.09620721554116558,
+    "2": 0.07301587301587302,
+    "3": 0.06060606060606061,
+    "4": 0.1931216931216931,
+    "5": 0.07407407407407407,
+    "6": 0.11594202898550725,
+    "7": 0.08695652173913043,
+    "8": 0.17647058823529413,
+    "9": 0.3076923076923077,
+    "10": 0.1794871794871795,
+    "11": 0.2878787878787879,
+    "12": 0.26666666666666666,
+    "13": 0.2222222222222222,
+    "14": 0.35714285714285715,
+    "15": 0.42857142857142855,
+    "16": 0.8,
+    "17": 0.5,
+    "18": 0.5,
+    "19": 0.6666666666666666,
+    "20": 0.6666666666666666,
+    "21": 0.6666666666666666,
+    "22": 1.0,
+    "23": 1.0,
+    "24": 1.0,
+    "25": 1.0
+>>>>>>> Stashed changes
   },
   "gods": [
     {
@@ -458,11 +706,6 @@
     {
       "id": "lib_supabase_server_supabaseadminavailable",
       "label": "supabaseAdminAvailable()",
-      "degree": 27
-    },
-    {
-      "id": "app_api_generate_route_post",
-      "label": "POST()",
       "degree": 25
     },
     {
@@ -473,7 +716,7 @@
     {
       "id": "lib_auth_server_requiresessionorunauthorized",
       "label": "requireSessionOrUnauthorized()",
-      "degree": 18
+      "degree": 16
     },
     {
       "id": "tsconfig_compileroptions",
@@ -491,6 +734,7 @@
       "degree": 13
     },
     {
+<<<<<<< Updated upstream
       "id": "lib_types_lang",
       "label": "Lang",
       "degree": 11
@@ -499,6 +743,21 @@
       "id": "app_page_sermorizer",
       "label": "Sermorizer()",
       "degree": 10
+=======
+      "id": "lib_auth_server_setsessioncookie",
+      "label": "setSessionCookie()",
+      "degree": 10
+    },
+    {
+      "id": "lib_auth_server_rpinfofrom",
+      "label": "rpInfoFrom()",
+      "degree": 9
+    },
+    {
+      "id": "lib_icon_art_iconart",
+      "label": "iconArt()",
+      "degree": 9
+>>>>>>> Stashed changes
     }
   ],
   "surprises": [
@@ -515,31 +774,20 @@
     },
     {
       "source": "POST()",
-      "target": "getAuthConfig()",
+      "target": "hashPasscode()",
       "source_files": [
-        "app/api/auth/passcode/route.ts",
-        "lib/auth/server.ts"
+        "app/api/auth/setup/route.ts",
+        "lib/auth/crypto.ts"
       ],
       "confidence": "EXTRACTED",
       "relation": "calls",
       "why": "connects across different repos/directories; bridges separate communities"
     },
     {
-      "source": "POST()",
-      "target": "setSessionCookie()",
+      "source": "GET()",
+      "target": "withSupabaseRetry()",
       "source_files": [
-        "app/api/auth/passcode/route.ts",
-        "lib/auth/server.ts"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "calls",
-      "why": "connects across different repos/directories; bridges separate communities"
-    },
-    {
-      "source": "POST()",
-      "target": "supabaseAdminAvailable()",
-      "source_files": [
-        "app/api/auth/passkey/login-begin/route.ts",
+        "app/api/auth/status/route.ts",
         "lib/supabase-server.ts"
       ],
       "confidence": "EXTRACTED",
@@ -548,9 +796,20 @@
     },
     {
       "source": "POST()",
+      "target": "requireSessionOrUnauthorized()",
+      "source_files": [
+        "app/api/push/subscribe/route.ts",
+        "lib/auth/server.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "POST()",
       "target": "supabaseAdminAvailable()",
       "source_files": [
-        "app/api/auth/passkey/login-finish/route.ts",
+        "app/api/push/subscribe/route.ts",
         "lib/supabase-server.ts"
       ],
       "confidence": "EXTRACTED",
@@ -561,6 +820,7 @@
   "questions": [
     {
       "type": "bridge_node",
+<<<<<<< Updated upstream
       "question": "Why does `dependencies` connect `Community 7` to `Community 5`?",
       "why": "High betweenness centrality (0.203) - this node is a cross-community bridge."
     },
@@ -575,24 +835,52 @@
       "why": "High betweenness centrality (0.198) - this node is a cross-community bridge."
     },
     {
+=======
+      "question": "Why does `dependencies` connect `Community 7` to `Community 3`?",
+      "why": "High betweenness centrality (0.136) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `buildEpub()` connect `Community 1` to `Community 7`?",
+      "why": "High betweenness centrality (0.131) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `jszip` connect `Community 7` to `Community 1`?",
+      "why": "High betweenness centrality (0.129) - this node is a cross-community bridge."
+    },
+    {
+>>>>>>> Stashed changes
       "type": "isolated_nodes",
       "question": "What connects `Status`, `Phase`, `LANG_LABEL` to the rest of the system?",
-      "why": "109 weakly-connected nodes found - possible documentation gaps or missing edges."
+      "why": "113 weakly-connected nodes found - possible documentation gaps or missing edges."
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 0` be split into smaller, more focused modules?",
+<<<<<<< Updated upstream
       "why": "Cohesion score 0.11428571428571428 - nodes in this community are weakly interconnected."
+=======
+      "why": "Cohesion score 0.10637054354178843 - nodes in this community are weakly interconnected."
+>>>>>>> Stashed changes
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 1` be split into smaller, more focused modules?",
+<<<<<<< Updated upstream
       "why": "Cohesion score 0.06462585034013606 - nodes in this community are weakly interconnected."
+=======
+      "why": "Cohesion score 0.09620721554116558 - nodes in this community are weakly interconnected."
+>>>>>>> Stashed changes
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 2` be split into smaller, more focused modules?",
+<<<<<<< Updated upstream
       "why": "Cohesion score 0.12077294685990338 - nodes in this community are weakly interconnected."
+=======
+      "why": "Cohesion score 0.07301587301587302 - nodes in this community are weakly interconnected."
+>>>>>>> Stashed changes
     }
   ]
 }
