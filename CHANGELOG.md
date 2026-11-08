@@ -41,10 +41,37 @@ Both are now fixed in code and covered by tests:
   `<p>` and `<p>` needs no explicit close in HTML, so nothing renders wrongly;
   and which `</p>` is the extra one cannot be determined, so an edit would be a
   guess. Reported rather than repaired.
-- **Mixed badge styles** (Chinese numerals, emoji) in two early summaries —
-  a choice the model made, not a fault.
+- **Mixed badge styles** (Roman numerals, Chinese numerals, emoji) in two
+  early summaries — a choice the model made, not a fault. Their sequences are
+  correct and their in-page links resolve.
 
-93 tests.
+### Metadata, and a display bug the audit exposed
+
+- **Six summaries had an empty `service_date`.** Each one prints its date
+  inside the document, every one of those is the Sunday it was created on, and
+  all six are now filled in from the document — the authoritative source.
+- **Two rows store a date WITH a time** — `2026-07-19-19-30` and
+  `2026-08-16-12-00`. That is deliberate: when a second service falls on a
+  Sunday that already has one, the time keeps the two rows distinct. The value
+  is load-bearing twice over (`claimPendingSummaryServer` matches it exactly to
+  decide whether a row can be reused, and the book sorts chapters by comparing
+  these strings, where the appended time is what puts the evening service after
+  that morning's), so it must NOT be normalised in the database.
+
+  What *was* wrong is the display. Every formatter tested for
+  `^\d{4}-\d{2}-\d{2}$` and fell through on a longer value, so the book's
+  chapter subtitle and the history list printed a raw `2026-07-19-19-30` at the
+  reader. New `lib/service-date.ts` parses both shapes; `lib/book.ts` renders
+  `2026.07.19 19:30` and `app/page.tsx` `2026-07-19 19:30`. Filenames keep the
+  full value, so two services on one Sunday still download as separate files.
+
+Also verified clean across all 90 documents: no negative nesting depth, no
+unclosed tags, no `<blockquote>` in `.key-verse`, no reference chips left in
+quotes, no tilde ranges, no broken in-page anchors, no external image
+references, no `김용복`/`김영범`, no `청정원`, and every badge sequence running
+1..N.
+
+104 tests.
 
 ## Hardening — 2026-11-08 (takeaway repair: the last gap closed)
 

@@ -3,11 +3,6 @@
     "0": [
       "app_api_auth_logout_route",
       "app_api_auth_logout_route_post",
-      "app_api_auth_passcode_route",
-      "app_api_auth_passcode_route_bumpattempt",
-      "app_api_auth_passcode_route_clearattempt",
-      "app_api_auth_passcode_route_clientip",
-      "app_api_auth_passcode_route_post",
       "app_api_auth_passkey_login_begin_route",
       "app_api_auth_passkey_login_begin_route_post",
       "app_api_auth_passkey_login_finish_route",
@@ -25,12 +20,16 @@
       "app_api_push_subscribe_route_post",
       "app_api_push_unsubscribe_route",
       "app_api_push_unsubscribe_route_post",
+      "app_api_summaries_id_route",
+      "app_api_summaries_id_route_allowed_status",
+      "app_api_summaries_id_route_ctx",
+      "app_api_summaries_id_route_delete",
+      "app_api_summaries_id_route_gate",
+      "app_api_summaries_id_route_get",
+      "app_api_summaries_id_route_patch",
+      "app_api_summaries_id_route_patchbody",
       "app_api_summaries_route",
       "app_api_summaries_route_get",
-      "lib_auth_crypto",
-      "lib_auth_crypto_hashpasscode",
-      "lib_auth_crypto_scryptasync",
-      "lib_auth_crypto_verifypasscode",
       "lib_auth_server",
       "lib_auth_server_authconfig",
       "lib_auth_server_challengepayload",
@@ -64,11 +63,15 @@
       "lib_auth_webauthn_startauthentication",
       "lib_auth_webauthn_startregistration",
       "lib_auth_webauthn_storedpasskey",
+      "lib_push",
       "lib_push_deletepushsubscription",
+      "lib_push_ensureconfigured",
+      "lib_push_key",
+      "lib_push_pushavailable",
       "lib_push_savepushsubscription",
+      "lib_push_storedsub",
       "lib_supabase_server",
       "lib_supabase_server_supabaseadminavailable",
-      "lib_tests_crypto_test",
       "lib_tests_session_test",
       "lib_tests_session_test_p"
     ],
@@ -84,7 +87,6 @@
       "app_api_generate_route_usercontent",
       "lib_enhance",
       "lib_enhance_ensureenhancecss",
-      "lib_html_structure_extractsectiondigest",
       "lib_prompt",
       "lib_prompt_buildgenerationusercontent",
       "lib_prompt_buildinputblocks",
@@ -104,28 +106,36 @@
       "lib_prompt_partinput",
       "lib_prompt_sermonmetadata",
       "lib_prompt_supported_media_types",
-      "lib_push",
-      "lib_push_ensureconfigured",
-      "lib_push_key",
-      "lib_push_pushavailable",
       "lib_push_sendpushtoall",
-      "lib_push_storedsub",
+      "lib_summaries_server",
       "lib_summaries_server_addusageserver",
+      "lib_summaries_server_claimpendingsummaryserver",
+      "lib_summaries_server_deletesummaryserver",
+      "lib_summaries_server_finalizesummaryifgeneratingserver",
+      "lib_summaries_server_getgentokenserver",
+      "lib_summaries_server_getsummaryserver",
+      "lib_summaries_server_insertsummaryserver",
+      "lib_summaries_server_listsummariesserver",
+      "lib_summaries_server_marksummaryerrorserver",
+      "lib_summaries_server_mergepartserver",
+      "lib_summaries_server_mergeproofreadpartserver",
       "lib_summaries_server_mergesummarydocserver",
+      "lib_summaries_server_row",
+      "lib_summaries_server_tosummary",
+      "lib_summaries_server_updatesummaryserver",
+      "lib_supabase_server_getsupabaseadmin",
+      "lib_supabase_server_withsupabaseretry",
       "lib_tests_prompt_test",
       "lib_themes",
       "lib_themes_palette",
       "lib_themes_theme",
       "lib_themes_themehint",
       "lib_themes_themes",
-      "lib_translate_split",
-      "lib_translate_split_extracttitletext",
-      "lib_translate_split_font_swap",
-      "lib_translate_split_reassembletranslatedhtml",
       "lib_translate_split_splithtmlfortranslation",
-      "lib_translate_split_splittranslationdoc",
-      "lib_translate_split_swapfonts",
-      "lib_translate_split_withlang"
+      "lib_types",
+      "lib_types_jobstatus",
+      "lib_types_summary",
+      "lib_types_summaryusage"
     ],
     "2": [
       "app_page",
@@ -134,6 +144,7 @@
       "app_page_canvastopayload",
       "app_page_elapsedtimer",
       "app_page_empty_meta",
+      "app_page_filename",
       "app_page_filetopayloads",
       "app_page_formatentrydate",
       "app_page_iconalert",
@@ -159,74 +170,18 @@
       "app_page_sermorizer",
       "app_page_splittranscript",
       "app_page_status",
+      "app_page_stitchparts",
       "app_page_upsert",
       "app_page_urlbase64touint8array",
       "app_page_waitforrow",
-      "app_scenehero",
-      "app_scenehero_scenehero",
-      "lib_pricing",
-      "lib_pricing_formatcost",
-      "lib_pricing_per_m",
-      "lib_pricing_totaltokens",
-      "lib_pricing_usagetocost",
-      "lib_summaries",
-      "lib_summaries_clouddelete",
-      "lib_summaries_cloudget",
-      "lib_summaries_cloudlist",
-      "lib_summaries_cloudupdate",
-      "lib_tests_pricing_test",
-      "lib_types",
-      "lib_types_jobstatus",
-      "lib_types_lang",
-      "lib_types_summary",
-      "lib_types_summaryusage"
+      "lib_service_date",
+      "lib_service_date_formatservicedate",
+      "lib_service_date_parseservicedate",
+      "lib_service_date_servicedateonly",
+      "lib_service_date_servicedateparts",
+      "lib_tests_service_date_test"
     ],
     "3": [
-      "app_bookpanel",
-      "app_bookpanel_bookpanel",
-      "app_bookpanel_iconbook",
-      "app_bookpanel_iconchevron",
-      "app_bookpanel_lang_label",
-      "app_bookpanel_lang_order",
-      "app_page_filename",
-      "app_page_stitchparts",
-      "lib_book",
-      "lib_book_booklabels",
-      "lib_book_bookmeta",
-      "lib_book_buildbookhtml",
-      "lib_book_chapter",
-      "lib_book_cleantitle",
-      "lib_book_collectscripturerefs",
-      "lib_book_compilechapters",
-      "lib_book_coverinner",
-      "lib_book_css",
-      "lib_book_extractchapter",
-      "lib_book_findscriptureref",
-      "lib_book_formatdate",
-      "lib_book_labels",
-      "lib_book_scriptureindexinner",
-      "lib_epub",
-      "lib_epub_bcp47",
-      "lib_epub_buildepub",
-      "lib_epub_chapterxhtml",
-      "lib_epub_rendercoverpng",
-      "lib_epub_toxhtml",
-      "lib_epub_uuid",
-      "lib_epub_xhtmldoc",
-      "lib_stitch",
-      "lib_stitch_stitchpartsserver",
-      "lib_tests_stitch_test",
-      "lib_tests_util_test",
-      "lib_util",
-      "lib_util_decodeentities",
-      "lib_util_downloadblob",
-      "lib_util_entity",
-      "lib_util_escapehtml",
-      "lib_util_escapexml",
-      "lib_util_extracthtmltitle",
-      "lib_util_slug"
-    ],
-    "4": [
       "eslint",
       "eslint_config_next",
       "eslint_eslintrc",
@@ -261,6 +216,38 @@
       "typescript_eslint",
       "vitest"
     ],
+    "4": [
+      "app_bookpanel",
+      "app_bookpanel_bookpanel",
+      "app_bookpanel_iconbook",
+      "app_bookpanel_iconchevron",
+      "app_bookpanel_lang_label",
+      "app_bookpanel_lang_order",
+      "lib_book",
+      "lib_book_booklabels",
+      "lib_book_bookmeta",
+      "lib_book_buildbookhtml",
+      "lib_book_chapter",
+      "lib_book_cleantitle",
+      "lib_book_collectscripturerefs",
+      "lib_book_compilechapters",
+      "lib_book_coverinner",
+      "lib_book_extractchapter",
+      "lib_book_findscriptureref",
+      "lib_book_formatdate",
+      "lib_book_labels",
+      "lib_book_scriptureindexinner",
+      "lib_epub",
+      "lib_epub_bcp47",
+      "lib_epub_buildepub",
+      "lib_epub_chapterxhtml",
+      "lib_epub_rendercoverpng",
+      "lib_epub_toxhtml",
+      "lib_epub_uuid",
+      "lib_epub_xhtmldoc",
+      "lib_util_downloadblob",
+      "lib_util_escapexml"
+    ],
     "5": [
       "lib_html_structure",
       "lib_html_structure_checkemphasisbudget",
@@ -268,6 +255,7 @@
       "lib_html_structure_checknesting",
       "lib_html_structure_checksectionnumbering",
       "lib_html_structure_checksummaryisnotheadingecho",
+      "lib_html_structure_extractsectiondigest",
       "lib_html_structure_findnestingproblems",
       "lib_html_structure_findstructuralproblems",
       "lib_html_structure_sectiondigest",
@@ -322,30 +310,30 @@
       "tsconfig_include"
     ],
     "7": [
-      "app_api_summaries_id_route",
-      "app_api_summaries_id_route_allowed_status",
-      "app_api_summaries_id_route_ctx",
-      "app_api_summaries_id_route_delete",
-      "app_api_summaries_id_route_gate",
-      "app_api_summaries_id_route_get",
-      "app_api_summaries_id_route_patch",
-      "app_api_summaries_id_route_patchbody",
-      "lib_summaries_server",
-      "lib_summaries_server_claimpendingsummaryserver",
-      "lib_summaries_server_deletesummaryserver",
-      "lib_summaries_server_finalizesummaryifgeneratingserver",
-      "lib_summaries_server_getgentokenserver",
-      "lib_summaries_server_getsummaryserver",
-      "lib_summaries_server_insertsummaryserver",
-      "lib_summaries_server_listsummariesserver",
-      "lib_summaries_server_marksummaryerrorserver",
-      "lib_summaries_server_mergepartserver",
-      "lib_summaries_server_mergeproofreadpartserver",
-      "lib_summaries_server_row",
-      "lib_summaries_server_tosummary",
-      "lib_summaries_server_updatesummaryserver",
-      "lib_supabase_server_getsupabaseadmin",
-      "lib_supabase_server_withsupabaseretry"
+      "app_api_summaries_upload_route",
+      "app_api_summaries_upload_route_besttitle",
+      "app_api_summaries_upload_route_body",
+      "app_api_summaries_upload_route_item",
+      "app_api_summaries_upload_route_parsed",
+      "app_api_summaries_upload_route_parseitem",
+      "app_api_summaries_upload_route_post",
+      "lib_import_parse",
+      "lib_import_parse_detectlang",
+      "lib_import_parse_importgroupkey",
+      "lib_import_parse_isvalidymd",
+      "lib_import_parse_parsefilename",
+      "lib_stitch",
+      "lib_stitch_stitchpartsserver",
+      "lib_tests_import_parse_test",
+      "lib_tests_stitch_test",
+      "lib_tests_util_test",
+      "lib_types_lang",
+      "lib_util",
+      "lib_util_decodeentities",
+      "lib_util_entity",
+      "lib_util_escapehtml",
+      "lib_util_extracthtmltitle",
+      "lib_util_slug"
     ],
     "8": [
       "anthropic_ai_sdk",
@@ -373,21 +361,6 @@
       "web_push"
     ],
     "9": [
-      "app_api_summaries_upload_route",
-      "app_api_summaries_upload_route_besttitle",
-      "app_api_summaries_upload_route_body",
-      "app_api_summaries_upload_route_item",
-      "app_api_summaries_upload_route_parsed",
-      "app_api_summaries_upload_route_parseitem",
-      "app_api_summaries_upload_route_post",
-      "lib_import_parse",
-      "lib_import_parse_detectlang",
-      "lib_import_parse_importgroupkey",
-      "lib_import_parse_isvalidymd",
-      "lib_import_parse_parsefilename",
-      "lib_tests_import_parse_test"
-    ],
-    "10": [
       "app_authgate",
       "app_authgate_authgate",
       "app_authgate_authmark",
@@ -400,9 +373,14 @@
       "app_authgate_setupscreen",
       "app_authgate_status",
       "lib_api",
-      "lib_api_apifetch"
+      "lib_api_apifetch",
+      "lib_summaries",
+      "lib_summaries_clouddelete",
+      "lib_summaries_cloudget",
+      "lib_summaries_cloudlist",
+      "lib_summaries_cloudupdate"
     ],
-    "11": [
+    "10": [
       "app_apple_icon",
       "app_apple_icon_appleicon",
       "app_apple_icon_size",
@@ -416,6 +394,18 @@
       "lib_icon_art",
       "lib_icon_art_iconart"
     ],
+    "11": [
+      "app_api_auth_passcode_route",
+      "app_api_auth_passcode_route_bumpattempt",
+      "app_api_auth_passcode_route_clearattempt",
+      "app_api_auth_passcode_route_clientip",
+      "app_api_auth_passcode_route_post",
+      "lib_auth_crypto",
+      "lib_auth_crypto_hashpasscode",
+      "lib_auth_crypto_scryptasync",
+      "lib_auth_crypto_verifypasscode",
+      "lib_tests_crypto_test"
+    ],
     "12": [
       "app_layout",
       "app_layout_bodykr",
@@ -428,58 +418,86 @@
       "app_layout_viewport"
     ],
     "13": [
+      "lib_translate_split",
+      "lib_translate_split_extracttitletext",
+      "lib_translate_split_font_swap",
+      "lib_translate_split_reassembletranslatedhtml",
+      "lib_translate_split_splittranslationdoc",
+      "lib_translate_split_swapfonts",
+      "lib_translate_split_withlang"
+    ],
+    "14": [
+      "lib_pricing",
+      "lib_pricing_formatcost",
+      "lib_pricing_per_m",
+      "lib_pricing_totaltokens",
+      "lib_pricing_usagetocost",
+      "lib_tests_pricing_test"
+    ],
+    "15": [
       "next_config",
       "next_config_cspdirectives",
       "next_config_nextconfig",
       "next_config_securityheaders"
     ],
-    "14": [
+    "16": [
       "eslint_config",
       "eslint_config_compat",
       "eslint_config_dirname"
     ],
-    "15": [
+    "17": [
       "lib_tests_summaries_server_test",
       "lib_tests_summaries_server_test_captured",
       "lib_tests_summaries_server_test_fakeclient"
     ],
-    "16": [
+    "18": [
       "vercel",
       "vercel_fluid",
       "vercel_schema"
     ],
-    "17": [
+    "19": [
       "app_manifest",
       "app_manifest_manifest"
     ],
-    "18": [
+    "20": [
+      "app_scenehero",
+      "app_scenehero_scenehero"
+    ],
+    "21": [
+      "lib_book_css"
+    ],
+    "22": [
       "public_sw"
     ],
-    "19": [
+    "23": [
       "vitest_config"
     ]
   },
   "cohesion": {
-    "0": 0.08695652173913043,
-    "1": 0.07474600870827286,
-    "2": 0.0641025641025641,
-    "3": 0.10077519379844961,
-    "4": 0.06060606060606061,
-    "5": 0.12561576354679804,
+    "0": 0.07876712328767123,
+    "1": 0.08870056497175141,
+    "2": 0.06852497096399536,
+    "3": 0.06060606060606061,
+    "4": 0.14482758620689656,
+    "5": 0.12183908045977011,
     "6": 0.07407407407407407,
-    "7": 0.22826086956521738,
+    "7": 0.16304347826086957,
     "8": 0.08695652173913043,
-    "9": 0.3076923076923077,
-    "10": 0.1794871794871795,
-    "11": 0.2878787878787879,
+    "9": 0.13071895424836602,
+    "10": 0.2878787878787879,
+    "11": 0.4,
     "12": 0.2222222222222222,
-    "13": 0.5,
-    "14": 0.6666666666666666,
-    "15": 0.6666666666666666,
+    "13": 0.42857142857142855,
+    "14": 0.5333333333333333,
+    "15": 0.5,
     "16": 0.6666666666666666,
-    "17": 1.0,
-    "18": 1.0,
-    "19": 1.0
+    "17": 0.6666666666666666,
+    "18": 0.6666666666666666,
+    "19": 1.0,
+    "20": 1.0,
+    "21": 1.0,
+    "22": 1.0,
+    "23": 1.0
   },
   "gods": [
     {
@@ -523,13 +541,13 @@
       "degree": 13
     },
     {
-      "id": "lib_types_lang",
-      "label": "Lang",
-      "degree": 11
+      "id": "lib_auth_server_setsessioncookie",
+      "label": "setSessionCookie()",
+      "degree": 10
     },
     {
-      "id": "app_page_sermorizer",
-      "label": "Sermorizer()",
+      "id": "lib_html_structure_findstructuralproblems",
+      "label": "findStructuralProblems()",
       "degree": 10
     }
   ],
@@ -593,38 +611,38 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `dependencies` connect `Community 8` to `Community 4`?",
-      "why": "High betweenness centrality (0.192) - this node is a cross-community bridge."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `buildEpub()` connect `Community 3` to `Community 8`?",
-      "why": "High betweenness centrality (0.192) - this node is a cross-community bridge."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `jszip` connect `Community 8` to `Community 3`?",
+      "question": "Why does `dependencies` connect `Community 8` to `Community 3`?",
       "why": "High betweenness centrality (0.189) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `buildEpub()` connect `Community 4` to `Community 8`?",
+      "why": "High betweenness centrality (0.188) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `jszip` connect `Community 8` to `Community 4`?",
+      "why": "High betweenness centrality (0.185) - this node is a cross-community bridge."
     },
     {
       "type": "isolated_nodes",
       "question": "What connects `Status`, `Phase`, `LANG_LABEL` to the rest of the system?",
-      "why": "114 weakly-connected nodes found - possible documentation gaps or missing edges."
+      "why": "115 weakly-connected nodes found - possible documentation gaps or missing edges."
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 0` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.07876712328767123 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 1` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.07474600870827286 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.08870056497175141 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
       "question": "Should `Community 2` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.0641025641025641 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.06852497096399536 - nodes in this community are weakly interconnected."
     }
   ]
 }

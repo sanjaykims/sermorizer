@@ -1,6 +1,7 @@
 import type { Lang, Summary } from "@/lib/summaries";
 import { BOOK_CSS, BOOK_SCRIPTS } from "@/lib/book-css";
 import { escapeHtml as esc } from "@/lib/util";
+import { formatServiceDate } from "./service-date";
 
 export type BookMeta = {
   title: string;
@@ -79,9 +80,10 @@ function cleanTitle(t: string): string {
 
 function formatDate(s?: string, createdAt?: number): string {
   const raw = (s && s.trim()) || (createdAt ? new Date(createdAt).toISOString().slice(0, 10) : "");
-  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return `${m[1]}.${m[2]}.${m[3]}`;
-  return raw;
+  // Not always a plain date: a second service on an already-used Sunday stores
+  // its time too ("2026-07-19-19-30"). Testing for YYYY-MM-DD alone printed
+  // that raw string into the chapter subtitle. See lib/service-date.ts.
+  return formatServiceDate(raw, ".");
 }
 
 export type Chapter = {

@@ -17,6 +17,7 @@ import { usageToCost, formatCost } from "@/lib/pricing";
 import dynamic from "next/dynamic";
 import AuthGate from "./AuthGate";
 import SceneHero from "./SceneHero";
+import { formatServiceDate } from "@/lib/service-date";
 
 // Lazy-load the book panel so it isn't shipped in the initial bundle.
 const BookPanel = dynamic(() => import("./BookPanel"), { ssr: false, loading: () => null });
@@ -353,7 +354,9 @@ function fileName(
 }
 
 function formatEntryDate(e: Summary): string {
-  if (e.serviceDate) return e.serviceDate;
+  // A stored service date may carry a time ("2026-07-19-19-30") when a second
+  // service shares a Sunday; render that rather than printing it raw.
+  if (e.serviceDate) return formatServiceDate(e.serviceDate);
   try {
     return new Date(e.createdAt).toISOString().slice(0, 10);
   } catch {
